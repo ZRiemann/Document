@@ -1,0 +1,75 @@
+# UNIX环境高级编程
+
+3. 文件IO
+3.1 引言
+ unbufferedI/O: open()/read()/write()/lseek()/close()
+ 不是ISO C 部分，是POSIX.1部分
+ dup()/fcntl()/sync()/fsync()/ioctl()
+
+3.2 文件描述符
+ 内核：一切文件都通过文件描述符引用，文件描述符为一个非负整数；
+ <unistd.h> STDIN/OUT/ERR_FILENO
+ 范围：0~OPEN_MAX-1
+
+3.3 open/openat
+ #include<fcntl.h>
+ int open(const char* path, int oflag, .../*mode_t mode*/);
+ int openat(int fd, const char* path, int oflag, .../*mode_t mode*/);
+ 
+3.4 create
+ #include<fcntl.h>
+ int create(const char* path, mode_t mode); == open(paht, O_WRONLY | OCREATE | O_TRUNC, mode);
+ 被open取代
+
+3.5 close
+ #include <unistd.h>
+ int close(int fd);
+ 
+3.6 lseek
+ #include <unistd.h>
+ off_t lseek(int fd, off_t offset, int whence);
+ param whence SEEK_SET/SEEK_CUR/SEEK_END
+
+3.7 read
+ #include <unistd.h>
+ ssize_t read(int fd, void* buf, size_t nbyes);
+ return 0:eof -1:error
+ .普通文件30字节，要求读100，第一次read返回30，第二次read返回0(EOF)
+ .从终端设备读，默认一次读一行，第18章介绍如何改变这一点
+ .从网络读，读取缓存中的数据量，可能小于要求读的数据量
+ .从管道或FIFO读，read只返回实际可用字节数
+ .从面向记录（如磁带），一次返回一个记录
+ .当一个信号造成中断，而已经读取了部分数据情况，10.5节进一步讨论；
+
+3.8 write
+ #include <unistd.h>
+ ssize_t write(int fd, const void* buf, size_t nbytes);
+ return -1:error n: n bytes has write.
+
+3.9 I/O效率
+ c3_io_efficiency.c
+ .利用shell的IO重定向功能，重定向标准输入输出
+ .缓冲区BUFFSIZE值4096，大多数文件系统为改善性能都采用某种预读(read ahead)技术，缓冲区大于32字节后读取时长相差不大；
+ .高速缓存技术，会缓存进阶的访问文件，后续访问被高速缓存的文件将无需磁盘IO;
+
+3.10 文件共享
+ UNIX系统支持不通进程间共享打开的文件，dup();
+ 内核使用三种数据结构表示打开的文件，他们之间的关系决定了文件共享方面一个进程对另一个进程可能产生的影响；
+  1，每个进程在进程表中都有一个记录项，记录项中包含一张打开{文件描述符表}，包含a，文件描述符标志；b，指向一个<文件表项>指针；
+  2，内核为所有打开文件维持一张文件表。<文件表项>包含：a，文件状态；b，当前偏移量；c，[v节点表项]指针
+  3，每个打开的文件（或设备）都有一个v节点。[v节点表项]包含：a，文件类；b，操作函数指针；c，i节点（索引节点：所有者、长度、磁盘位置）
+  进程1{文件描述符表}      内核<文件表项>       [v节点表项]
+  fd 文件指针				     v节点	      i节点
+  0  nfptr-------------->文件状态	 /-->v节点信息
+  1  fptr-----|		 当前偏移量	 |   v_data--------->i节点信息
+  2	      |		 v节点指针--------|		     当前文件长度
+  ...         \--------->文件状态	 |<------------------i_vnode
+			 当前偏移量	 \<-----\
+			 v节点指针-------->...	|
+						|
+  进程2{文件描述符}（共享打开进程1中同一个文件）	|
+  ... xfptr------------->文件状态		|
+			 当前文件偏移量		|
+			 v节点指针---------------/
+3.11 原子操作
+
