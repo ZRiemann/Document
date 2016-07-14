@@ -1,0 +1,2292 @@
+//NopostgreSQL
+
+1.1 模块组成
+
+1，Bootstrap:
+2，Main： postmaster、postgres
+3，Postmaster: 监听用户请求守护进程，控制Postgres进程的启动和终止；
+4，Libpq： C 库函数，处理与客户端间的通信
+5，Tcop：Postgres进程主要处理部分，调用Parser，Optmizer，Executor，Commands 执行客户端查询
+6，Parser：编译器，将SQL转换为内部查询树
+7，Optimizer：优化器，优化查询路径和查询计划
+8，Executor：执行器，执行Optimizer的查询计划
+9，Commands：执行费计划查询SQL命令，如创建表
+10，Catalog：系统表操作
+11，Access：提供各种存取方法，支持堆、索引等数据的存取
+12，Nodes：定义系统内部所用到的节点、链表等结构，以及处理这些结构的函数；
+13，Utils：各种支持函数，如错误报告，各种初始化操作；
+14，Regex：正则表达式库
+15，Rewrite：查询重写
+16，Initdb：初始化数据库集簇；
+17，TSearch：全文检索
+18，Psql：数据库交互工具；
+19，Port：平台兼容性处理；
+
+1.2 数据库命令
+
+1，initdb -D -E -X
+创建一个用于存储数据库的PostgreSQL数据目录，并创建预定义的模板数据库template0，template1，生成共享目录catalog；
+-D <dir> 数据集簇位置
+-E <UTF8> 默认编码
+-X <DIR> 事物日志位置
+-d --debug
+-L <dir>
+initdb -> postgres -> bootstrap ->postgres.bki
+
+2，createuser -c -d -l -U
+创建一个新的PostgreSQL用户，等同CREATE USER ...
+-c 指定用户最大连接数
+-d 新用户可创建数据库
+-l 新用户具有登陆权限
+-U 连接的用户名
+
+3，dropuser -U 连接的数据库用户名 删除用户
+
+4，createdb -E 数据库编码 -l 数据库local设置 -O 数据库所有者 = CREATE DATABASE ...
+
+5,dropdb -i 删除前提示确认 -U 连接数据库的用户名 删除数据库
+
+6，pg_dump 导致数据库备份文件
+-f 备份文件名称
+-F 备份文件格式，custom，tar，plain text
+-Z 压缩等级
+-a 只备份数据不含模式
+-b 备份包含大对象
+-C 包含创建数据库命令
+
+7，pg_dumpall 将所有数据库导出到备份文件
+-f 备份文件名称
+--lock-wait-timeout 有表锁时若超时则备份失败
+
+8，pg_restore 恢复数据库
+-d 连接数据库名称
+-f 备份文件名称
+-F 备份文件格式c，t
+-a 只恢复数据
+-C 创建目标数据库
+-l 恢复有名称的索引
+
+9，vacuumdb -a 清理所有数据库 -d 清理指定数据库
+
+10， pg_ctl 启动，停止，重启PostgreSQL
+
+11，postgres 单用户模式的数据库服务
+
+12，postgresmaster 多用户模式的数据库服务
+
+13，psql 客户端交互程序
+-c 执行单个命令退出
+-d 连接的数据库名字
+-f 从文件中执行命令
+-l 将文件中的命令当成一个任务执行
+-h host ip
+-p port 端口
+-U 连接数据库用户名
+-w 不需要密码
+-W 强制使用密码
+帮助：
+\? \o \l \q \c \dt \d \di \i
+
+2.0 PostgresSQL体系结构
+
+子系统：
+1，连接管理系统（系统控制器）
+2，编译执行系统 = DDL编译器 + 查询编译器 + 查询执行器
+3，存储管理系统 = 索引管理器 + 内存管理器 + 外存管理器
+4，事物系统 = 事物管理器 + 日志管理器 + 并发控制 + 锁管理器
+5，系统表 （数据库元信息管理中心）＝　 数据库对象信息 +　数据库管理控制信息
+
+2.1 系统表
+
+系统表（数据字典） = 对象{属性} + 对象关系（表/视图）；
+系统表维护：应该通过SQL命令（不应该手动操作），如创建数据库CREATE DATABASE 会向pg_database系统表中插入一行;
+系统表CACHE：用Hash 提高查询效率 @3.0
+代码路径：src/include/catalog/pg_xxx.h + src/backend/catalog/pg_xxx.c
+struct pg_xxx{} 对应一个系统表
+indexing.h/.c 定义了所有系统表索引,4个操作系统表索引函数
+toasting.h/.c TOAST表存放普通表中的超出属性值，4个操作TOAST表函数 @3.0
+
+2.2.1 需要系统表功能及依赖关系
+
+42个系统表 + 17个系统视图
+
+1，pg_namespace：命名空间表，SQL9模式下层次机构；名字空间层次: 数据库.模式.表.属性
+名字空间索引顺序：special->TEMP->系统表名字空间
+pg_namespace :
+-- Table: pg_namespace
+CREATE TABLE pg_namespace
+(
+  nspname name NOT NULL, // 名字空间名称
+  nspowner oid NOT NULL, // 名字空间所有者对象唯一标识
+  nspacl aclitem[] // acl 访问控制表
+)
+"pg_catalog";10;"{postgres=UC/postgres,=U/postgres}"
+"pg_toast";10;""
+"public";10;"{postgres=UC/postgres,=UC/postgres}"
+"pg_temp_1";10;""
+"pg_toast_temp_1";10;""
+"information_schema";10;"{postgres=UC/postgres,=U/postgres}"
+
+2，pg_tablespace：表空间信息，有助于实施磁盘文件布局； 数据集簇里唯一；
+功能：
+a1，如果集簇所在分区满了，通过表空间将数据分布到不同的磁盘位置上；
+a2，性能优化，如安排索引放在固态硬盘上，安排归档数据到磁盘上；
+
+-- Table: pg_tablespace
+CREATE TABLE pg_tablespace
+(
+  spcname name NOT NULL, // 表空间名称
+  spcowner oid NOT NULL, // 所有者ID
+  spcacl aclitem[], // 访问控制表
+  spcoptions text[] // 表空间物理位置（操作系统目录路径）
+)
+"pg_default";10;"";""
+"pg_global";10;"";""
+
+3，pg_database：数据簇中数据库信息；
+
+-- Table: pg_database
+
+CREATE TABLE pg_database
+(
+  datname name NOT NULL, // 数据库名
+  datdba oid NOT NULL, // DBA oid
+  encoding integer NOT NULL, // 编码格式 0-SQL_ASCII 6-UTF8
+  datcollate name NOT NULL, // LC_COLLATE 设置
+  datctype name NOT NULL, // LC_CTYPE 设置
+  datistemplate boolean NOT NULL, // 是否作为创建其他数据库模板
+  datallowconn boolean NOT NULL, // 是否允许连接
+  datconnlimit integer NOT NULL, // 允许最多连接数
+  datlastsysoid oid NOT NULL, // 数据库使用的最后一个oid，pg_dump时有用
+  datfrozenxid xid NOT NULL, // transactionID 数据库中所有这个事物ID之前的事务都被替换为一个永久冻结的ID
+  	       	       	     // 用来跟踪改数据库是否需要进行vacuum(清理)操作
+  dattablespace oid NOT NULL, // 所在表空间
+  datacl aclitem[] // 访问控制列表
+  // datconfig text // 老版本：GUC参数
+)
+1;"template1";10;6;"C";"C";TRUE;TRUE;-1;11997;666;1663;"{=c/postgres,postgres=CTc/postgres}"
+11997;"template0";10;6;"C";"C";TRUE;FALSE;-1;11997;666;1663;"{=c/postgres,postgres=CTc/postgres}"
+12002;"postgres";10;6;"C";"C";FALSE;TRUE;-1;11997;666;1663;""
+
+4，pg_class：表及与表类似结果的数据库对象信息（索引、序列、视图、复合数据、TOAST表）
+
+-- Table: pg_class
+CREATE TABLE pg_class
+(
+  relname name NOT NULL, // 数据库对象名
+  relnamespace oid NOT NULL, // 数据库对象所属名称空间OID
+  reltype oid NOT NULL, // 行类型对应的数据类型在pg_type 系统表中的OID
+  reloftype oid NOT NULL, //
+  relowner oid NOT NULL, // 对象所有者
+  relam oid NOT NULL, // 对于索引对象，该字段显示索引方式IOD， b-tree，hash
+  relfilenode oid NOT NULL, // 对象所在的磁盘文件名称
+  reltablespace oid NOT NULL, // 对象所在表空间
+  relpages integer NOT NULL, // 对象的磁盘页面数，被计划器使用，由VACUUM,ANALYZE，DDL更新
+  reltuples real NOT NULL, // 表中元组数，被计划期使用...
+  relallvisible integer NOT NULL, // 
+  reltoastrelid oid NOT NULL, // 如果表关联了TOAST表，这里记录TOAST表的OID
+  reltoastidxid oid NOT NULL, // 可能存在的TOAST 表的索引OID
+  relhasindex boolean NOT NULL, // 是否有索引
+  relisshared boolean NOT NULL, // 是否共享，部分未真
+  relpersistence "char" NOT NULL, // 
+  relkind "char" NOT NULL, // r-表 I-索引 S-序列 v-视图 c-符合类型 t-TOAST表
+  relnatts smallint NOT NULL, // 用户定义属性的数据
+  relchecks smallint NOT NULL, //　CHECK约束数目
+  relhasoids boolean NOT NULL, // 是否为表的元组生成OID， true-表每行生成oid
+  relhaspkey boolean NOT NULL, // 是否定义了主键
+  relhasrules boolean NOT NULL, // 是否定义了规则
+  relhastriggers boolean NOT NULL, // 是否定义了触发器
+  relhassubclass boolean NOT NULL, // 是否有继承表
+  relfrozenxid xid NOT NULL, // 指导一个事务ID，跟踪VACUUM操作
+  relacl aclitem[], // 访问控制
+  reloptions text[] // keyword = value 选项
+)
+826;"pg_default_acl";11;11022;0;10;0;11939;0;0;0;0;0;0;TRUE;FALSE;"p";"r";4;0;TRUE;FALSE;FALSE;FALSE;FALSE;666;"{=r/postgres}";""
+827;"pg_default_acl_role_nsp_obj_index";11;0;0;10;403;11941;0;1;0;0;0;0;FALSE;FALSE;"p";"i";3;0;FALSE;FALSE;FALSE;FALSE;FALSE;0;"";""
+828;"pg_default_acl_oid_index";11;0;0;10;403;11942;0;1;0;0;0;0;FALSE;FALSE;"p";"i";1;0;FALSE;FALSE;FALSE;FALSE;FALSE;0;"";""
+1136;"pg_pltemplate";11;11009;0;10;0;0;1664;1;8;1;0;0;TRUE;TRUE;"p";"r";8;0;FALSE;FALSE;FALSE;FALSE;FALSE;666;"{=r/postgres}";""
+1137;"pg_pltemplate_name_index";11;0;0;10;403;0;1664;2;8;0;0;0;FALSE;TRUE;"p";"i";1;0;FALSE;FALSE;FALSE;FALSE;FALSE;0;"";""
+1213;"pg_tablespace";11;11008;0;10;0;0;1664;1;2;1;0;0;TRUE;TRUE;"p";"r";4;0;TRUE;FALSE;FALSE;FALSE;FALSE;666;"{=r/postgres}";""
+1214;"pg_shdepend";11;11010;0;10;0;0;1664;1;1;1;0;0;TRUE;TRUE;"p";"r";7;0;FALSE;FALSE;FALSE;FALSE;FALSE;666;"{=r/postgres}";""
+1232;"pg_shdepend_depender_index";11;0;0;10;403;0;1664;2;1;0;0;0;FALSE;TRUE;"p";"i";4;0;FALSE;FALSE;FALSE;FALSE;FALSE;0;"";""
+1233;"pg_shdepend_reference_index";11;0;0;10;403;0;1664;2;1;0;0;0;FALSE;TRUE;"p";"i";2;0;FALSE;FALSE;FALSE;FALSE;FALSE;0;"";""
+
+5，pg_type：数据类型信息
+CREATE TYPE/DOMAIN
+
+-- Table: pg_type
+CREATE TABLE pg_type
+(
+  typname name NOT NULL, // 类型名
+  typnamespace oid NOT NULL, // 名字空间iod
+  typowner oid NOT NULL, // 
+  typlen smallint NOT NULL, // 字节长度
+  typbyval boolean NOT NULL,// 是否要求内部设置一个默认值
+  typtype "char" NOT NULL, // b-基本类型 c-符合类型 d-域类型 e-枚举 p-伪类型
+  typcategory "char" NOT NULL, // 用于数据类型装换的分类
+  typispreferred boolean NOT NULL, // 
+  typisdefined boolean NOT NULL, // 
+  typdelim "char" NOT NULL, // 数据数据类型分割符 "," ";"
+  typrelid oid NOT NULL, // 复合型 oid
+  typelem oid NOT NULL, // !0 - 引用pg_type中另一个数据类型
+  typarray oid NOT NULL, // ！0 - 数组
+  typinput regproc NOT NULL, // 输入转换函数文本模式
+  typoutput regproc NOT NULL, // 输出转换函数文本模式
+  typreceive regproc NOT NULL, // 输入装换函数二进制模式
+  typsend regproc NOT NULL, // 输出转换函数二进制模式
+  typmodin regproc NOT NULL, // 输入调节函数
+  typmodout regproc NOT NULL, // 输出调节函数
+  typanalyze regproc NOT NULL, //　自定义分析函数
+  typalign "char" NOT NULL, // 对齐方式 c-字节对齐 s-2字节对齐 i-4字节对齐 d-8字节对齐
+  typstorage "char" NOT NULL, // P,E,M,X 风别对应TOAST技术中的4中变长类型
+  typnotnull boolean NOT NULL, // 非空类型约束
+  typbasetype oid NOT NULL, // 表示域类型基本类型
+  typtypmod integer NOT NULL, // 
+  typndims integer NOT NULL, // 域类型数组维度
+  typcollation oid NOT NULL, // 只用于域类型 nodeToString函数装换形式　
+  typdefaultbin pg_node_tree,//  
+  typdefault text,
+  typacl aclitem[]
+)
+16;"bool";11;10;1;TRUE;"b";"B";TRUE;TRUE;",";0;0;1000;"boolin";"boolout";"boolrecv";"boolsend";"-";"-";"-";"c";"p";FALSE;0;-1;0;0;"";"";""
+17;"bytea";11;10;-1;FALSE;"b";"U";FALSE;TRUE;",";0;0;1001;"byteain";"byteaout";"bytearecv";"byteasend";"-";"-";"-";"i";"x";FALSE;0;-1;0;0;"";"";""
+18;"char";11;10;1;TRUE;"b";"S";FALSE;TRUE;",";0;0;1002;"charin";"charout";"charrecv";"charsend";"-";"-";"-";"c";"p";FALSE;0;-1;0;0;"";"";""
+19;"name";11;10;64;FALSE;"b";"S";FALSE;TRUE;",";0;18;1003;"namein";"nameout";"namerecv";"namesend";"-";"-";"-";"c";"p";FALSE;0;-1;0;0;"";"";""
+20;"int8";11;10;8;FALSE;"b";"N";FALSE;TRUE;",";0;0;1016;"int8in";"int8out";"int8recv";"int8send";"-";"-";"-";"d";"p";FALSE;0;-1;0;0;"";"";""
+21;"int2";11;10;2;TRUE;"b";"N";FALSE;TRUE;",";0;0;1005;"int2in";"int2out";"int2recv";"int2send";"-";"-";"-";"s";"p";FALSE;0;-1;0;0;"";"";""
+22;"int2vector";11;10;-1;FALSE;"b";"A";FALSE;TRUE;",";0;21;1006;"int2vectorin";"int2vectorout";"int2vectorrecv";"int2vectorsend";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+23;"int4";11;10;4;TRUE;"b";"N";FALSE;TRUE;",";0;0;1007;"int4in";"int4out";"int4recv";"int4send";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+24;"regproc";11;10;4;TRUE;"b";"N";FALSE;TRUE;",";0;0;1008;"regprocin";"regprocout";"regprocrecv";"regprocsend";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+25;"text";11;10;-1;FALSE;"b";"S";TRUE;TRUE;",";0;0;1009;"textin";"textout";"textrecv";"textsend";"-";"-";"-";"i";"x";FALSE;0;-1;0;100;"";"";""
+26;"oid";11;10;4;TRUE;"b";"N";TRUE;TRUE;",";0;0;1028;"oidin";"oidout";"oidrecv";"oidsend";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+27;"tid";11;10;6;FALSE;"b";"U";FALSE;TRUE;",";0;0;1010;"tidin";"tidout";"tidrecv";"tidsend";"-";"-";"-";"s";"p";FALSE;0;-1;0;0;"";"";""
+28;"xid";11;10;4;TRUE;"b";"U";FALSE;TRUE;",";0;0;1011;"xidin";"xidout";"xidrecv";"xidsend";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+29;"cid";11;10;4;TRUE;"b";"U";FALSE;TRUE;",";0;0;1012;"cidin";"cidout";"cidrecv";"cidsend";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+30;"oidvector";11;10;-1;FALSE;"b";"A";FALSE;TRUE;",";0;26;1013;"oidvectorin";"oidvectorout";"oidvectorrecv";"oidvectorsend";"-";"-";"-";"i";"p";FALSE;0;-1;0;0;"";"";""
+71;"pg_type";11;10;-1;FALSE;"c";"C";FALSE;TRUE;",";1247;0;0;"record_in";"record_out";"record_recv";"record_send";"-";"-";"-";"d";"x";FALSE;0;-1;0;0;"";"";""
+75;"pg_attribute";11;10;-1;FALSE;"c";"C";FALSE;TRUE;",";1249;0;0;"record_in";"record_out";"record_recv";"record_send";"-";"-";"-";"d";"x";FALSE;0;-1;0;0;"";"";""
+81;"pg_proc";11;10;-1;FALSE;"c";"C";FALSE;TRUE;",";1255;0;0;"record_in";"record_out";"record_recv";"record_send";"-";"-";"-";"d";"x";FALSE;0;-1;0;0;"";"";""
+83;"pg_class";11;10;-1;FALSE;"c";"C";FALSE;TRUE;",";1259;0;0;"record_in";"record_out";"record_recv";"record_send";"-";"-";"-";"d";"x";FALSE;0;-1;0;0;"";"";""
+
+6，pg_attribute 属性信息
+数据库表中的每个属性都有一个元组
+
+-- Table: pg_attribute
+CREATE TABLE pg_attribute
+(
+  attrelid oid NOT NULL, //
+  attname name NOT NULL, // 属性名称
+  atttypid oid NOT NULL, // 所属类型oid
+  attstattarget integer NOT NULL, //　控制分析器统计信息登记
+  attlen smallint NOT NULL, // 属性长度
+  attnum smallint NOT NULL, //　表中的编号
+  attndims integer NOT NULL,　// 数组维度
+  attcacheoff integer NOT NULL, // -1 加快属性查找
+  atttypmod integer NOT NULL, // -1
+  attbyval boolean NOT NULL, // pt_type 的 typbyval
+  attstorage "char" NOT NULL, // pg_type.typstorage
+  attalign "char" NOT NULL, // pg_type.typalign
+  attnotnull boolean NOT NULL, // NULL约束
+  atthasdef boolean NOT NULL, // 是否有默认值
+  attisdropped boolean NOT NULL, // 是否被删除
+  attislocal boolean NOT NULL, // 是否继承
+  attinhcount integer NOT NULL, // 直接父节点数
+  attcollation oid NOT NULL, //　ACL
+  attacl aclitem[], // 
+  attoptions text[],
+  attfdwoptions text[]
+)
+1255;"proname";19;-1;64;1;0;-1;-1;FALSE;"p";"c";TRUE;FALSE;FALSE;TRUE;0;0;"";"";""
+1255;"pronamespace";26;-1;4;2;0;-1;-1;TRUE;"p";"i";TRUE;FALSE;FALSE;TRUE;0;0;"";"";""
+1255;"proowner";26;-1;4;3;0;-1;-1;TRUE;"p";"i";TRUE;FALSE;FALSE;TRUE;0;0;"";"";""
+1255;"prolang";26;-1;4;4;0;-1;-1;TRUE;"p";"i";TRUE;FALSE;FALSE;TRUE;0;0;"";"";""
+1255;"procost";700;-1;4;5;0;-1;-1;TRUE;"p";"i";TRUE;FALSE;FALSE;TRUE;0;0;"";"";""
+1255;"prorows";700;-1;4;6;0;-1;-1;TRUE;"p";"i";TRUE;FALSE;FALSE;TRUE;0;0;"";"";""
+
+7, pg_index 索引表
+
+-- Table: pg_index
+CREATE TABLE pg_index
+(
+  indexrelid oid NOT NULL, // 索引对应pg_class 条目的OID
+  indrelid oid NOT NULL, // 创建索引的表的 OID
+  indnatts smallint NOT NULL, // 索引的属性数目
+  indisunique boolean NOT NULL, // 是否唯一索引
+  indisprimary boolean NOT NULL, //  是否主键索引
+  indisexclusion boolean NOT NULL, // 
+  indimmediate boolean NOT NULL, // 
+  indisclustered boolean NOT NULL, // 表最后在该索引上聚簇
+  indisvalid boolean NOT NULL, // 是否对查询有效
+  indcheckxmin boolean NOT NULL, // true-比较xmin 才能使用，否则不能使用该索引
+  indisready boolean NOT NULL, // 可以插入数据时设置为真
+  indkey int2vector NOT NULL, //　记录表被索引的属性
+  indcollation oidvector NOT NULL, // 
+  indclass oidvector NOT NULL, // 记录索引中每个属性对应的操作符OID
+  indoption int2vector NOT NULL, //　0，desc
+  indexprs pg_node_tree, // 
+  indpred pg_node_tree
+)
+
+//...
+
+2.1.2 系统视图
+pg_cursors：打开的游标
+pg_group：数据库用户组
+pg_indexes：索引
+pg_locks：当前持有的锁
+pg_prepared_statements：预备语句
+pg_prepared_xacts：预备事务
+pg_roles：数据库角色
+pg_rules：规则
+pg_settings：参数设置
+pg_shadow：数据库用户
+pg_stats：规划器统计
+pg_tables：表
+pg_timezone_abbrevs：时区缩写
+pg_timezone_names：时区名
+pg_user：用户
+pg_views：视图
+
+2.2 数据集簇
+定义：initdb初始化磁盘上的数据存储区，用户数据库+系统数据库；
+数据环境变量：PGDATA
+OID：对象标识（数据库，表，索引，视图，元组(数据项，行)，类型）
+    unsigned int 1~16384为簇预留； 
+初始化内容：创建数据目录、系统表、配置文件、控制文件、三个数据库（template1，template2，postgres）
+数据库分布：PGDATA/base/<database OID>/<* OID>[.1 .2 ...]； database OID defined in pg_pdatabase,如果文件大于1G 用".1",".2"后缀；
+TOAST表存放无法在数据行中放置的超大外置数据；
+pg_tablespace.pg_default -> PGDATA/base
+pg_tablespace.pg_global -> PGDATA/global
+pg_tablespace.pg_<user> -> PGDATA/pg_tblspc/<pg_tablespace.pg_<user>.oid> //符合连接
+
+PGDATA/
+PG_VERSIN 主版本号文件
+base/ 数据库目录,以pg_database.<database>.oid命名，pg_database.template1.oid = 1
+global/ 全局表，如：pg_database
+pg_clog/ 事务提交状态数据的子目录
+pg_multixact/ 多重事务状态数据子目录（用于共享的行锁）
+pg_stat_tmp/ 统计子系统所需临时文件
+pg_subtrans/ 事务状态数据
+pg_tblspc/ 表空间符号连接
+pg_twophase/ 预备事务状态文件
+pg_xlog/ WAL预写日志
+postmaster.opts 上一次启动是用于的命令行参数
+postmaster.pid 锁文件，当前Postmaster的进程号和共享内存段ID，服务器关闭后自动被删除
+postgressql.conf 配置文件
+pg_hba.conf 主机访问控制文件
+pg_ident.conf 用户名映射文件，被pg_hba.conf用到
+
+2.2.2 postgres.bki 仅用于初始化数据库集簇，BKI是特殊语言脚本，被PostgreSQL后端理解；
+initdb->postgres->bootstrap->postgres.bki
+share/postgres.bki: /src/backend/catalog/genbki.sh ->/src/include/catalog/*.h
+boot-strap 模式运行不存在系统表的0初始条件下执行数据库函数，而普通SQL命令要求系统表必须存在；
+initdb.main()
+->获取命令名->设置系统编码LC_ALL->设置环境变量->设置中断信号处理函数->创建数据库目录
+->测试氮气服务器系统性能，根据测试结果设置postgresql.conf,pg_hba.conf,pg_ident.conf
+->创建PGDATA/base/1 (template1)->创建系统视图、TOAST、template0、postgres->退出
+
+2.2.4 系统数据库
+template1 // 数据库初始模板，用户可修改
+ |-template0 // 干净的template1原始拷贝，用户不要去修改
+ |-postgres // 默认可连接数据库
+
+2.3 Postgre进程结构
+src/backend/main/main.c->main()
+ |->PostgresMain() // --single 单用户环境初始化
+ |->AuxiliaryProcessMain() // --boot 后台Postgres进程，创建数据库集簇入口
+ \->PostmasterMain() // 服务器守护进程
+       |=fork=>Postgres
+       |=fork=>SysLogger
+       |=fork=>BgWriter // 后台写进程
+       |=fork=>WalWriter // 预写式日志写进程
+       |=fork=>AutoVacuum // 自动清理进程
+       |=fork=>PgArch // 预写式日志归档进程
+       \=fork=>PgStat // 统计数据收集进程
+
+2.4 Postmaster
+启动命令：postmaster,postgres,pg_ctl
+进程通信：共享内存 + 信号
+优点：单个进程奔溃后重置共享内存接口恢复，稳定；
+代码路径：src/backend/postmaster/
+	 |- postmaster.c // 进程源文件
+	 |- pqstat.c // 统计数据收集进程
+	 |- pqarch.c // 预写日志归档进程
+	 |- bgwrite.c // 后台写进程
+	 |- syslogger.c // 系统日志进程
+	 \- autovacuum.c // 自动清理进程
+
+2.4.1 MemoryContextInit()初始化内存上下文
+MemoryContextInit() // create TopMemoryContext/ErrorContext
+AllocSetContextCreate() // 以TopMemoryContext为跟节点创建PostmasterContext，将全局支持CurrentMemoryContext指向PostmasterContext；
+MemContext
+ |- TopMemoryContext:作为内存上下文的根节点，存放所有打开的文件描述符、内存上下文控制节点。
+ |- ErrorContext：错误恢复处理永久性内存环境，恢复完毕则重设；
+ \- PostmasterContext：fork出来的子进程会删除这个环境；
+
+2.4.2 配置参数
+GUC(Grand Unified Configuration)：实现多种数据类型（boolean\int\float\string）的变量配置；
+ PGC_INTERNAL/POSTMASTER/SIGHUP/BACKEND/USERRESET/SUSET
+ enum GucSource{PGC_S_DEFAULT/ENV_VAR/FILE/ARGV/DATABASE/USER/CLIENT/OVERRIDE/INTERACTIVE/TEST/SESSION}
+ struct config_generic{};// 共性guc
+ struct config_int{};
+ 
+  struct config_generic{
+   const char* name;
+   GucContext context; // 参数类型
+   enum config_group gourp; // 用于根据功能对参数进行分组
+   const char* short_desc; // 参数简短描述
+   cosnt char* long_desc; // 参数详细描述
+   int flags; // 参数标志
+   enum config_type vartype; // 参数值的类型PGC_BOOL/INT/REAL/STRING/ENUM
+   int status; // 参数状态
+   GucSource reset_source; // 参数值未reset_value时参数来源
+   GucSource source; // 当前参数来源
+   GucStack* stack; // 当修改发生时，保存旧值，以支持回滚
+   char* sourcefile; // 配置所在源文件
+   int sourline; // 源文件行号
+  };//共性guc
+  struct config_int{
+   struct config_generic gen;
+   int* variable; // 当前值
+   int boot_val; // 参数初始值
+   int reset_val; // 重置值
+   int min; // 下界
+   int max; // 上界
+   GucIntAssignHook assign_hook; // 函数指针，用来设置reset_val
+   GucShowHook show_hook; // 目前没有用到
+  };
+
+2.4.2.1 初始化GUC
+ InitializeGUCOptions()->build_guc_variables->config_generic->ConfigureNamesBool,ConfigureNamesInt,ConfigureNamesReal,
+ ConfigureNamesEnum->build_guc_variables->config_generic.status = 0,reset_source,tentative_source,source = PGC_S_DEFAULT;
+ stack\sourcefile = NULL, vartype = assign_hook;
+ getenv(PGPORT\PGDATESTYLE\PGCLIENTENCODING) ->SetConfigOption();
+ 100KB < max_stack_depth < 2MB
+
+2.4.2.2 配置GUC参数
+ 命令行配置GUC参数 Postmaster.c->getopt()->SetConfigOption()
+
+2.4.2.3 读取配置文件
+ 不能修改命令行配置的GUC参数；
+ SelectConfigFiles(const char* userDoption, const char* progname)
+ CreateDataDirLockFile() //保证Postmaster唯一运行 CreateLockFile 创建postmaster.pid
+ RemovePgTempFiles() 删除PGDATA/base/pgsql_tmp
+ 2.4.3 创建监听套接字
+ ListenAddress: IP SplitIdentifierString(ListenAddress)->StreamServerPort()
+ ListenSocket[MAXLISTEN】： MAXLISTEN = 64 init = -1
+ socket()->bind()->listen() // 监听套接口
+ ->reset_shared() // 创建共享内存，信号量，加载pg_hba.conf,pg_ident.conf
+ ->BackendList() // 活动的后台进程表，创建postmaster.opts 
+
+2.4.4 注册信号处理函数
+ 定义三个信号集：
+ BlockSig // 要屏蔽的信号集
+ UnBlockSig // 不希望屏蔽的信号集
+ AuthBlockSig // 在进行用户连接认证时需要屏蔽的信号集
+ PG_SETMASK 全部屏蔽信号集
+ 
+ pgsignal 设置感兴趣的处理函数
+ .SIGHUP_handler()// 当配置文件发送改变产生SIGHUP
+ .pmdire() // 处理SIGTERM,SIGINT,SIGQUIT； 0-NoShutdown 1-SmartShutdown 2-FastShutdown
+  |-> SIGTERM // SmartShutdown 等待所有紫禁城完成当前任务后在安全关闭系统
+  |-> SIGINT // Fast Shutdown 回滚当前事务安全退出
+  |-> SIGQUIT // Immediate Shutdown 马上退出，系统费正常关闭
+ .reaper() // Postmaster 收到 SIGCHLD 调用reaper()清理退出子进程
+   |- ExitPostmaster() SetupPID(0),FatalError(false)
+   |- BgWriter BiWritePID = 0；if(pmState==PM_SHUTDOWN){Send(PgStat,SIGUSER2)}else{HandleChildCrash();}
+   |- WalWriter/AutoVacuum：HandleChildCrash()
+   |- PgArch: if(pmStat == PM_RUN){pgarch_start()}else{pmStat = PM_WAIT_DEAD_END；}
+   |- PgStat： if(pmStat == PM_RUN){pgstat_start();}
+   \- SysLogger: SysLogger_Start() 重启sysLog
+
+2.4.5 辅助进程启动
+.1 SysLogger // SysLogger_Start();postgresql.conf 配置日志大小
+.2 辅助进程初始化 // PgStat，AutoVacuum
+   |- PgStat //UDP端口创建，if(测试OK){设置非阻塞}else{释放资源;发送错误;track_counts=off;}
+   |- AutoVacuum //if(autovacuum_start_daemon=true && track_count==on){init autovacuum}else{report error}
+   |- StartupProcess() // 数据库启动操作，等待等待ServerLoop
+
+2.4.6 装载客户端认证文件
+ 读取pg_hba.conf(主机认证)、pg_ident(身份认证).conf到链表变量中，控制客户端认证；
+
+2.4.7 循环等待客户端连接请求
+.1 PostgreSQL会话进程
+   |- Postgres // 服务进程
+   |- 客户端进程 // 如psql，pgAdmin；
+.2 src/backend/postmaster/postmaster.c->PostmasterMain()->status = ServerLoop();
+int ServerLoop(){
+ for(;;){
+  selres = select(...);
+  if(selres > 0){ // for each ListenSocket[i]()
+   Port* port = ConnCreate(ListenSocket[i]);
+   BackendStartup(port);
+   // We no longer need the open socket or port structure in this process.
+   StreamClose(port->sock);
+   ConnFree(port);
+  }
+  // If we have lost the log collector, try to start a new one
+  if(SysLoggerPID == 0 && Logging_connector)SysLoggerPID = SysLogger_Start();
+  // If no background writer process is running, start one
+  if(CheckpointerPID == 0)CheckpointerPID = StartCheckpointer();
+  if(BgWriterPID == 0)BgWriterPID = StartBackgroundWriter();
+  if(WaiWriterPID == 0 && pmState = PM_RUN)WalWriterPID = StartWalWriter();
+  if(!IsBinaryUpgrad && AutoVacPID == 0 && (...) &&　pmStat == PM_RUN) AutoVacPID = StartAutoVacLauncher();start_autovac_launcher = false;
+  if(PgStatPID == 0 && pmState == PM_RUN)PgStatPID = pgstat_start();
+  if(...)PgArchPID = pgarch_start();
+  // If we already send SIGQUIT to children and they are slow to shut down, it's time to send SIGKILL.
+  
+ }//for(;;)
+}
+ 
+2.5 辅助进程
+2.5.1 SysLogger系统日志进程
+ .1 配置postgresql.conf 系统日志项
+ log_destination // 日志输出目标，默认stderr
+ logging_collector; // 是否开启日志收集器
+ log_director; // 日志输出文件夹
+ log_filename; // 配置日志文件明命名规则
+ log_rotation_size; // 配置日志文件大小
+
+ .2 SysLogger_Start() // 系统日志辅助进程入口
+ SysLogger_Start(){
+  CreatePipe();//接收stderr输出
+  mkdir(Log_director);
+  sysloggerPid = syslogger_forkexec();
+ }
+ SysLogMain(int argc, char* argv[]){
+  // 初始化，记录进程号、事件、状态
+  syslogger_parseArgs(argc, argv);
+  init_ps_display("logger process","","","");
+  if(redirection_done){
+   dup2(fd,filno(stdout));
+   dup2(fd,filno(stderr));
+  }
+  pgsignal(SIGHUP, sigHupHandler);
+  pgsignal(...);//...
+  set_next_rotation_time(); // 设置下一次日志周期
+  for(;;){
+   ResetLatch();
+   if(got_SIGHUP){
+    ProcessConfigFile(); // 重新处理配置文件
+   }
+   if(Log_RotationAge > 0 &&　!rotation_disable){
+
+   }
+   if(!rotation_requested &&　Log_RotationSize > 0 && !rotation_disable){
+    
+   }
+   // select 读取管道读取端
+   // piperead()
+   // if(read == 0) 退出
+  }
+ }
+
+2.5.2 BgWriter 后台写进程
+目的：
+ 缓冲区替换时，数据库查询被阻塞；降低被阻塞的可能性；
+ 减少CheckPoint时要尽兴的IO操作，使IO负载趋向平稳；
+ 处理所有检查点；
+postgresql.conf：
+ gbwriter_delay // 定时启动BgWriter default：200ms
+ bgwriter_lru_maxpages // 最多写出maxpages个脏页 default：100
+ bgwriter_lru_multiplier // multiplier * N 个脏页，N=申请的缓冲页数 default：2.0
+BackgroundWriterMain(){ // 程序入口
+ // initialize variable 记录pid
+ // regist signal handler
+ // initialize runtime ResourceOwnerCreate() Background Writer 资源跟踪器
+ // register exception handler 结合setjmp、longjmp 实现进程错误处理，输出日志、清理资源
+ for(;;){
+  // handler writer
+  AbsorbFsyncRequest();//在检查创建工作时，处理fsync请求队列,将请求发送到本地SMGR
+  // signal handler;
+  got_SIGHUP读取新配置文件;
+  shutdown_requested退出;
+  checkpoint_requested创建检查点++do_checkpoint;
+  // create checkpoint;
+  if(not_checkpoint_requested || not_in_interval){
+   BgBufferSync();
+  }else{
+   //create checkpint; ckpg_started/failed/done/active/performed;
+   set checkpoint type;
+   do create checkpoint;
+  }
+ }
+}
+
+2.5.3 WalWriter预写式日志日志写进程
+WAL：Writer Ahead Log，Xlog；先写日志后写数据
+作用：显著减少些磁盘次数
+位置：PGDATA/pg_xlog; 段名<时间线,日志文件标号,段号>每段16M，每页8k
+缓冲区和控制结构在共享内存里，由轻量级锁保护；默认缓冲区大小8*8=64KB；
+安全考虑：原位置创建符号连接，日志文件存储到不同的磁盘上;
+postgresql.conf:
+fsync: ON/OFF ON-更新数据写入磁盘时必须等待WAL写入完成；
+synchronous_commit: ON/OFF ON-WAL完成后才返回事务状态信息
+wal_sync_method:fsync/open_data_sync/fdatasync/fsync_writethrough/opensync
+full_page_writes:是否将整个page写入到WAL
+wal_buffers：64K
+wal_writer_delay: 200ms
+commit_delay: 0ms
+commit_siblings: 5 if(commit > sibliings){wait commit_delay;}
+Postmaster->StartWalWriter();
+WalWriterMain(){
+ // initialize variables
+ // register signal handler
+ // initialize runtime
+ // register exception handler
+ for(;;){
+  // signal handler branch
+  // write Xlog
+  // sleep
+ }
+}
+
+pg_dump: 备份数据库文件
+
+2.5.4 PgArch预写式日志归档进程
+PITR：Point-In-Time-Recovery 支持数据库恢复到期运行历史中任意一个有记录时间点
+归档WAL文档；
+postgresql.conf:
+archive_mode:*OFF/ON 是否进行归档操作
+archive_command:由管理员设置的用于归档WAL日志的命令（cp）
+archive_time:归档周期 0-禁用
+// 启用归档日志
+wal_level：archive/hot_standby
+PGDATA/pg_xlog/archive_status; 记录每个段文件的状态
+// 启动逻辑
+Postmasger->pgarch_start();
+PgArchiverMain(){
+ //initialize variable
+ //register signal handler
+ //handle signal
+ //archvie WAL
+ //sleep
+}
+
+2.5.5 系统自动清理进程 PG8.1
+多版本并发控制下，UPDATE/DELETE操作并未立即删除旧版本的数据，表中的数据只是被标识为删除状态；
+AutoVacuum：自动执行VACUUM/ANALYZE命令，回收被标识为删除状态记录的空间，更新表的统计信息；
+postgresql.conf:
+autovacuum: *ON/OFF
+atuovacuum_max_workers:最多清理工作进程数
+autovacuum_naptime:清理时间间隔
+autovacuum_vacuum/analyze_threshold:被更新元组数上限；
+autovacuum_vacuum/scale_scale_factor:表大小缩放系数；
+autovacuum_freeze_max_page:设置需要强制对数据库进行清理的XID上限；
+
+AutoVacuumLauncher:监控进程，收集数据库信息，调度AutoVacuumWorker
+AtuoVacuumWroker:
+清理阈值 = 清理基本阈值 + 清理缩放系数 * 元组数；
+分析阈值 = 分析基础阈值 + 分析缩放系数 * 元组数；
+pg_autovacuum表为每个表设立单独设置；
+
+AutoVacuumLauncher进程：
+StartAutoVacLauncher()
+AutoLauncherMain(){
+ // initiaize variables
+ // register signal handler
+ // initialize runtime
+ // register exception handler
+ // 构建数据库列表
+ rebuild_database_list(){
+  //create hash table,dbOID(adl_datid)(adl_next_worker)(adl_score)
+  //pg_database平面文件 构建数据库list（为什么平面文件：因为未连接到数据库）
+  pgstat_fetch_stat_dbentry();//填充每个节点统计信息
+  if(统计信息不为空 && hash表无改数据库）{将该数据库加入hash表}
+  // hash_table adl_score 升序加入到全局变量DatabaseList，设置adl_next_worker值
+ }
+ for(;;){
+  //设置进程休眠时间
+  //信号处理分支
+  //启动worker进程
+ }
+}
+
+AtuoVacuumWorker
+launch_worker()->do_start_worker(){
+ // initialize variables
+ // idle worker check
+ // initialzie runtime
+ // build database list
+ // transactin ID handler
+ // shoose base to be vacuum
+ // ...
+ // switch memory env
+ // return dababase oid;
+}
+
+2.5.6 PgStat 统计数据收集进程statistic
+pg_statistic
+PGDATA/global/pg_stat_tmp/pgstat.stat
+作用：查询优化是的代价估算
+postgresql.conf:
+track_activities: *ON/OFF
+track_counts:*ON/OFF
+track_function: 函数调用次数和耗时统计 ON/OFF
+track_activity_query_size:1024 当前执行命令字节数
+
+pgstat_init()
+typedef enum StatMsgType{PGSTAT_MTYPE_DUMMY/INQUIRE...}StatMsgType;
+
+PgstatCollectorMain(){
+ // initialzie variable
+ // register signal handler
+ // read statfile
+ for(;;){
+  // handler signal branch
+  // select udp socket
+  // handle message
+ }
+}
+
+2.6 Postgres服务进程
+功能：直接接受用户命令进行编译执行，并将结果返回给用户；
+命令:1, insert/delete/update/select
+     2, create/drop table/view/index
+src/backend/tcop
+ |- postgres.c // 管理查询的整体流程
+ |- pquery.c // 执行一个缝隙好的查询命令
+ |- utility.c // 执行各种非查询命令
+ \- dest.c // 与远端客户的一些消息通信操作，返回命令执行结果
+
+PostgresMain(){
+ // parser cmd parameter
+ // config GUC
+ // register signal handler
+ // initialize Postgres runtime
+ // config super user GUC
+ // create query memory env
+ // 设置查询取消跳跃点进行容错处理 sigsetjmp/siglongjmp PG_execption_stach
+ // 重置MessageContext
+ // ReadForQuery()
+ // ReadCommand()
+ switch(firstchar){
+  case Q: exec_simple_query();
+  case P: exec parser
+  ...
+ }
+ 
+}
+ 2.6.6 循环等待梳理查询
+ PqSendBuffer: 8192Byte Server -> Client
+ PgSendPointer:
+ PqRecvBuffer: 8193Byte
+ PqRecvPointer:
+ 消息分类：
+  1, 消息启动: connect datebase + pg_hba.conf
+  2, 消息查询: SQL last message ReadyForQuery
+  3, 扩展查询: 多步查询
+  4, 函数调用: 调用pg_proc中的函数
+  5, 取消正在处理的请求: CancelRequest + 关闭连接
+  7, 终止: Terminate
+
+每次查询前释放上一次内存，分配新内存；
+SocketBackend()
+InteractiveBackend()
+
+2.6.7 简单查询执行流程
+exec_simple_query(){
+ pg_parse_query(); // (工具:lex+yacc）src/backend/paser/scan.1,gram.y
+ parse_analyze();
+ QeuryRewrite()
+ pg_plan_queries(); // src/backend/optimizer
+ ProcessQuery(); // src/backend/executor
+ // ProcessUtility(); // src/backend/tcop/utility.c
+}
+
+3. 存储管理
+DBMS本质：向存储器写入、读出数据；包括内存、外存
+功能：管理存储器 + 内存统筹规划；
+
+3.1 体系结构：
+内存管理
+ |-  缓冲区管理 《=》 外存管理.磁盘存储管理(SMGR)
+ |-  内存上下文
+ |- 本地内存管理
+ |   |- Cache机制：最近使用的系统数据，级别高于缓冲池；@3.3.2
+ |   |- 本地缓冲池：保存页面（文件块）加快事务处理；@3.3.3
+ |
+ \- 共享内存管理
+     |- IPC机制
+     |- 锁机制
+     \- 共享缓冲池
+
+外存管理
+ |- 表文件 <------------FSM文件-> 空闲空间管理，空闲空间映射表，快速定位空闲空间方便插入新数据，提高空间利用率；@3.2.4
+     |- 磁盘存储管理   \-VM文件 -> Vacuum机制，可见性映射表
+         |- VFD机制：Virtual File Descriptor，虚拟文件描述符，必须系统限制打开文件数；
+
+虚拟文件描述符机制，后台进程可以打开“无限多”文件；
+
+支持大数据存储
+ |- 大对象机制：允许用户调用函数，通过SQL直接向表中插入一个大尺寸文件（图片，视频，文档等）；
+ |- TOAST机制：用户插入变长数据自动触发；
+ 
+存储管理选择器，支持扩展；
+
+存储管理器采用分页管理模式：
+ 文件表 = 文件块（BLCKSZ=8192，内存:页面块) * N
+          |- 文件块 = 元组(tuple，不支持夸页面存储) * N
+
+元组访问 《=普通表元组======》共享缓冲池《=》存储管理器《=》磁盘管理器《=》(VFD)虚拟文件管理器《=》物理文件
+      \= 《=系统表元组=》Cache =/
+
+读元组：
+ |-基本信息(RelationData)<表IOD,index,statistic>
+ |-模式信息：被分散记录在多个系统表中
+ |-元组数据：用户数据，if(从缓冲区读取失败){通过SMGR读取数据到缓冲区}
+
+ SMGR:管理各种介质，对上层提供统一接口；
+  if(表文件 > RELSEG_SIZE){新建表文件.1}
+  VFD:维护一个LRU池管理实际文件描述符(FD) @3.2.3
+
+写元组：
+ 找到空闲空间缓冲块；
+ 适当时机“刷”回到存储介质；VSM机制提高效率
+
+删元组：
+ 对元组做删除标记，将有VACUUM机制完成删除；VM机制提高效率
+
+// 查询个表占用空间
+SELECT
+schemaname,
+tablename,
+pg_size_pretty(pg_relation_size(schemaname || '.' || tablename)) AS size_p,
+pg_total_relation_size(schemaname || '.' || tablename) AS siz,
+pg_size_pretty(p_total_relation_size(schemaname || '.' || tablename)) AS total_size_p,
+pg_total_relation_size(schemaname || '.' || tablename) - pg_relation_size(schemaname || '.' || tablename) AS index_size,
+(100*(pg_total_relation_size(schemaname || '.' || tablename) - pg_relation_size(schemaname || '.' || tablename)))/CASE WHEN pg_total_relation_size(schemaname || '.' || tablename) = 0 THEN 1 ELSE pg_total_relation_size(schemaname || '.' || tablename) END || '%' AS index_pct
+FROM pg_tables ORDER BY siz DESC LIMIT 50;
+// 查询个共享内存大小
+share shared_buffers;
+// 设置共享内存大小
+postgresql.conf:shared_buffers = 24MB // 一般设置为总内存的10~15%
+// 扩大linux kernel SHMMAX
+#echo 536870912 > /proc/sys/kernel/shmmax
+#cat /proc/sys/kernel/shmmax
+536870912
+//shared buffer and relation file maping
+BufferDescription: |bd1|bd2|bd3|...|bd*| // buffer 管理结构
+                   | /-|   |       |
+               /---/ |     |       \-|
+SharedBuffers: |page1|page2|page3|...|page*| //page size = 8k
+typedef struct BufferDesc{
+ BufferTag tag;/* ID of page contained in buffer */typedef struct buftag{
+   RelFileNode rnode;	/* physical relation identifier */typedef struct RelFileNode{
+    Oid	spcNode;/* tablespace 表空间id:PGDATA/base*/
+    Oid	dbNode;	/* database 数据库id:(PGDATA/base/)manu_db/*/
+    Oid	relNode;/* relation 关系id*/(PGDATA/base/manu_db/)friends)} RelFileNode;
+   ForkNumber	forkNum;//InvalidForkNumber，MAIN/FSM((PGDATA/base/manu_db/friends)_fsm)/VISIBILITYMAP(_vm)/INIT_FORKNUM;
+   BlockNumber blockNum; /* blknum relative to begin of reln 对应(PGDATA/base/manu_db/friends)中的第几页；
+   	       		 PGDATA/base/manu_db/friends.(segno=blockNum/RELSEG_SIZE)*/} BufferTag;
+ BufFlags flags;			/* see bit definitions above */
+ uint16	usage_count;	/* usage counter for clock sweep code 替换策略技术*/
+ unsigned refcount;		/* # of backends holding pins on buffer */
+ int	wait_backend_pid;		/* backend PID of pin-count waiter */
+ slock_t buf_hdr_lock;	/* protects the above fields */
+ int buf_id;			/* buffer's index number (from 0) */
+ int freeNext;		/* link in freelist chain */
+ LWLock *io_in_progress_lock;	/* to wait for I/O to complete */
+ LWLock	*content_lock;	/* to lock access to buffer contents */
+} BufferDesc; // buffer管理结构，ShmemInitStruct("Buffer Descriptors", NBuffers*sizeof(BufferDesc),&foundDescs);
+BufferBlocks = (char*) ShmemInitStruct("Buffer Blocks", NBuffers*(Size)BLCKSZ,&foundBufs);
+// shared buffer alloc(分配) and replacement(替换victim牺牲品)
+src/backend/storage/buffer/bufmgr.c=>BufferAlloc/BgBufferSync
+(OS cache)LRU and (Postgres cache)clock-sweep
+ 1, 页面可能同时存在于OS cache 又存在于 Postgres shared buffer；
+ 2, 换页机制，LRU/LFU/LIRS/ARC/CLOCK-Pro. 缓冲命中率不能低于99%；
+  Hash查找文件块(block)是否在共享内存(shared buffer)的缓冲页面(page)中；
+   BufferDesc *BufferAlloc(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
+			BlockNumber blockNum,
+			BufferAccessStrategy strategy,
+			bool *foundPtr//[out]true-find in hash table;false-not exists
+			){
+    INIT_BUFFERTAG(a,rnode,forkNum,blockNum)//a.rnode=rnode...
+    newHash = BufTableHashCode(&newTag); // 计算表的hash值
+    newPartitionLock = BufMappingPartitionLock(newHash); // 16把锁
+    LWLockAcquire(newPartitionLock,LW_SHARED); //
+    buf_id = BufTableLookup(&newTag, newHash);
+    if(buf_id >= 0){
+     //...
+     *foundPtr = TRUE;
+     //...
+     return buf;
+    }
+    //...
+}
+//page 如何管理8k空间
+page(8k):|PageHeader|Item0|Item1|...|Tuple1|Tuple0|Special|
+                    |-pd_lower                    |-pd_upper/special  
+void PageInit(Page page,PageInit(Page page, Size pageSize, Size specialSize);//初始化页面头
+typedef struct PageHeaderData{
+ /* XXX LSN is member of *any* block, not only page-organized ones */
+ PageXLogRecPtr pd_lsn;		/* LSN: next byte after last byte of xlog record for last change to this page */
+  typedef struct{
+   uint32		xlogid;			/* high bits */
+   uint32		xrecoff;		/* low bits */
+  }PageXLogRecPtr;
+ uint16		pd_checksum;	/* checksum */
+ uint16		pd_flags;		/* flag bits, see below */
+ LocationIndex pd_lower;		/* offset to start of free space */
+ ocationIndex pd_upper;		/* offset to end of free space */
+ LocationIndex pd_special;	/* offset to start of special space */
+ uint16		pd_pagesize_version; /* page size and version*/
+ TransactionId pd_prune_xid; /* oldest prunable XID, or zero if none */
+ ItemIdData	pd_linp[FLEXIBLE_ARRAY_MEMBER]; /* line pointer array */
+ typedef struct ItemIdData{
+  unsigned	lp_off:15,		/* offset to tuple (from start of page) */
+  lp_flags:2,		/* state of item pointer, see below */
+  lp_len:15;		/* byte length of tuple */
+ } ItemIdData;
+} PageHeaderData;
+OffsetNumber PageAddItem(Page page, // 页面
+			Item item, // 当前记录指针
+			Size size, // 记录长度
+			OffsetNumber offsetNumber, // 指导记录存放的位置
+			bool overwrite, // 是否覆盖原位置上的数据
+			bool is_heap){//增加一条记录
+ //计算下一item位置
+ if(OffsetNumbreIsValid(offsetNumber)){ // 指定位置存放
+  if(overwrite){//覆盖原数据
+  }else{// 移动原数据后放入
+  }
+ }else{// 空闲区存放
+  if(PageHasFreeLinePointers(phdr)){// 有空闲区域，查出空闲区
+  }else{//无空闲区域
+  }
+ }
+}
+void
+PageIndexTupleDelete(Page page, OffsetNumber offnum){// 删除元组
+ //before delete tuple1 |PageHeader|item0|item1|item2|....|tuple2|tuple1|tuple0|special|
+ //after delete tuple1  |PageHeader|item0|item2|...|tuple2|tuple0|special|
+ //需要移动两次内存(item2->item1,tuple2->tuple1),改动所有的指针位置；
+}
+
+3.2 外存管理（SMGR：Storage ManaGeR switch)
+PG/src/backend/storage/smgr.c
+SMGR体系机构
+ SMGR -> 磁盘介质管理器 -> 虚拟文件描述符(VFD) -> 磁盘
+3.2.1 表和元组的组织方式
+ 堆文件：元组之间不进行关联；
+ |-普通堆(ordinary cataloged heap)
+ |-临时堆(temporary heap)：结构与普通堆相同，会话中临时创建
+ |-序列(SEQUENCE relation)：一种特殊的单行表，元组值自动增长
+ |-TOAST table：同普通堆，专门用于存储变长数据；
+ 堆文件物理结构：
+  |-PageHeaderData:20Byte;空闲空间起始结束位置，SpecialSpace，项指针，标志信息；
+  |-Linp[]：4Byte 是ItemIdData{lp_off/flags/len}指向一个元组
+  |-Freespace：空闲空间，用于顺序分配LInp
+  |-Tuple[]
+  |  |-header:struct HeapTupleHeaderData{}
+  |  \-Value[]
+  |  
+  |-SpecialSpace:a,普通文件块被置空; b,索引文件块中索引方法相关的特定数据@4
+
+  HOT技术：元组多版本技术，对元组的每个更新操作都会产生一个新版本，版本间形成一条版本链；
+          HeapSaticfiesHOTUpdate(){// HOT元组判定
+	   //所有索引属性都没有被修改
+	   //新旧版本在同一文件块
+	  }// 新版做HEAP_ONLY_TUPLE标记，旧版做HEAP_HOT_UPDATED，减小索引大小；
+3.2.2 磁盘管理器
+src/backend/storage/smgr/md.c //magnetic disk
+typedef struct _MdfdVec
+{
+	File		mdfd_vfd;/* VFD 编号；fd number in fd.c's pool */
+	BlockNumber mdfd_segno;	/*堆文件段号； segment number, from 0 */
+	struct _MdfdVec *mdfd_chain;/*链表指向下一个VFD指针； next segment, or NULL */
+} MdfdVec; //堆数据结构，mdfd_chain = NULL 比表示没有后续段，有可能没有打开；
+
+3.2.3 VFD机制
+src/backend/storage/file/fd.c
+VFD[]->FD[]->FILE[]->magnetic dist;
+typedef struct vfd
+{
+	int			fd;/* current FD, or VFD_CLOSED if none */
+	unsigned short fdstate;	/* bitflags for VFD's state bit0-FD_DIRTY,bit1-FD_TEMPORARY*/
+	ResourceOwner resowner;		/* owner, for automatic cleanup；File指向VFD数组下标*/
+	File		nextFree;	/* FreeList空闲链表；link to next free VFD, if in freelist */
+	File		lruMoreRecently;/* LRU池双向链表doubly linked recency-of-use list */
+	File		lruLessRecently;/* LRU池双向链表*/
+	off_t		seekPos;	/* current logical file position */
+	off_t		fileSize;	/* current size of file (0 if not temporary) */
+	char	   *fileName;		/* name of file, or NULL for unused VFD */
+	/* NB: fileName is malloc'd, and must be free'd when closing the VFD */
+	int			fileFlags;		/* open(2) flags for (re)opening the file */
+	int			fileMode;		/* mode to pass to open(2) */
+} Vfd;
+3.2.3 LRU(Last Recently Used,最近最少使用)池
+static Vfd *VfdCache;
+static Size SizeVfdCache = 0;
+ a,打开第一个文件是初始化VfdCache[32]{fd=VFD_CLOSE,nextFree=next}；
+ b,从FreeList头取得一个VFD,并打开文件；
+ c,如无空闲VFD，VfdCache扩大一倍，新增FVD放入FreeList
+ d,关闭文件时将VFD插入到FreeList头部
+ e,VFD替换算法：
+   LRU池：
+   |<-------lruLessRecently----<---|
+   0 <-> 1 <-> 2 <-> 3 <-> ... <-> n
+   |->------lurMoreRecently----->--|
+   从LRU池删除VFD：lurDelete(File f)
+3.2.4空闲空间映射表
+typedef uint32 BlockNumber; // 4G block * 8KB = 32TB;
+1Byte ~ 8KB // 0-0~31 1-32~63 ...
+效率：否定数组形式，采用层次+堆模式式
+每次一个FSM block(8K) * 3层 = 24KB 每个FSM最小值
+level0: 0 8KB // 其中4000byte存放最大空闲值
+level1: 1 4001+1 4001*2+1
+level2: not level0 and level1 number is level 2
+需要620空间求Byte值：20 = (620 + 31) / 32;
+堆:  4              root(2,0) // block-0  
+   4   2            branch(1,0)(1,1)(1,2) //block-1,block-4002,block-4003
+  3 4 0 2           leaf(0,0)(0,1)(0,2)...(0,3999)
+/*
+ * The internal FSM routines work on a logical addressing scheme. Each
+ * level of the tree can be thought of as a separately addressable file.
+ */
+typedef struct
+{
+in level;/* level */
+int ogpageno;/* page number within the level */
+} FSMAddress;
+/* Address of the root page. */
+static const FSMAddress FSM_ROOT_ADDRESS = {FSM_ROOT_LEVEL, 0};
+BlockNumber
+GetPageWithFreeSpace(Relation rel, Size spaceNeeded)
+{
+	uint8		min_cat = fsm_space_needed_to_cat(spaceNeeded);
+	return fsm_search(rel, min_cat);
+fsm_search(Relation rel, uint8 min_cat)
+{
+	int			restarts = 0;
+	FSMAddress	addr = FSM_ROOT_ADDRESS;
+	for (;;)
+	{
+		int			slot;
+		Buffer		buf;
+		uint8		max_avail = 0;
+		buf = fsm_readbuf(rel, addr, false);// 读取ROOT block(2,0)
+		if (BufferIsValid(buf))
+		{
+			LockBuffer(buf, BUFFER_LOCK_SHARE);
+			// 自己的那个下属满足要求
+			slot = fsm_search_avail(buf, min_cat,(addr.level == FSM_BOTTOM_LEVEL),false);
+			if (slot == -1)
+				max_avail = fsm_get_max_avail(BufferGetPage(buf));
+			UnlockReleaseBuffer(buf);
+		}
+		else
+			slot = -1;
+
+		if (slot != -1)
+		{
+			if (addr.level == FSM_BOTTOM_LEVEL)
+				return fsm_get_heap_blk(addr, slot);//达到最底层，直接可以计算
+			addr = fsm_get_child(addr, slot);// 未到底层，需要再次获取自己的那个下属满足要求
+		}
+		else if (addr.level == FSM_ROOT_LEVEL) // 最高层没有找到满足要求的空间，返回失败
+		{
+			return InvalidBlockNumber;
+		}
+		else//高层有满足空间但找不到，数据出错需要从新整理信息
+		{
+			uint16		parentslot;
+			FSMAddress	parent;
+			parent = fsm_get_parent(addr, &parentslot);
+			fsm_set_and_search(rel, parent, parentslot, max_avail, 0);
+			if (restarts++ > 10000)
+				return InvalidBlockNumber;
+			addr = FSM_ROOT_ADDRESS;
+		}
+	}
+}
+}
+
+3.2.5 VM(Visibility MAP)可见性映射表
+lazy VACUUM // 使用vm
+full VACUUM // 对整个表进行清理，不用VM表
+visibility_map.c
+|PageHeaderData|bit|bit|bit|...
+VACUUM不跟踪索引，VACUUM对索引进行完全扫描清理；
+
+3.2.6 大数据存储
+.1 TOAST(The Oversized-Attribute Storage Technique,超尺寸字段存储技巧)
+ 触发：字段变长，超过BLCKSZ/4=2KB,时触发TOAST机制；
+ 压缩：压缩或线外存储数据，直到<2KB，或失败
+ 优点：有效节省查询内存空间，再用户需要时才取出来；
+ 属性前2位：
+      00： 未TOAST
+      01+压缩后大小： 被压缩TOAST
+      1+（7bit）
+      10000000+TOAST_POINTER_SIZE：线外存储，可能被压缩；
+ 4种不同存储策略：
+  PLAIN：避免压缩或线外存储；
+  EXTENDED：允许压缩和线外存储；缺省策略
+  EXTERNAL：允许线外存储，但不允许压缩
+  MAIN：允许压缩，不允许线外存储，最后可能会线外存储；
+  使用 ALTER TABLE SET STORAGE 命令修改策略；
+ 表结构：
+  typedef struct varatt_external{
+   int32 va_rawsize;/* Original data size (includes header) */
+   int32 va_extsize;/* External saved size (doesn't) */
+   Oid	va_valueid;/* Unique ID of value within TOAST table */
+   Oid	va_toastrelid;	/* RelID of TOAST table containing it */
+  }varatt_external;
+ 操作：
+  src/backend/access/heap/tuptoaster.c
+  toastop-update/insert toast tuple:toast_insert_or_update()
+        |-get toast tuple:heap_tuple_untoast_attr()->toast_fetch_datnum()
+	\-delete toast tuple:toast_delete()->toast_delete_datum()
+.2 大对象
+ 三种数据类型：
+  BLOB：二进制大对象,图片、视频、媒体；
+  CLOB：字符大对象，文档；
+  DBCLOG：双字节大对象；
+ 最大支持：2G
+ 安全性：可能丢失数据，丢失部分用0代替；
+ 数据位置：pg_largeobject系统表，oid=2613；
+ 操作：
+  创建：inv_create()
+
+3.3 内存管理
+ 本质问题：减少I/O次数，向磁盘写块需要10~30毫秒期间机器能执行几万条指令；
+ 本地内存管理  | 本地缓冲池 | Cache | ...
+ 共享内存管理  | 共享缓冲池 | Clog | Xlog |无效消息 | LWLock |... | 《==》磁盘
+.1 内存上下文(MemoryContext)
+ 操作：palloc/pfree/repalloc
+ 结构：树结构，跟踪内存上下文的创建和使用情况
+			TopMemoryContext
+	/-------------------|----------------------|-------\
+ CacheMemoryContext MessageMemoryContext    ErrorContext   ...
+ /----------|-------|--------\
+ CacheHDR Cache  Cache      ....
+
+typedef struct MemoryContextData{
+ NodeTag type;/* identifies exact kind of context enum NodeTag{T_Invalid=0, T_IndexInfo=10...};*/
+ /* these two fields are placed here to minimize alignment wastage: */
+ bool isReset;		/* T = no space alloced since last reset */
+ bool allowInCritSection;/* allow palloc in critical section */
+ MemoryContextMethods *methods;/* virtual function table;AlolocSetMethods{} */
+ MemoryContext parent;	/* NULL if no parent (toplevel context) */
+ MemoryContext firstchild;/* head of linked list of children */
+ MemoryContext nextchild;/* next child of same parent */
+ char  *name;		/* context name (just for debugging) */
+ MemoryContextCallback *reset_cbs;/* list of reset/delete callbacks */
+} MemoryContextData;
+typedef struct AllocSetContext
+{
+ MemoryContextData header;	/* Standard memory-context fields */
+ /* Info about storage allocated in this context: */
+ AllocBlock	blocks;			/* 内存块链表head of list of blocks in this set */
+ AllocChunk	freelist[ALLOCSET_NUM_FREELISTS];/*空闲内存盘数组 free chunk lists */
+ /* Allocation parameters for this context: */
+ Size		initBlockSize;	/* 初始内存块大小initial block size */
+ Size		maxBlockSize;	/* 最大内存块大小maximum block size */
+ Size		nextBlockSize;	/* 下一个要分配的内存块大小，可能变大next block size to allocate */
+ Size		allocChunkLimit;/* 内存的尺寸阈值，防止内存碎片 effective chunk size limit */
+ AllocBlock	keeper;			/*避免malloc申请， if not NULL, keep this block over resets */
+} AllocSetContext;
+typedef struct AllocBlockData
+{
+	AllocSet	aset;			/* aset that owns this block */
+	AllocBlock	next;			/* next block in aset's blocks list */
+	char	   *freeptr;		/* start of free space in this block */
+	char	   *endptr;			/* end of space in this block */
+}	AllocBlockData;
+typedef struct AllocChunkData
+{
+	/* aset is the owning aset if allocated, or the freelist link if free */
+	void	   *aset;
+	/* size is always the size of the usable space in the chunk */
+	Size		size;
+#ifdef MEMORY_CONTEXT_CHECKING
+	/* when debugging memory usage, also store actual requested size */
+	/* this is zero in a free chunk */
+	Size		requested_size;
+#endif
+}	AllocChunkData;
+
+typedef struct MemoryContextMethods
+{
+ void *(*alloc) (MemoryContext context, Size size);//分配内存
+ /* call this free_p in case someone #define's free() */
+ void (*free_p) (MemoryContext context, void *pointer);// 释放内存
+ void *(*realloc) (MemoryContext context, void *pointer, Size size); // 重分配内存
+ void (*init) (MemoryContext context); // 初始化
+ void (*reset) (MemoryContext context); // 重置
+ void (*delete_context) (MemoryContext context); // 删除
+ Size (*get_chunk_space) (MemoryContext context, void *pointer); // 检查内存片段的大小
+ bool (*is_empty) (MemoryContext context); // 释放为空
+ void (*stats) (MemoryContext context, int level); // 状态
+ #ifdef MEMORY_CONTEXT_CHECKING
+ void (*check) (MemoryContext context); // 检查所有片段
+ #endif
+} MemoryContextMethods;
+
+ CurrentMemoryContext：
+ MemoryContextSwitchTo():切换当前内存上下文
+
+.3 内存上下文中内存的分配
+ palloc/0:CurrentMemoryContext->MemoryContextAlloc()
+ realloc:
+ pfree:
+
+3.3.2 高速缓存Cache
+ 表模式信息在系统表中，访问表首先需要取得表模式信息；
+ Cache：提高访问效率
+ 内容：系统表元组（SysCache），表模式Cache（RelCache{RelationData；}）
+ 共享：每个进程都维护自己的SysCache和RelCache；
+ 数据结构：
+ /*
+ * Here are the contents of a relation cache entry.
+ */
+typedef struct RelationData
+{
+	RelFileNode rd_node;		/* relation physical identifier */
+	typedef struct RelFileNode
+{
+	Oid			spcNode;		/* tablespace */
+	Oid			dbNode;			/* database */
+	Oid			relNode;		/* relation */
+} RelFileNode;
+	/* use "struct" here to avoid needing to include smgr.h: */
+	struct SMgrRelationData *rd_smgr;	/* cached file handle, or NULL */
+typedef struct SMgrRelationData
+{
+	/* rnode is the hashtable lookup key, so it must be first! */
+	RelFileNodeBackend smgr_rnode;		/* relation physical identifier */
+
+	/* pointer to owning pointer, or NULL if none */
+	struct SMgrRelationData **smgr_owner;
+
+	/*
+	 * These next three fields are not actually used or manipulated by smgr,
+	 * except that they are reset to InvalidBlockNumber upon a cache flush
+	 * event (in particular, upon truncation of the relation).  Higher levels
+	 * store cached state here so that it will be reset when truncation
+	 * happens.  In all three cases, InvalidBlockNumber means "unknown".
+	 */
+	BlockNumber smgr_targblock; /* current insertion target block */
+	BlockNumber smgr_fsm_nblocks;		/* last known size of fsm fork */
+	BlockNumber smgr_vm_nblocks;	/* last known size of vm fork */
+
+	/* additional public fields may someday exist here */
+
+	/*
+	 * Fields below here are intended to be private to smgr.c and its
+	 * submodules.  Do not touch them from elsewhere.
+	 */
+	int			smgr_which;		/* storage manager selector */
+
+	/* for md.c; NULL for forks that are not open */
+	struct _MdfdVec *md_fd[MAX_FORKNUM + 1];
+
+	/* if unowned, list link in list of all unowned SMgrRelations */
+	struct SMgrRelationData *next_unowned_reln;
+} SMgrRelationData;
+	int			rd_refcnt;		/* reference count */
+	BackendId	rd_backend;		/* owning backend id, if temporary relation */
+	bool		rd_islocaltemp; /* rel is a temp rel of this session */
+	bool		rd_isnailed;	/* rel is nailed in cache */
+	bool		rd_isvalid;		/* relcache entry is valid */
+	char		rd_indexvalid;	/* state of rd_indexlist: 0 = not valid, 1 =
+								 * valid, 2 = temporarily forced */
+
+	/*
+	 * rd_createSubid is the ID of the highest subtransaction the rel has
+	 * survived into; or zero if the rel was not created in the current top
+	 * transaction.  This can be now be relied on, whereas previously it could
+	 * be "forgotten" in earlier releases. Likewise, rd_newRelfilenodeSubid is
+	 * the ID of the highest subtransaction the relfilenode change has
+	 * survived into, or zero if not changed in the current transaction (or we
+	 * have forgotten changing it). rd_newRelfilenodeSubid can be forgotten
+	 * when a relation has multiple new relfilenodes within a single
+	 * transaction, with one of them occurring in a subsequently aborted
+	 * subtransaction, e.g. BEGIN; TRUNCATE t; SAVEPOINT save; TRUNCATE t;
+	 * ROLLBACK TO save; -- rd_newRelfilenode is now forgotten
+	 */
+	SubTransactionId rd_createSubid;	/* rel was created in current xact */
+	SubTransactionId rd_newRelfilenodeSubid;	/* new relfilenode assigned in
+												 * current xact */
+
+	Form_pg_class rd_rel;		/* RELATION tuple */
+	TupleDesc	rd_att;			/* tuple descriptor */
+	Oid			rd_id;			/* relation's object id */
+	LockInfoData rd_lockInfo;	/* lock mgr's info for locking relation */
+	RuleLock   *rd_rules;		/* rewrite rules */
+	MemoryContext rd_rulescxt;	/* private memory cxt for rd_rules, if any */
+	TriggerDesc *trigdesc;		/* Trigger info, or NULL if rel has none */
+	/* use "struct" here to avoid needing to include rowsecurity.h: */
+	struct RowSecurityDesc *rd_rsdesc;	/* row security policies, or NULL */
+
+	/* data managed by RelationGetIndexList: */
+	List	   *rd_indexlist;	/* list of OIDs of indexes on relation */
+	Oid			rd_oidindex;	/* OID of unique index on OID, if any */
+	Oid			rd_replidindex; /* OID of replica identity index, if any */
+
+	/* data managed by RelationGetIndexAttrBitmap: */
+	Bitmapset  *rd_indexattr;	/* identifies columns used in indexes */
+	Bitmapset  *rd_keyattr;		/* cols that can be ref'd by foreign keys */
+	Bitmapset  *rd_idattr;		/* included in replica identity index */
+
+	/*
+	 * rd_options is set whenever rd_rel is loaded into the relcache entry.
+	 * Note that you can NOT look into rd_rel for this data.  NULL means "use
+	 * defaults".
+	 */
+	bytea	   *rd_options;		/* parsed pg_class.reloptions */
+
+	/* These are non-NULL only for an index relation: */
+	Form_pg_index rd_index;		/* pg_index tuple describing this index */
+	/* use "struct" here to avoid needing to include htup.h: */
+	struct HeapTupleData *rd_indextuple;		/* all of pg_index tuple */
+	Form_pg_am	rd_am;			/* pg_am tuple for index's AM */
+
+	/*
+	 * index access support info (used only for an index relation)
+	 *
+	 * Note: only default support procs for each opclass are cached, namely
+	 * those with lefttype and righttype equal to the opclass's opcintype. The
+	 * arrays are indexed by support function number, which is a sufficient
+	 * identifier given that restriction.
+	 *
+	 * Note: rd_amcache is available for index AMs to cache private data about
+	 * an index.  This must be just a cache since it may get reset at any time
+	 * (in particular, it will get reset by a relcache inval message for the
+	 * index).  If used, it must point to a single memory chunk palloc'd in
+	 * rd_indexcxt.  A relcache reset will include freeing that chunk and
+	 * setting rd_amcache = NULL.
+	 */
+	MemoryContext rd_indexcxt;	/* private memory cxt for this stuff */
+	RelationAmInfo *rd_aminfo;	/* lookup info for funcs found in pg_am */
+	Oid		   *rd_opfamily;	/* OIDs of op families for each index col */
+	Oid		   *rd_opcintype;	/* OIDs of opclass declared input data types */
+	RegProcedure *rd_support;	/* OIDs of support procedures */
+	FmgrInfo   *rd_supportinfo; /* lookup info for support procedures */
+	int16	   *rd_indoption;	/* per-column AM-specific flags */
+	List	   *rd_indexprs;	/* index expression trees, if any */
+	List	   *rd_indpred;		/* index predicate tree, if any */
+	Oid		   *rd_exclops;		/* OIDs of exclusion operators, if any */
+	Oid		   *rd_exclprocs;	/* OIDs of exclusion ops' procs, if any */
+	uint16	   *rd_exclstrats;	/* exclusion ops' strategy numbers, if any */
+	void	   *rd_amcache;		/* available for use by index AM */
+	Oid		   *rd_indcollation;	/* OIDs of index collations */
+
+	/*
+	 * foreign-table support
+	 *
+	 * rd_fdwroutine must point to a single memory chunk palloc'd in
+	 * CacheMemoryContext.  It will be freed and reset to NULL on a relcache
+	 * reset.
+	 */
+
+	/* use "struct" here to avoid needing to include fdwapi.h: */
+	struct FdwRoutine *rd_fdwroutine;	/* cached function pointers, or NULL */
+
+	/*
+	 * Hack for CLUSTER, rewriting ALTER TABLE, etc: when writing a new
+	 * version of a table, we need to make any toast pointers inserted into it
+	 * have the existing toast table's OID, not the OID of the transient toast
+	 * table.  If rd_toastoid isn't InvalidOid, it is the OID to place in
+	 * toast pointers inserted into this rel.  (Note it's set on the new
+	 * version of the main heap, not the toast table itself.)  This also
+	 * causes toast_save_datum() to try to preserve toast value OIDs.
+	 */
+	Oid			rd_toastoid;	/* Real TOAST table's OID, or InvalidOid */
+
+	/* use "struct" here to avoid needing to include pgstat.h: */
+	struct PgStat_TableStatus *pgstat_info;		/* statistics collection area */
+} RelationData;
+typedef struct catcache
+{
+	int			id;/* cache identifier --- see syscache.h */
+	slist_node	cc_next;/* list link */
+	const char *cc_relname;/* name of relation the tuples come from */
+	Oid			cc_reloid;	/* OID of relation the tuples come from */
+	Oid			cc_indexoid;	/* OID of index matching cache keys */
+	bool		cc_relisshared; /* is relation shared across databases? */
+	TupleDesc	cc_tupdesc;		/* tuple descriptor (copied from reldesc) */
+	int			cc_ntup;		/* # of tuples currently in this cache */
+	int			cc_nbuckets;	/* # of hash buckets in this cache */
+	int			cc_nkeys;		/* # of keys (1..CATCACHE_MAXKEYS) */
+	int			cc_key[CATCACHE_MAXKEYS];		/* AttrNumber of each key */
+	PGFunction	cc_hashfunc[CATCACHE_MAXKEYS];	/* hash function for each key */
+	ScanKeyData cc_skey[CATCACHE_MAXKEYS];		/* precomputed key info for
+												 * heap scans */
+	bool		cc_isname[CATCACHE_MAXKEYS];	/* flag "name" key columns */
+	dlist_head	cc_lists;		/* list of CatCList structs */
+#ifdef CATCACHE_STATS
+	long		cc_searches;	/* total # searches against this cache */
+	long		cc_hits;		/* # of matches against existing entry */
+	long		cc_neg_hits;	/* # of matches against negative entry */
+	long		cc_newloads;	/* # of successful loads of new entry */
+
+	/*
+	 * cc_searches - (cc_hits + cc_neg_hits + cc_newloads) is number of failed
+	 * searches, each of which will result in loading a negative entry
+	 */
+	long		cc_invals;		/* # of entries invalidated from cache */
+	long		cc_lsearches;	/* total # list-searches */
+	long		cc_lhits;		/* # of matches against existing lists */
+#endif
+	dlist_head *cc_bucket;		/* hash buckets */
+} CatCache;
+// task delay...
+
+3.3.3 缓冲池管理
+ 缓存池：Cache中无法查找或普通表元组；
+        任何表、元组、索引表的操作都在缓存池中进行；
+ 调度单位：磁盘块block；称缓存区、缓存块、页面；
+ 操作：smgrread(),smgrwrite()
+ 分类：共享-普通可共享表操作
+      本地-本地可见临时表操作
+ 管理机制：pin - 访问计数器，refcount!=0不能被替换
+	  lock - 锁机制，写操作EXCLUSIVE锁，读操作SHARE锁；
+ 静态方式：在系统配置是规定好了共享缓冲区总数NBuffers=1000；
+ 初始化共享缓冲池：InitBufferPool()； 初始化函数
+		BufferDesc* BufferBlocks = BufferDescriptors[]；共享缓冲池
+ /*
+ *	BufferDesc -- shared descriptor/state data for a single shared buffer.
+ *
+ * Note: buf_hdr_lock must be held to examine or change the tag, flags,
+ * usage_count, refcount, or wait_backend_pid fields.  buf_id field never
+ * changes after initialization, so does not need locking.  freeNext is
+ * protected by the buffer_strategy_lock not buf_hdr_lock.  The LWLocks can take
+ * care of themselves.  The buf_hdr_lock is *not* used to control access to
+ * the data in the buffer!
+ *
+ * An exception is that if we have the buffer pinned, its tag can't change
+ * underneath us, so we can examine the tag without locking the spinlock.
+ * Also, in places we do one-time reads of the flags without bothering to
+ * lock the spinlock; this is generally for situations where we don't expect
+ * the flag bit being tested to be changing.
+ *
+ * We can't physically remove items from a disk page if another backend has
+ * the buffer pinned.  Hence, a backend may need to wait for all other pins
+ * to go away.  This is signaled by storing its own PID into
+ * wait_backend_pid and setting flag bit BM_PIN_COUNT_WAITER.  At present,
+ * there can be only one such waiter per buffer.
+ *
+ * We use this same struct for local buffer headers, but the lock fields
+ * are not used and not all of the flag bits are useful either.
+ */
+typedef struct BufferDesc
+{
+	BufferTag	tag;			/* ID of page contained in buffer */
+	BufFlags	flags;			/* see bit definitions above */
+	uint16		usage_count;	/* usage counter for clock sweep code */
+	unsigned	refcount;		/* # of backends holding pins on buffer */
+	int			wait_backend_pid;		/* backend PID of pin-count waiter */
+
+	slock_t		buf_hdr_lock;	/* protects the above fields */
+
+	int			buf_id;			/* buffer's index number (from 0) */
+	int			freeNext;		/* link in freelist chain */
+
+	LWLock	   *io_in_progress_lock;	/* to wait for I/O to complete */
+	LWLock	   *content_lock;	/* to lock access to buffer contents */
+} BufferDesc;
+
+.3 缓冲区替换策略
+ 一般缓冲区替换策略：FreeList，压入尾部，取出首部；BufferStrategyControl{};
+ 缓冲环替换策略：处理大量进使用一次的缓冲区问题；分配固定的区域形成环，内部循环使用；BufferAccessStrategyData{};
+	       GetBufferFromRing();
+
+.4 本地缓冲池管理
+ 初始化函数：InitLocalBuffer();
+ 创建时机：使用时创建，不预先创建；
+ 初始化步骤：1，分配1000缓冲区描述符数组；2，hash_create()创建Hash表LocalBufHash;
+	    3，LocalBufferAlloc()分配本地缓冲区；
+
+3.3.4 IPC(Inter-Process Communication)
+ 实现方式：文件、socket、共享内存、管道；
+ Postgres采用：共享内存方式
+ 提供功能：1，进程和Postmaster的通信机制
+	  2，统一管理进程的相关变量和函数
+	  3，提供SI Message机制（无效消息机制）；
+	  4，有关清除的函数
+
+.1 共享内存管理
+ Hash索引：shmem index，ShmemInitStruct()->find->ShmemAlloc()
+ CreateSharedMemoryAndSemphores(); // 初始化共享内存和信号量
+  计算共享内存总大小；
+  分配共享内存空间；
+  初始化共享内存头指针；
+  创建信号量并注册清理函数；
+  构建共享内存Hash；
+  初始化各个模块；
+
+.2 SI Message
+ 作用：不同进程的Cache进行同步
+ 实现：shmInvalBuffer，SISeg{}，ProcState{}
+
+3.4 表操作与元组操作
+ src/backend/access/heap/heaptuple.c
+.1 表操作
+ src/.../heapam.c
+ 打开：返回RelationData机构体；[relation_openrv()->]relation_open()
+ 扫描：
+   顺序扫描：
+     HeapScanDescData{};//扫描秒描述符
+     同步扫描策略：先跟最前面的一起扫描，扫描到最后，再从0开始补全；
+   索引扫描：第四章介绍
+ 关闭：写回脏数据都磁盘，释放空间；
+ 删除：smgrdounlin()
+
+.2 元组操作
+ 数据结构：
+ HeapTupleData{
+  HeapTupleHeaderData{};
+ };
+ TupleDesc{};
+ 插入：
+  Heap_tuple heap_from_tuple(TupleDesc, Datum* values, bool* isnull){
+   heap_compute_data_size();
+   heap_fill_tuple();
+   heap_insert(){
+    // new oid
+    // t_xmin 当前事务ID/t_cmin当前命令ID
+    // 找到表的空闲空间
+    // RelationPutHeapTuple()插入缓冲区
+    // 写Xlog
+    // 解锁释放缓冲区
+   }
+  }
+ 删除：MVCC(Multi-version Concurrency Control, MVCC)多版本并发控制
+  Undo/Redo
+  heap_delete(){
+   //找到缓冲区，加Exclusive Lock;
+   // HeapTupleSatisfilesUpdate(),检查当前事务可见性
+   
+  }
+ 更新：删除 + 插入
+
+3.5 VACUUM机制
+ // task delay...
+
+3.6 ResourceOwner资源跟踪
+ 资源：
+   ResourceOwner指针，构造数状结构；
+   pin锁个数
+   Cache引用次数
+   TupleDesc引用次数及占用的TupleDesc数组
+   Snapshot
+ 拥有者：Portal、事务、子事务
+ 三个全局ResourceOwner：
+   CurrentResourceOwner：记录当前使用的ResourceOwner
+   CurTransactionResourceOwner：当前事务RO
+   TopTransactionResourceOwner：顶层事务SO
+
+4. 索引（Index）
+  定义：列表/逻辑顺序，根据表中某些关键属性或表达式建立的；
+  作用：快速定位元组；
+  基表：被索引的表；
+  分类：
+    B-Tree：
+    Hash：
+    GiST：
+    GIN：
+  索引方式：
+    唯一索引：
+    主键索引：
+    多属性索引：
+    部分索引：
+    表达式索引：
+  创建索引命令：
+    CREATE INDEX ... // 默认创建B-Tree索引
+  从属索引：索引物理上与表文件分离；所有索引都是从属索引；
+  
+4.1 概述
+4.1.1 索引方式
+  唯一索引：不允许出现索引值相同的元组；只有B-Tree可以保证；
+  主键索引：特殊的唯一索引，一个表只有一个主键
+  多属性索引：索引定义在多个属性上，最多32个属性；B-Tree,GiST,GIN
+  部分索引：一个表的子集上的索引；减小索引规模提高索引效率
+    CREATE INDEX stu_name_idx ON student(name) WHERE (id>1 AND id <255);
+  表达式索引：
+    CREATE INDEX stu_low_name_idx ON student(lower(name));
+    SELECT * FROM student WHERE lower(name) = 'jack';
+4.1.2 索引类型
+  B-Tree：
+    使用一种类似B+树的结构来存储数据键值；
+    适用：比较查询及范围查询；>,=,<
+  Hash：Hash函数进行散列；只能处理简单的=比较；
+  GiST:(Generalized Search Tree)通用搜索树；
+    一种索引模板，可以在模板上实现不同的索引策略(R-Tree)；
+  GIN:(Generalized Inverted Index)倒排索引；可以处理包含多个键的值
+
+4.1.3 索引相关系统表
+  pg_am：(access method) 访问函数引自pg_proc系统表
+  pg_class,pg_index各增加一个元组
+  pg_opclass,pg_opfamily,pg_amop,pg_amproc
+
+4.1.4 索引操作函数
+  操作函数：pg_am最多13个,每个索引选择性实现
+    ambuild:创建新索引，调用IndexBuildHeapScan生成索引元组并填充空的索引文件；
+    aminsert:插入新索引元组
+    ambulkdelete:删除元组，遍历通过回调觉得是否真删除
+    amvacuumcleanup:批量删除后回收清理
+    amcostestimate:估算索引代价
+    amoptions:
+    ambeginscan:开始新的扫描，创建IndexScanDescData()
+    amgettupe:
+    amgetbitmap:
+    amrescan:
+    amendscan:
+    ammarkpos:
+    amrestrpos:
+
+4.2 B-Tree索引
+  论文：Lehman和Yao《Efficient Locking for Concurrent Operations on B-Tree》
+  BST 树：二叉搜索树(1，最多两儿子；2，存储一个关键字；3，左指针关键字<节点关键字<右指针关键字)
+    优点：平衡的B树逼近二分查找，但比连续空间的二分查找更易插入与删除；
+    平衡算法：做的平衡二叉树；
+  B-树：一种多路搜索树（不是二叉树）
+    a，定义任意非叶子节点最多只有M个儿子，M>2；max_son M>2
+    b，根节点的儿子数为[2,M]； (node==root && (node.sons==2 || node.sons == M))
+    c，非根非叶子节点儿子数[M/2,M]；(node!=root && (node.sons==M/2 || node.sons==M))
+    d，每个节点只是存放M/2-1至多存放M-1个关键字；(M/2-1)<node.keys<(M-1)
+    e，非叶子节点的关键字个数=指向儿子的指针个数-1； node.keys = node.sons-1
+    f，非叶子节点关键字：node.keys[i] < node.keys[i+1]
+    g，非叶子节点的指针：node.pointer[i] -> node.keys[i]
+    h，所有叶子节点位于同一层；
+		        |17|35|
+		      |p1|p2|p3|
+          |----------------|----------------|
+        |8|12|         |26|30|           |65|78|
+       |p1|p2|p3|      |p1|p2|p3|       |p1|p2|p3|
+      |----|------|        |         |------|------|
+    |3|5||9|10||13|15|  |28|29|   |36|60||75|79||90|99|
+  B+树：
+    特征：所有关键字都在叶子节点的链表中(稠密索引)；非叶子节点(稀疏索引)；更适合文件索引系统
+                 |5|28|65|
+          /------/   |  \-------\
+    |5|10|20|   |28|35|56|  |65|80|90|		
+     /  |  \     /  |   \    /  |   \
+    5  10  20   28  35  56  65  80  90
+    8  15  26   30  38  60  73  85  96
+    9  18  27   33  50  63  79  88  99
+    Q  Q   Q    Q   Q   Q   Q   Q   Q
+  B*树：
+    特点：分配新结点的概率比B+数要低，空间使用率更高
+                 |5|28|65|
+          /------/   |  \-------\
+    |5|10|20|Q  |28|35|56|Q |65|80|90|Q		
+     /  |  \     /  |   \    /  |   \
+    5  10  20   28  35  56  65  80  90
+    8  15  26   30  38  60  73  85  96
+    9  18  27   33  50  63  79  88  99
+    Q  Q   Q    Q   Q   Q   Q   Q   Q
+  
+// task delay...
+
+4.3 Hash索引
+  定义：
+    table M;
+    M.find(hash_fun(key)) == true;
+  Collision: if(key1 != key2 && f(key1)==f(key2)){Collision;}
+  Uniform Hash function:均匀散列函数
+  实现分类：
+    静态Hash表：桶数B不变；
+    动态Hash表：桶数允许改变；
+      可扩展Hash表：
+      线性Hash表：
+4.3.1 Hash索引的组织结构
+  Postgres：src/access/hash;线性Hash表实现
+    外存Hash表：用做索引
+    内存Hash表：内部数据查找
+  页面类型：
+    元页：每个索引都有一个元页，位于索引0号页；
+      记录Hash版本号、索引记录的索引元组数目、桶信息、位图信息；
+      struct HashMetaPageData{}；
+    桶页：
+      HashTable = 桶[n]{桶页；溢出页[n]}
+    溢出页：
+      桶页溢出；
+    位图页：
+      管理溢出页和位图页本身；
+  struct HashPageOpaqueData{
+    BlockNumber hasho_prevblkno;//元页=InvalidBlockNumber;
+    BlockNUmber hasho_nextblkno;//元页=InvalidBlockNumber;
+    Bucket hasho_bucket; // 元页=-1；该页术语某个桶页的桶号
+    uint16 hasho_flag; // 识也类型，元/桶/溢出/位图
+    uint16 hasho_page_id; // Hash 索引ID
+  }
+
+4.4 GiST(Gereralized Search Tree 通用搜索树)
+  一种基础模板；允许用户开发自己的数据类型；
+  src\backend\access\gist
+  B-Tree扩展：只支持谓词>,=,<
+  GiST支持更灵活的扩展：如果找出所有马的图像，找出所有曝光过度的图像；
+  GiST是一颗平衡树；
+
+4.5 GIN(Generalized Inverted Index)通用倒排索引
+  扩展性好；由数据类型的领域专家（不是数据库专家）设计适当的访问方法；
+  目的：让PostgreSQL支持高可扩展的全文索引；
+
+4.6 TSearch2全文索引
+  功能：提供了一种可以检索出满足某个查询条件的自然语言文档的能力，并进行排序；
+  文本数据操作符：~、~*、LIKE
+    缺陷：缺少许多现代的信息系统需要的重要功能
+      没有语言支持，不会对文本进行解析；
+      不提供检索结果的排序(ranking)；
+      没有索引支持；
+
+5. 查询编译
+  功能：运行SQL语言在较高层次上表达查询；
+  关键业务：生成(最优)执行计划；包括考虑视图、规则、表的链路路径问题；
+
+5.1 概述
+  SQL->查询分析模块：进行词法、语法、语义分析；
+        |- Create table/user/backup：分配到功能性命令模块；
+	\- SELECT/INSERT/DELETE/UPDATE：
+	     构建查询树，Query结构体->查询重写(生成新的查询树)->
+	     路径生成模块生成表连接路径->生成可执行计划->执行模块；
+  查询优化：生成路径，生成计划；
+  Libpq<----------------->Postgres
+                            |
+	  /-------------> 查询分析<-----------执行计划<--|
+          |                 |                          |
+  功能性命令处理<-----------调度          /->生成计划---->|
+			    |           |
+			 查询重写------->生成路径
+  ------------------------------------------------------------
+  Utilities  Catalog  StorageManagers AccssMethods Nodes/Lists
+  模块说明：
+    查询编译：
+      查询分析：由SQL生成查询树； src/backend/parser
+      查询重写：对查询树重写，提供对规则和视图的支持；src/backend/rewrite
+      查询优化：
+        生成路径：计算最优路径；src/backend/optimizer/path
+	生成计划：通过最优路径生成计划；src/backend/optimizer/plan
+    查询执行：
+      执行计划：执行生成的计划；src/backend/executor
+      调度：将请求分配到适合的处理模块；src/backend/tcop
+      附件命令处理：处理命令；src/backend/commands
+
+5.2 查询分析
+  借助词法分析工具Lex和语法分析工具Yacc；
+  SQL---->分析树----->查询树
+  exec_simple_query(){
+    raw_parsetree_list = pg_parse_query(){
+      raw_parsetree_list = raw_parser(){base_yyparse(Lex->Yacc);}
+    }
+    pg_analyze_and_rewrite(){
+      Query = parse_analyze();
+      list = pg_rewrite_query();
+    }
+  }
+  词法分析工具Lex：通用扫描器生成工具；正则表达式来表达模式；
+    正则表达式符号：
+      '.': 匹配任何除\n外的单个字符；
+      '$': 匹配行结束符；
+      '^': 匹配一行的开始；
+      '\': 转义字符\$表示美元而不是行结束
+      '[]': 匹配括号中的任何一个字符[a-z]
+      '+': 匹配一个或多个正好在它之前的那个字符；9+ 9,99,999...
+      '?': 匹配0个或1个正好在它之前的那个字符；-?[0-9]+ //匹配带符号整数
+      '|': 匹配前面的正则表达式或随后的正则表达式；cow|pig|sleep
+      '{}': 括号中1或2个数字，指示当前模式被允许匹配多少次；A{1,3} A,AA,AAA
+    正则表达式示例：
+      [0-9]+ // 正整数
+      -?[0-9]+ // 带符号整数
+      -?([0-9]*\.[0-9]+) // 带符号小数
+      -?(([0-9]+)|([0-9]*\.[0-9]+)) // 带符号实数
+      [eE][-+]?[0-9]+ // 用e表示的浮点数
+      -?((实数)(e表示的浮点)?) //任意实数
+    正则表达式文件：*.l （Lex） 生成C语言源代码；
+      定义段：包含任意C头文件
+      规则段：匹配成功一个模式就对应代码{}
+      代码段：任意C代码，但其中必须调用Lex提供的函数；
+      示例文件：
+      #include <stdlib.h> // 定义段
+      [\n\t];
+      -?[0-9]+{printf("num = %d\n",atoi(yytext));}//规则段
+      main(){
+       yylex();
+      }
+      命令：
+        lex example.l //生成lex.yy.c
+	cc lex.yy.c -o first -ll // 根据lex.yy.c 利用-ll lex库生成first
+      Lex函数：
+        yylex()：开始分析工作
+	yywrap()：用yyin来解析多个文件；返回1表示解析结束；
+	yyless()：送回读出标记
+	yymore()：将下一个标记附加到当前标记后；
+      Lex变量：
+        yyin：FILE*，指向lexer正在解析的当前文件；默认stdin；
+	yyout：FILE*，指向输出位置；默认stdout；
+	yytext：匹配模式的文本
+	yyleng：匹配模式的长度
+	yylineno：当前行数信息（部分lex不支持）
+  语法分析工具yacc
+    功能：寻找某一特定语法结构，从给定模式中；
+    一个简单的英文句子语法定义：
+      Setence->subkect verb object; // 句子由主语 谓语 宾语组成
+      object->noun; // 宾语有名词组成
+      subject->noun|pronoun; // 主语有名词或代词组成
+    Yacc文件：*.y
+      // calclulator.y
+      %{ // 定义段开始
+      
+      %} // 定义段结束
+      %% // 段分隔
+      statement : NAME '=' expression*/ //规则段
+      | expression{printf("=%d\n",$1);}
+      ;
+      expression : expression '+' NUMBER{$$ = $1 + $3;}
+      		 | expression '-' NUMBER{$$ = $1 - $3;}
+    		 | NUMBER{$$ = $1;}
+      ;
+      %%
+      main() // 代码段
+      {
+       do{
+         yyparse();
+       }while(!feof(yyin));
+      }
+      -------------------------------
+      // calculator.l
+      %{
+      #include "y.tab.h"
+      extern int yylval;
+      %}
+      %%
+      [0-9]+ {yylval = atoi(yytext); return NUMBER;}
+      [\t]; // ignore white space
+      \n return 0; // logical EOF
+      . return yytext[0];
+      %%
+    构建接收器程序：
+      #yacc -d calculator.y // 生成y.tab.c 和 y.tab.h
+      #lex calculator.l // 生成lex.yy.c
+      #cc -o calculator y.tab.c lex.yy.c -ly -ll // 编译链接C文件
+ 5.2.2 词法和语法分析
+   scan.l/gram.y
+   src/backend/parser
+     parser.c //主入口，raw_parser()，返回分析树
+     kwlookup.c // ScanKeywordLoopup(),查找单词表返回单词指针
+     scansup.c // 词法分析常用函数
+       scanstr // 处理转义字符
+       downcase_truncate_identifier // 大写转小写
+       trancate__identifire // >64 截断
+       scanner_isspace // 判断是否空白，' ','\t','\r','\n','\f'
+     scan.l/.c // 词法机构
+     gram.h // 定义关键字的数值编号
+     gram.y // 语法机构
+
+3.2.3 语义分析
+  // task delay
+
+5.3 查询重写
+  pg_rewrite_query()
+  核心：规则系统，系统表pg_rewrite存储重写规则；
+
+5.4 查询规划
+  一个请求有不同方案，但效率差异；规划就是选代价最小的执行方案；
+
+//...
+5.7 小结
+  数据库系统中对性能影响最大的查询处理器；
+
+6. 查询执行
+  关键业务：根据计划进行数据提取、处理、存储；
+  portal:
+    processUtility:
+      transaction:
+      cursor:
+      relation&attribute manipulation
+      object:
+      ...
+    executor->plan->Node:
+                      control:
+		      join:
+		      meterialization:
+		      scan:
+
+7 事务处理与并发控制
+7.1 事务系统简介
+  数据库操作执行单位；任何语句执行都在事务中；
+  事务管理器：实现一个有限状态机(Finit State Machine)；
+    日志管理器：
+      CLOG管理器：事务提交日志
+      XLOG管理器：事务日志
+    锁管理器：实现并发控制锁；
+      进程管理：
+  例子：
+    BEGIN; // 启动底层事务，开始一个事务块
+    SELECT * FROM TABLE_A; // 底层事务执行select语句
+    END; // 提交并退出底层事务，结束事务块
+    接收到上述语句，Fork出一个子进程来处理上述命令；
+7.2 事务系统的上层
+  一个事务块包含多个事务，所以事务块的状态数量比底层事务的状态数量多；
+  上层接口：
+    StartTransactionCommand();
+    CommitTransactionCommand();
+    AbortCurrentTransaction();
+7.2.1 事务块状态
+  默认：一个事务处理一条SQL语句；
+  事务块使得一个事务能处理多条SQL语句；
+  Postgres进程只存在一个事务块，用户开始“事务”只是修改事务块的状态；
+  事务块状态：typedef enum TBlockState{
+    //不在事务块中的状态
+    TBLOCK_DEFAULT/STARTED；//缺省/简单查询事务
+    //处于事务块中的状态
+    TBLOCK_BEGIN/INPROGRESS/END/ABORT/ABORT_END/ABORT_PENDING/PREPARE;
+    // beginCMD,正在处理，endCMD，出错等待ROLLBACK，出错已接收ROLLBACK，处理中已收到ROLLBACK，处理中已收到PREPARE
+    //子事务事务块状态,同上
+    TBLOCK_SUBBEGIN/SUBINPROGRESS/...
+  }TBlockState;
+7.2.2 事务块操作
+7.2.2.1 事务基本操作
+  StartTransactionCommand();//判断当前事务块状态进入笔筒底层事务执行函数
+  CommitTransactionCommand();//
+  AbortCurrentTransaction();//AbortTransaction()/CleanupTransaction()
+
+7.2.2.2 事务块状态改变
+  BeginTransactionBlock();//
+  EndTransactionBlock();
+  UserAbortTransactionBlock();
+  
+7.3 事务系统的底层
+  业务：资源、锁的获取和释放，信号处理，日志记录；
+7.3.1 事务状态
+  typedef enum TransState{TRANS_DEFAULT/START/INPROGRESS/COMMIT/ABORT/PREPARE}TransState;
+  typedef struct TransactionStateData{
+    TransactionId transactionID;//当前事务XID
+    SubTransactionId subTransactionId;// 子事务ID
+    char* name;//保存点名称
+    int savepointLevel;// 保存点层数
+    TransState state;//底层事务状态
+    TBlockState blockState;//事务块状态
+    int nestingLevel;//事务嵌套深度,PushTransaction()->nestLevel++,gucNestLevel++
+    int gucNestLevel;//GUC嵌套深度
+    MemoryContext curTransactionContext;//当前事务内存上下文
+    ResourceOwner curTransactionOwner;//缓冲区等资源，记录当前占有的资源
+    TransactionId* childXids;//提交的子事务链表
+    int nChildXids;//提交的子事务个数
+    int maxChildXids;//已分配的子事务存储空间
+    Oid prevUser;//用户OID
+    bool prevSecDefCxt;//用户上下文环境标记
+    bool prevXactReadOnly;//只读事务标记
+    struct TransactionStateData* parent; //父事务指针
+  }TransactionStateData;
+
+7.3.2 事务操作函数
+7.3.2.1 启动事务
+  StartTransaction(){
+    //Initialize transaction status...
+    AtStart_GUC();
+    AtStart_Cache();
+    AfterTriggerBiginXact();
+    s->state = TRANS_INPROGRESS;
+    // show debug infomation.
+  }
+
+7.3.2.2 提交事务
+  static void CommitTransaction(void){
+    // Fire all current pending defferd triggers
+    // Close open portals
+    CallXactCallbacks();
+    AfterTriggerEndXact(true);// Shut down the defferd-trigger manager
+    PreCommit_on_commit_actions();//
+    AtEOXact_largeObject(true);//close large objects before lower-level cleanup
+    PreCommmit_CheckForSerializationFailure();//
+    PreCommit_Notify();
+    HOLD_INTERRUPTS();// Prevent cancel/die interrupt while cleaning up
+    AtEOXact_RelationMap(true);// Commit updates to the relation map
+    s->state = TRANS_COMMIT;
+    s->paraleelModeLevel = 0;
+    ProcArrayEndTransaction(MyProc, latestXid);
+    CallXactCallbacks();
+    //...
+    s->state = TRANS_DEFAULT;
+    RESUME_INTERRUPTS();
+  }
+
+7.3.2.3 退出事务
+  static void AbortTransaction(void){
+    HOLD_INTERRUPTS();
+    AtAbort_Memory/ResourceOwner();
+    LWLockReleaseAll();
+    AbortBufferIO();
+    UnlockBuffers();
+    XLogResetInsertion();
+    LockErrorCleanup();
+    reschedule_tieouts();
+    //...
+    RESUME_INTERRUPTS();
+  }
+
+7.3.2.4 清理事务
+  CleanupTransaction();
+
+7.3.3 简单查询事务执行过程实例
+
+7.4 事务保存点和子事务
+  BEGIN Transaction S;
+  insert into table values(1);
+  SAVEPOINT P1;
+  insert into table values(2);
+  SAVEPOINT P2;
+  insert into table values(3);
+  ROLLBACK TO savepoint P1;
+  COMMIT; //最终只插入 value(1)
+
+7.4.1 保存点实现原理
+  SAVEPOINT 认为定义子事务标记；TransactionStateData.parent;
+    构成子事务链表/栈；Push/PopTransaction()操作出入栈；
+
+7.5 两阶段提交(Two Phase Commit, 2PC)
+  支持分布式数据库事务处理；
+    A在银行1的账户上有$100.
+    B在银行2的账户上有$50.
+    A转账$25到给B.
+  只提供协议接口，不提供实现；
+  PREAPARE TRANSACTION；
+  全局提交阶段：
+
+7.6 PostgreSQL的并发控制(MVCC)
+  并发事务必须避免：
+    脏读(Dirty Reads)：一个事务读取了另一个为提交的；
+    不可重复读(Non-repeatable Reads)：一个事务重新读取前面度过的数据，发现数据已被另一个已提交的事务修改；
+    幻读(Phantom Read)：一个事务重新执行一个查询，查询结果被最近提交的事务修改发送改变；
+  定义4个事务隔离级别：
+    隔离级别   脏读    不可重复读    幻读
+    读未提交   可能    可能         可能
+    读已提交   不可能  可能         可能 *（Read Committed）
+    可重复读   不可能  不可能       可能
+    可串行化   不可能  不可能       不可能 *（Serializable）
+
+7.7 三种锁
+  SpinLock:最底层锁，一般不直接使用，实现其他锁用；TAS，PGSemaphore
+    s_lock.c/.h,SpinLock.c/.h
+  LWLock:对共享存储器的数据结构互斥访问，由SpinLock实现；
+    排他模式：
+    共享模式：
+  RegularLock:由LWLock实现，有队列、有死锁检测、自动释放。
+
+7.7.2 LWLock(Light Wtight Lock)
+  typedef struct LwLock{
+    slock_t mutex; // 保护LwLock和进程队列
+    bool releaseOK;
+    char exclusive; // 0/1，持有排他LwLock锁的后端数据
+    int shared; // 持有共享LwLock 锁的后端数据(0~MaxBackends)
+    PROC *head; // 进程等待队列头
+    PROC *tail; // 进程等待队列尾，当头空时尾部确定；
+  }LwLock;
+  LWLockArray;
+
+7.7.3 RegularLock
+  请求主体：事务、夸事务的会话；
+  特点：有等待队列，有死锁检测，能自动释放锁
+  RegularLock锁方法：DEFAULT/USER_LOCKMETHOD
+  Advisory Lock : USER_LOCKMETHOD
+  两种锁表：
+  用户锁方法应用：长期协助锁，即长事务；
+  默认锁和用户锁可以同时存在；
+  RegularLock支持的锁模式：
+    AccessSharedLock(访问共享锁)：SELECT
+    RowShareLock(行共享锁)：SELECT ... FOR UPDATE/FOR SHARE
+    RowExclusiveLock(行排他锁)：UPDATE/DELETE/INSERT
+    ShareUpdateExclusiveLock(共享更新排他锁)：VACUUM（不带FULL选项）/ANALYZE/CREATE INDEX CONCURRENTLY
+    ShareLock（共享锁）：CREATE INDEX (不使用CONCURRENTLY)
+    ShareRowExcusiveLock(共享行排他锁）：类似排他锁，但允许行共享(保留未使用)
+    ExclusiveLock(排他锁)：阻塞行共享和SELECT ... FOR UPDATE
+    AccessExclusiveLock（访问排他锁）：ALTER TABLE/DROP TABLE/VACUUM FULL
+
+    Access：锁定整个表模式
+    Rows：仅锁定单独的元组
+
+    S/X/IS/IX/SIX : 共享锁/排他锁/意向共享锁/意向排他锁/共享意向排他锁
+
+    RowShareLock:
+      SELECT ... FOR UPDATE: 避免被在当前事务结束前被其他事务修改或删除；
+      SELECT ... FOR SHARE: 同上，但加的是行共享锁，不阻止其他SELECT ... FOR SHARE;
+
+  RegularLock存储
+    LOCK
+    PROCLOCK：存储进程和锁之间的关系
+    LOCALLOCK：快速处理加锁操作
+
+  锁方法表：
+  /*
+ * This data structure defines the locking semantics associated with a
+ * "lock method".  The semantics specify the meaning of each lock mode
+ * (by defining which lock modes it conflicts with).
+ * All of this data is constant and is kept in const tables.
+ *
+ * numLockModes -- number of lock modes (READ,WRITE,etc) that
+ *		are defined in this lock method.  Must be less than MAX_LOCKMODES.
+ *
+ * conflictTab -- this is an array of bitmasks showing lock
+ *		mode conflicts.  conflictTab[i] is a mask with the j-th bit
+ *		turned on if lock modes i and j conflict.  Lock modes are
+ *		numbered 1..numLockModes; conflictTab[0] is unused.
+ *
+ * lockModeNames -- ID strings for debug printouts.
+ *
+ * trace_flag -- pointer to GUC trace flag for this lock method.  (The
+ * GUC variable is not constant, but we use "const" here to denote that
+ * it can't be changed through this reference.)
+ */
+typedef struct LockMethodData
+{
+	int			numLockModes;
+	const LOCKMASK *conflictTab;
+	const char *const * lockModeNames;
+	const bool *trace_flag;
+} LockMethodData;
+    /*
+ * The LOCKTAG struct is defined with malice aforethought to fit into 16
+ * bytes with no padding.  Note that this would need adjustment if we were
+ * to widen Oid, BlockNumber, or TransactionId to more than 32 bits.
+ *
+ * We include lockmethodid in the locktag so that a single hash table in
+ * shared memory can store locks of different lockmethods.
+ */
+typedef struct LOCKTAG
+{
+	uint32		locktag_field1; /* a 32-bit ID field */
+	uint32		locktag_field2; /* a 32-bit ID field */
+	uint32		locktag_field3; /* a 32-bit ID field */
+	uint16		locktag_field4; /* a 16-bit ID field */
+	uint8		locktag_type;	/* see enum LockTagType */
+	uint8		locktag_lockmethodid;	/* lockmethod indicator */
+} LOCKTAG;
+
+  RegularLock主要操作
+    lock.c
+    空间计算：
+      LockShmemSize()
+    初始化：
+      InitLocks()
+    加锁
+      LockAcquireResult LockAcquire(LockTag, LockMode, SessionLock, dontWait)
+    释放
+      LockRelease()
+
+7.8 锁管理机制
+7.8.1 表粒度的锁操作
+  初始化锁 RelationInitLockInfo()
+  加锁 LockRelation()
+  解锁 UnlockRelation()
+  //...
+7.8.2 页粒度的锁操作
+  LockPage()
+  UnlockPage()
+7.8.3 元组粒度的锁操作
+  LockTuple()
+  UnlockTuple()
+7.8.4 事务粒度锁操作
+  XactLockTableInsert()
+  XactLockTableDelete()
+7.8.5 一般对象锁操作
+  LockDatabaseObject()
+  UnlockDatabaseObject()
+
+7.9 死锁处理机制
+  预防死锁2步：
+    1,加锁，等待队列，插入到等待已持有锁的进程前面；
+    2,解锁，不唤醒某些冲突进程；
+    3,死锁检测机制；WFG(等待图)
+      进程请求锁--（获得）-->加锁
+             |---（未获得）->睡眠--->计时--->死锁检测--（有死锁）-->中断
+                             |<---（无死锁）-----|
+  deadlock.c
+/* One edge in the waits-for graph */
+typedef struct
+{
+	PGPROC	   *waiter;			/* the waiting process */
+	PGPROC	   *blocker;		/* the process it is waiting for */
+	int			pred;			/* workspace for TopoSort */
+	int			link;			/* workspace for TopoSort */
+} EDGE;
+/* One potential reordering of a lock's wait queue */
+typedef struct
+{
+	LOCK	   *lock;			/* the lock whose wait queue is described */
+	PGPROC	  **procs;			/* array of PGPROC *'s in new wait order */
+	int			nProcs;
+} WAIT_ORDER;
+7.9.2 死锁处理相关操作 deadlock.c
+
+7.10 多版本并发控制 MVCC(Multi-Version Concurrency Control)
+  src/include/access/htup_details.h
+typedef struct HeapTupleFields
+{
+	TransactionId t_xmin;		/* inserting xact ID */
+	TransactionId t_xmax;		/* deleting or locking xact ID */
+
+	union
+	{
+		CommandId	t_cid;		/* inserting or deleting command ID, or both */
+		TransactionId t_xvac;	/* old-style VACUUM FULL xact ID */
+	}			t_field3;
+} HeapTupleFields;
+  HeapTupleSatisfiesSelf()//判断元组对自身信息是否有效
+  //...
+
+7.10.3 MVCC 与 SnapShot(快照)
+typedef struct SnapshotData{...}SnapshotData;
+
+7.11 日志管理
+  XLOG(事务日志):
+  CLOG(事务提交日志):XLOG辅助形式
+    CLOG日志管理器：
+      #define TRANSACTION_STATUS_COMMITED/IN_PROGRESS/ABORTED/SUB_COMMITED
+  SUBTRANS(子事务日志):
+  MULTIXACT(组合事务日志):
+  SLRU缓冲池：统一管理CLOG/SUBTRANS/MULTIXACT
+    CLOG/SUBTRANS物理文件 = 1段（32磁盘页面（8KB））；
+    SLRU缓冲池 = 8 缓冲区（8KB）；
+    typedef struct SlruCtlData{...};//
+    typedef struct SlruFlashData{...};//
+    
+8 数据库安全
+  NCSC/TDI/TCSEC
+  7个安全级别：D/C1/C2/B1/B2/B3/A1
+  数据库安全机制
+    用户标识和认证
+      口令认证/操作系统认证/网络安全系统认证/加密协议认证
+      HBA:pg_hba.conf
+        //连接类型 客户端IP地址范围 数据库名 用户名 认证方法
+	local	   database user auth-method [auth-option]//local UNIX域套接字
+	host	   database user CIDR-address auth-method [auth-option]//host TCP/IP 127.0.0.1/32 
+	hostssl	   database user CIDR-address auth-method [auth-option]
+	hostnossl  database user CIDR-address auth-method [auth-option]
+	host[|ssl|nossl]  database user IP-address IP-mask auth-method [auth-option]
+	  auth-method: [trust|reject|md5|password|gss|sspi|krb5|ident|ldap|cert|pam]
+    数据库对象访问控制
+      对象权限管理
+      对象权限检查
+    用户角色管理
+    
+8.2.3 客户端认证
+  ClientAuthentication();// 客户端认证函数入口
+  load_hba();//加载pg_hba.conf
+
+8.3.1 用户和角色
+  用户有LOGIN权限，角色没有，其他都一致；
+  系统权限：连接数据库，创建数据库、用户；
+  对象权限：SELECT/INSERT/UPDATE/DELETE/REFERENCES/TRIGGER/CREATE/CONNECT/TEMPORARY/EXECUTE/USEAGE
+  SQL: GRANT UPDATE ON student TO Johnny; --授予角色Johnny更新student表权限
+  角色属性：
+    LOGIN:具有LOGIN属性的角色才可以用作连接数据库的用户
+    SUPERUSER:超级用户
+    CREATEDB:定义角色能否创建数据库
+    CREATEROLE:
+    PASSWORD:设置角色口令
+    INHERIT:定义一个角色是否继承它所属角色的权限
+    CONNECTION LIMIT:并发连接数量
+  SQL: CREATE ROLE admin WITH CREATEDB CREATEROLE;
+  SQL: CREATE ROLE groupname; //GRANT/REVOKE
+       CREATE ROLE Johnny LOGIN INHERIT;
+       CREATE ROLE TOM NOINHERIT;
+       CREATE ROLE David NOINHERIT;
+       GRANT Tom TO Johnny;
+       GRANT David TO Tom;
+       
+8.4 对象访问控制（Access Control List ACL）
+
+  

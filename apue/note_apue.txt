@@ -72,4 +72,113 @@
 			 当前文件偏移量		|
 			 v节点指针---------------/
 3.11 原子操作
+3.11.1 追加到一个文件
+ O_APPEND 提供原子操作追加到文件尾部；
+ pread/pwrite原子性的定位并执行IO；
+  #include <unistd.h>
+  ssize_t pread(int fd, void* buf, size_t nbytes, off_t offset); -1:error 0:eof >0:nbytes read
+  ssize_t pwrite(int fd, const void* buf, size_t nbytes, off_t offset);-1:error >0:nbytes write
+  .pread/pwrite无法中断其定位和读/写操作；即原子操作
+  .不更新当前文件偏移量；
+ 创建一个文件O_CREAT|O_EXCL；原子打开一个文件
 
+3.12 dup/dup2 复制文件描述符
+ #include <unistd.h>
+ int dup(int fd); -1:error
+ int dup(int fd, int fd2); -1:error
+  duplicate fd to fd2, if(fd2 open){close fd2;dup fd to fd2};
+  fd2 FD_CLOSEXEC文件描述符标志就被清除
+  进程表		文件表
+  fd  ptr
+  012 
+  3   3ptr------------->文件状态标志 
+  4   4ptr--------/     当前偏移量
+			v节点指针------->....
+  4 = dup(3); == fcntl(fd, F_DUPFD, 0);
+  4 = dup2(3,4); ~= close(fd2); fcntl(fd, F_DUPFD, fd2);
+      atomic           not atomic  and errno diff
+  
+3.13 sync/fsync/fdatasync()
+ #include <unistd.h>
+ void sync(void); 所有修改过的块缓冲区排入写队列后返回，不等待实际写磁盘操作结束
+ int fsync(int fd); 0:ok -1:error 只对文件fd起作用，并等待写磁盘操作结束才返回，更新文件属性（数据库操作需求）
+ int fdatasync(int fd); 0:ok -1:error 类似fsync但只影响数据部分，不同步更新文件属性；
+ delaywrite: write(fd...)->buffer->queue->disk
+
+3.14 fcntl() 改变已经打开的文件属性
+ #include <fcntl.h>
+ int fcntl(int fd, int cmd, .../*int arg or pointer*/); -1:error
+  .F_DUPFD/DUPFD_CLOEXEC 复制一个描述符（F_DUPFD复制的文件描述符没有FD_CLOEXEC）
+  .F_GETFD/SETFD 获取/设置fd标志
+  .F_GTTFL/SETFL fd 状态标志
+    O_REONLY/WRONLY/REWR/EXEC/SEARCH/APPEND/NONBLOCK/SYNC/DSYNC/RSYNC/FSYNC/ASYNC
+    O_ACCMODE 驱动访问方式，在比较
+    F_SETFL:O_APPEND/NONBLOCK/SYNC/DSYANC/RSYNC/FSYNC/ASYNC
+  .F_GETOWN/SETOWN 异步IO所有权,获取当前接收SIGIO/URG信号的进程ID或组ID @14.5.2
+  .F_GETLK/SETLK/SETLKW 记录锁  @14.3
+  
+  c3_fcntl.c sample
+  c3_fcntl_set_fl.c
+
+3.15 ioctl()
+ #include <unistd.h>
+ #include <sys/ioctl.h>
+ int ioctl(int fd, int request, ...); -1:error
+  类别	       常量名  头文件	        ioctl数
+  盘标号       DIOxxx  <sys/disklabel.h> 4
+  文件IO       FIOxxx  <sys/filio.h>	14
+  磁带IO       MTIOxxx <sys/mtio.h>	11
+  套接字IO     SIOxxx  <sys/sockio.h>	73
+  终端IO       TIOxxx  <sys/ttycom.h>	43
+
+3.16 /dev/fd
+ fd = open("/def/fd/0",mode); == fd = dup(0);
+ 主要有shell 使用，
+ $filter file2 | cat file1 - file3 | lpr
+ cat 读file1，接着读其标准输入（也就是filter file2命令的输出），然后读file3
+ $filter file2 | cat file1 /dev/fd/0 file3 | lpr
+
+
+4. 文件和目录
+4.1 引言 stat结构 描述文件属性
+4.2 stat/fstat/fstatat/lstat
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
+ int stat(const char* pathname, struct stat* buf);
+ int fstat(int fd, struct stat* buf);
+ int lstat(const char* path, struct stat* buf);
+ int fstatat(int fd, const char* path, status stat* buf, int flag);
+ struct stat{
+  mode_t st_mode; // file type & mode permissions 文件类型
+  ino_t st_ino; // i-node number serial number
+  dev_t st_dev; // device number file system
+  dev_t st_rdev; // device number for special files
+  nlint_t st_nlint; // number of links
+  uid_t st_uid; // user ID of owner
+  gid_t st_gid; // group ID of owner
+  off_t st_size; // size in bytes, for regular files
+  struct timespec st_atime; // time of last access
+  struct timespec st_mtime; // time of last modification
+  strict timespec st_ctime; // time of last file status change
+  blksize_t st_blksize; // best I/O block size
+  blkcnt_t st_blocks; // number of dist blocks allocated
+ }; // general define
+ struct timespec{
+  time_t tv_sec;
+  long tv_nsec;
+ };
+ $ls -l // 就是调用stat实现的
+
+4.3 文件类型 = stat.st_mode;
+ 普通文件(regular file)： S_ISREG()
+ 目录文件(directory file)： S_ISDIR()
+ 块特殊文件(block special file)：提供对设备（如磁盘）带缓冲的访问；S_ISBLK()
+ 字符特殊文件(character special file)：提供对设备不带缓冲的访问；S_ISCHR()
+ FIFO(named pipe)：用于进程间通信;S_ISFIFO()
+ 套接字(socket)：S_ISSOCK()
+ 符号连接（symbolic link）：指向另一个文件 S_ISSOCK() @4.17
+
+ IPC对象说明为文件，S_TYPEISMQ/SEM/SHM(stat*)消息队列/信号量/共享存储对象 @15
+ c4_3stat.c
+ 
