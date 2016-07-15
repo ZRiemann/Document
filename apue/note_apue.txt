@@ -171,14 +171,268 @@
  $ls -l // 就是调用stat实现的
 
 4.3 文件类型 = stat.st_mode;
- 普通文件(regular file)： S_ISREG()
- 目录文件(directory file)： S_ISDIR()
- 块特殊文件(block special file)：提供对设备（如磁盘）带缓冲的访问；S_ISBLK()
- 字符特殊文件(character special file)：提供对设备不带缓冲的访问；S_ISCHR()
- FIFO(named pipe)：用于进程间通信;S_ISFIFO()
- 套接字(socket)：S_ISSOCK()
- 符号连接（symbolic link）：指向另一个文件 S_ISSOCK() @4.17
+ 普通文件(regular file)： S_ISREG(stat.st_mode) 79.77%
+ 目录文件(directory file)： S_ISDIR() 11.93%
+ 块特殊文件(block special file)：提供对设备（如磁盘）带缓冲的访问；S_ISBLK()  0.01%
+ 字符特殊文件(character special file)：提供对设备不带缓冲的访问；S_ISCHR() 0.03%
+ FIFO(named pipe)：用于进程间通信;S_ISFIFO() 0.00%
+ 套接字(socket)：S_ISSOCK() 0.01%
+ 符号连接（symbolic link）：指向另一个文件 S_ISSOCK() @4.17 8.25%
 
  IPC对象说明为文件，S_TYPEISMQ/SEM/SHM(stat*)消息队列/信号量/共享存储对象 @15
  c4_3stat.c
+ 
+4.4 设置用户ID和设置组ID
+ 实际 用户ID 组ID	#我们是谁
+ 有效 用户ID 组ID	#文件访问权限
+ 附属       组ID	
+ 保存 用户ID 组ID	#由exec函数保存
+ S_ISUID/ISGID(stat.st_mode);
+
+4.5 文件访问权限 access permission
+ #include <sys/stat.h>
+ S_IRUSR	 用户读
+ S_IWUSR	 用户写
+ S_IXUSR	 用户执行
+ S_IRGRP	 组读
+ S_IWGRP
+ S_IXGRP
+ S_IROTH	其他读
+ S_IWOTH
+ S_IXOTH
+
+ chmod(1)
+ 进程每次打开、创建、删除文件时，内核就进行文件权限测试；
+ 设计st_uid，st_gid、进程有效ID及进程附属组ID；
+ 内核检测流程：
+  if(有效用户ID == 0){
+   pass;
+  }else if(有效用户ID == userID && userID has permission){
+   pass;
+  }
+  if(有效组ID|附属组 == groupID && groupID has permission){
+   pass;
+  }else{
+   permission denied;
+  }
+  if(otherID has permission){
+   pass
+  }else{
+   permission denied;
+  }
+
+4.6 新文件和目录的所有权
+ 新文件的用户ID = 进程有效用户ID
+ 新文件的组ID = 进程有效组ID/所在目录组ID
+
+4.7 access/faccessat
+ open()内核以进程有效ID来进行访问权限测试；
+ access()内核以实际ID来进行访问权限测试；
+ #include <unistd.h>
+ int access(const char* path, int mode);
+ int faccessat(int fd, const char* path, int mode, int flag);
+  return 0:ok -1:error
+  mode [F_OK|R_OK|W_OK|X_OK]
+ // demo
+ $ls -l a.out
+ -rwxrwxr-x 1 sar ...
+ $su
+ Password:
+ #chown root a.out
+ #chmod u+s a.out
+ #ls -l a.out
+ -rwsrwxr-x 1 root ...
+ #exit
+ $./a.out /etc/shadow
+ access error for /etc/shadow: Permission denied
+ open for reading OK;
+ 
+4.8 umask
+ #include <sys/stat.h>
+ mode_t umask(mode_t cmask);
+ c4_9umask.c
+
+4.9 chmod/fchmod/fchmodat
+ #include <sys/stat.h>
+ int chmod(const char* path, mode_t mode);
+ int fchmod(int fd, mode_t mode);
+ int fchmodat(int fd, const char* path, mode_t mode, int flag);
+  reutrn 0:ok -1:error
+  mode_t
+   S_ISUID/ISGID/ISVTX
+   S_IRWXU/IRUSR/IWUSR/IXUSR
+   S_IRWXG/IRGRP/IWGRP/IXGRP
+   S_IRWXO/IROTH/IWOTH/IXOTH
+ c4_9cmod.c
+
+4.10 粘着位
+ S_ISVTX(sticky bit)：在程序结束时正文仍被保存杂交换区，加快下次加载速度；已过时；
+
+4.11 chown/fchown/fchownat/lchown
+ #include <unistd.h>
+ int chown(const char* path, uid_t owner, gid_t group);
+ int fchown(int fd, uid_t owner, gid_t group);
+ int fchownat(int fd, const char* path, uid_t owner, gid_t group, int flag);
+ int lchown(const char* path, uid_t owner, gid_t group);
+  return 0:ok -1:error
+
+4.12 文件长度
+ st_blksize/blocks
+ 文件空洞
+
+4.13 文件截断
+ #include <unistd.h>
+ int truncate(const char* path, off_t length);
+ int ftruncate(int fd, off_t length);
+  return 0:ok -1:error
+
+4.14 文件系统
+ 文件链接，先介绍文件系统的基本结构；了解i节点和指向i节点的目录项之间的区别；
+ 文件系统：
+  .UFS: BSD UNIX File System
+   磁盘：分区1	      分区2...
+   分区：
+    文件系统：自举块|超级块|柱面组0|柱面组1|...|柱面组n|
+     柱面：超级块副本|配置信息|i节点图|块位图|i节点数组|数据块|
+      i节点数组：i节点|i节点|...|i节点|
+                          /----^ \-----------\------------\
+      数据块：|...|目录块[i节点编号+文件名]|...|数据块1|...|数据块2|...|
+      *每个i节点有一个连接计数，当连接计数到0时才删除文件；unlink() nlink_t->stat.st_nlink-- 硬连接
+      *符号连接(symbolic link), lrwxrwxrwx 1 root 7 Sep 25 07:14 lib -> usr/lib; i节点文件类型是S_IFLNK
+      *i节点包括文件有关的所有信息：文件类型，文件权限，长度，数据块指针；stat结构中的大多数信息取自i节点
+      *目录项只能指向同一文件系统中相应的i节点，不能指向另一个文件系统的i节点；因此ln(1) link(2)不能跨越文件系统，
+      *重命名文件，构造一个指向现有i节点的新目录项，并删除老的目录项；统一文件系统内mv(1)命令的通常操作范式；
+      
+  .PCFS: DOS File System
+  .HSFS: CD File System
+
+4.15 link/lintkat/unlink/unlinkat/revome
+ #include <unistd.h>
+ int lint(const chat* existingpath, const char* newpath);
+ int lintat(int efd, const char* existingpath, int nfd, const char* newpath, int flag);
+  return 0:ok -1:error
+ 内核关闭文件时首先检查打开该文件的进程个数，如果是0再去检查其链接计数，如果是0就删除该文件；
+  main(){
+  open("tempfile",O_REWR);
+  unlink("tempfile");
+  sleep(15);
+  exit(0)
+  }
+  $ls -l tempfile // 查看文件大小
+  -rw-r----- 1 sar 413265408 Jan 21 07:14 tempfile
+  $df /home // 查看可用磁盘空间
+  Filesystem lk-blocks  Used    Available Use% Mounted on
+  /dev/hda4  11021440   1956332 9064105   18%  /home
+  $./a.out & // 后台运行
+  1364
+  $file unlinked //程序输出
+  ls -l tempfile
+  ls: tempfile: No such file or directory // 目录项已删除
+  $df /home
+  ... // 磁盘空间未释放
+  $done // 程序输出
+  df /home
+  ... // 磁盘空间被释放
+  unlink 的这种特性进程被程序用来确保即使程序崩溃，它所创建的临时文件也不会遗留下来；
+  rmdir(2)
+  
+  #include <stdio.h>
+  int remove(const char* pathname);
+   return 0:ok -1:error
+
+4.17 符号连接
+ 符号连接：对文件的间接指针，与上节的link硬连接有所不同，硬连接直接指向i节点；符号连接为了避开硬连接的一些限：
+  .避免硬链接要求文件位于同一文件系统
+  .避免只有超级用户才能创建指向目录的硬连接
+  符号连接任何用户都可以创建指向任何文件的符号连接；
+
+4.18 symlink/symlinkat/readlink/readlinkat
+ #include <unistd.h>
+ int symlink(const char* actualpath, const char* sympath);
+ int symlinkat(const char* actualpath, inf fd, const char* sympath);
+ ssize_t readlink(const char* pathname, char* buf, size_t bufsize);
+ ssize_t readlinkat(int fd, const char* pathname, char* buf, size_t bufsize);
+  return >=0:ok -1:error
+
+4.19 文件时间
+ stat.st_atime 最后一次访问时间         read    -u
+ stat.st_mtime 最后一次修改时间         write   
+ stat.st_ctime 最后一次i节点状态更改时间 chmod/chown -c
+
+4.20 futimens/utimensat/utimes
+ 文件的访问和修改时间可以更改；
+
+4.21 mkdir/mkdirat/rmdir
+ #include <sys/stat.h>
+ int mkdir(const char* path, mode_t mode);
+ int mkdirat(int fd, const char* pathname, mode_t mode);
+ int rmdir(const char* path);
+  return 0:ok -1:error
+
+4.22 读目录
+ 只有内核才能写目录；
+ #include <dirent.h>
+ DIR* opendir(const char* pathname);
+ DIR* fdopendir(int fd);
+ struct dirent* readdir(DIR* pd);
+ void rewinddir(DIR* pd);
+ int closedir(DIR* pd);
+ long telldir(DIR* pd);
+ void seekdir(DIR* dp, long loc);
+
+4.23 chdir/fchdir/getcwd
+4.24 设备特殊文件
+ stat.st_dev/st_rdev 编写ttyname函数是需要用到；
+ 
+5. 标志IO(stdio)
+5.1 引言
+5.2 流和FILE对象
+ fd IO <unistd.h>
+ stream IO <stdio.h>
+ stream's orientation 流定向
+
+ #include <stdio.h>
+ #include <wchar.h>
+ int fwide(FILE* fp, int mode);
+  return 0:未定向 >0:宽定向 <0:字节定向
+  mode   0:不设置定向 >0:未定向则设置宽定向 <0:未定向则设置字节定向
+  *不改变已定向的流的定向
+ stdin,stdout,stderr ->STDIN/STDOUT/STDERR_FILENO
+5.4 缓冲
+ stdio 3重缓冲类型
+  .全缓冲
+  .行缓冲
+  .无缓冲
+ #include <stdio.h>
+ void setbuf(FILE* fp, char* buf);//size BUFSIZ defined int stdio.h
+ int setvbuf(FILE* fp, char* buf, int mode, size_t size);
+ setvbuf精确设置缓冲类型,mode：_IOFBF/IOLBF/IONBF
+ int fflush(FILE* fp); // 0:ok EOF:error
+ FILE* fopen(const char* paht, cont char* type);
+ FILE* freopen(const char* path, const char* type, FILE* fp);
+ FILE* fdopen(int fd, const char* type);
+  stdio		  fdio
+  r/rb 		  O_RDONLY
+  w/wb		  O_WRONLY|O_CREAT|O_TRUNC
+  a/ab		  O_WRONLY|O_CREAT|O_APPEND
+  r+/rb+	  O_RDRW
+  w+/wb+	  O_RDWR|O_CREAT|O_TRUNK
+  a+/ab+	  O_RDWR|O_CREAT|O_APPEND
+ int fclose(FILE* fp);
+
+5.6 读和写流
+ #include <stdio.h>
+ int getc(FILE* fp);
+ int fgetc(FILE* fp);
+ int getchar(void);
+  return c:ok EOF:error
+ int ferror(FILE* fp);
+ int feof(FILE* fp);
+ void clearerr(FILE* fp);
+ ungetc(intc, FILE* fp);
+ int putc(intc, FILE* fp);
+ int fputc(int c, FILE* fp);
+ int putchar（int c);
+
+5.7 每次IO一行
  
