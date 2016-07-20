@@ -435,4 +435,141 @@
  int putchar（int c);
 
 5.7 每次IO一行
+ gets(char* buf)；存在溢出风险弃用
+
+5.8 stdio效率
+ 标志io 比 fd io 略慢
+
+5.9 二进制I/O
+ size_t fread(void* ptr, size_t size, sizt_t nobj, FILE* fp);
+ size_t fwrite(const void* ptr, size_t size, size_t nobj, FILE* fp);
+
+5.10 定位流
+ ftell/fseek/ftello/fseeko/fgetpos/fsetpos/rewind
  
+5.11 格式IO
+ #include<stdio.h>
+ int printf(const char* format, ...);
+ int fprintf(FILE* fp, const char* format, ...);
+ int dprintf(int fd, const char* format, ...);
+ int sprintf(char* buf, const char* format, ...);
+ int snprintf(char* buf, size_t n, const char* format, ...);
+
+ #include <stdarg.h>
+ #include <stdio.h>
+ int vprintf(const char* format, va_list arg);
+
+ int scanf(char* format, ...);
+ int fscanf(File* fp, const char* format, ...);
+ int sscanf(const char* buf, const char* format, ...);
+
+ int vfscanf(File* fp, const char* format, va_list argv);
+
+5.12 实现细节
+ #include <stdio.h>
+ int fileno(FILE* pf); // 获得与流相关联的fd
+
+5.13 临时文件
+ char* tmpnam(char* ptr);
+ FILE* tmpfile(void);
+ 
+5.14 内存流
+ #include <stdio.h>
+ FILE* fmemopen(void* buf, size_t size, const char* type);
+
+5.15 标志IO
+ 不足:效率不高，内核-IObuf-用户buf；
+
+6 系统数据文件和信息
+5.2 口令文件
+ #include <pwd.h>
+ struct passwd{
+  char* pw_name; // 用户名
+  char* pw_passwd; // 加密口令
+  uid_t pw_uid; // 数值用户ID
+  gid_t pw_gid; // 数值组ID
+  char* pw_gecos; // 注释
+  char* pw_dir; // 初始工作目录
+  char* pw_shell; // 初始shell；
+  char* pw_class; // 用户访问类
+  time_t pw_change; // 下次修改口令时间
+  time_t pw_expire; // 账号有效期时间
+  
+ };
+ struct passwd* getpwuid(uit_t uid);
+ struct passwd* getpwnam(const char* name);
+ struct passwd* getpwent(void);
+  return NULL:error ptr:OK
+ void setpwent(void);
+ void endpwent(void);
+ 
+ /etc/passwd
+ /etc/shadow
+ struct spwd{
+  char* sp_namp; // 登陆名
+  char* sp_pwdp; // 加密口令
+  int sp_lstchg; // 上次更改口令进过的时间
+  int sp_min; // 经过多少天后允许更改
+  int sp_max; // 要求更改尚余天数
+  int sp_warn; // 超期警告天数
+  int sp_inact; // 账号不活动之前尚余天数
+  int sp_expire; // 账户超期天数
+  unsigned int sp_flag; // 保留
+ };
+ login(1)/passwe(1) 可访问/etc/passwd
+ #include <shadow.h>
+ struct spwd* getspnam(const char* name);
+ struct spwd* getspent(void);
+ void setspent(void);
+ void endspent(void);
+ 
+6.4 组文件
+ <grp.h>
+ struct group *getgrgid(gid_t gid);
+ struct group *getgrnam(const char *name);
+ struct group{
+  char* gr_name;
+  char* gr_passwd;
+  int gr_gid;
+  char **gr_mem;
+ };
+ void setgrent(void);
+ void endgrent(void);
+ struct group *getgrent(void);// NULL:end
+
+ newgrp(1) // 更改实际组
+ 附属组ID(supplementary group),用户：1实际组ID + 16附属组ID
+ #include <unistd.h>
+ int getgroups(int gidsetsize, gid_t grouplist[]); // -1:error >0:supplementary group nums
+ #include <grp.h> // on Linux
+ #include <unistd.h> // on FreeBSD Mac os x and Solaries
+ int setgroups(int ngroups, const gid_t grouplist[]);
+ int initgroups(const char* username, gid_t basegid); // 0:ok -1:error
+
+ who(1) // dump utmp
+ last(1) // dump wtmp
+ 
+6.9 系统标识
+ #include <sys/utsname.h>
+ int uname(struct utsname* name); // >0:OK -1:error
+ struct utsname{
+  char sysneme[]; // name of the operating system
+  char nodename[]; // name of this node
+  char release[]; // current release of operating system
+  char version[]; // current version of this release
+  char machine[]; // name of hardware type
+ };
+ #include <unistd.h>
+ int gethostname(char *name, int namelen); // 0:ok -1:error
+
+6.10 时间和日期例程
+ UTC(Coordinated Universal Time)
+ #include <time.h>
+ time_t time(time_t* calptr); // -1:error >0:ok
+ struct tm *gmtime(cont time_t *calptr);
+ struct tm *localtime(const time_t *calptr);
+ time_t mktime(struct tm *tmptr); // 生成time_t
+ size_t strftime(char *restrict buf, size_t maxsize, const char* format, const struct tm *tmptr);
+ #include <sys/time.h> // CLOCK_REALTIME
+ int clock_gettime(clockid_t clock_id, struct timespec *tsp); // 0:ok -1:error
+ int clock_getres(clockid_t clock_id, struct timespec *tsp);

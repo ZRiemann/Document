@@ -812,9 +812,9 @@ DBMS本质：向存储器写入、读出数据；包括内存、外存
      \- 共享缓冲池
 
 外存管理
- |- 表文件 <------------FSM文件-> 空闲空间管理，空闲空间映射表，快速定位空闲空间方便插入新数据，提高空间利用率；@3.2.4
-     |- 磁盘存储管理   \-VM文件 -> Vacuum机制，可见性映射表
-         |- VFD机制：Virtual File Descriptor，虚拟文件描述符，必须系统限制打开文件数；
+ \- 表文件 <------------FSM文件-> 空闲空间管理，空闲空间映射表，快速定位空闲空间方便插入新数据，提高空间利用率；@3.2.4
+     \- 磁盘存储管理   \-VM文件 -> Vacuum机制，可见性映射表
+         \- VFD机制：Virtual File Descriptor，虚拟文件描述符，解决系统限制打开文件数问题；
 
 虚拟文件描述符机制，后台进程可以打开“无限多”文件；
 
@@ -988,6 +988,154 @@ SMGR体系机构
 	   //所有索引属性都没有被修改
 	   //新旧版本在同一文件块
 	  }// 新版做HEAP_ONLY_TUPLE标记，旧版做HEAP_HOT_UPDATED，减小索引大小；
+
+ //===============================================================================
+ 实际数据分析
+ $PGDATA/base/12002/24576
+ -----------  ----  -----
+ tablespace   database table
+ pg_default   postgres t1
+$ od -A x -t x 24576
+000000 00000000 01770778 00000001 1fd8001c
+000010 20042000 00000000 00489fd8 00000000
+000020 00000000 00000000 00000000 00000000
+*
+001fd0 00000000 00000000 000002a6 00000000
+001fe0 00000000 00000000 00030001 00180900
+001ff0 00000001 00000002 00000003 00000000
+002000
+//页面（块）组织方式
+typedef struct
+{
+	uint32		xlogid;			/* high bits */
+	uint32		xrecoff;		/* low bits */
+} PageXLogRecPtr;
+typedef struct PageHeaderData
+{
+	/* XXX LSN is member of *any* block, not only page-organized ones */
+	PageXLogRecPtr pd_lsn;		/* LSN: next byte after last byte of xlog
+								 * record for last change to this page */
+	uint16		pd_checksum;	/* checksum */
+	uint16		pd_flags;		/* flag bits, see below */
+	LocationIndex pd_lower;		/* offset to start of free space */
+	LocationIndex pd_upper;		/* offset to end of free space */
+	LocationIndex pd_special;	/* offset to start of special space */
+	uint16		pd_pagesize_version;
+	TransactionId pd_prune_xid; /* oldest prunable XID, or zero if none */
+	ItemIdData	pd_linp[FLEXIBLE_ARRAY_MEMBER]; /* line pointer array */
+} PageHeaderData;
+// 元组信息ID
+typedef struct ItemIdData
+{
+	unsigned	lp_off:15,		/* offset to tuple (from start of page) */
+				lp_flags:2,		/* state of item pointer, see below */
+				lp_len:15;		/* byte length of tuple */
+} ItemIdData;
+/*
+ * lp_flags has these possible states.  An UNUSED line pointer is available
+ * for immediate re-use, the other states are not.
+ */
+#define LP_UNUSED		0		/* unused (should always have lp_len=0) */
+#define LP_NORMAL		1		/* used (should always have lp_len>0) */
+#define LP_REDIRECT		2		/* HOT redirect (should have lp_len=0) */
+#define LP_DEAD			3		/* dead, may or may not have storage */
+// 元组信息组织方式
+typedef struct HeapTupleFields
+{
+	TransactionId t_xmin;		/* inserting xact ID */
+	TransactionId t_xmax;		/* deleting or locking xact ID */
+
+	union
+	{
+		CommandId	t_cid;		/* inserting or deleting command ID, or both */
+		TransactionId t_xvac;	/* old-style VACUUM FULL xact ID */
+	}			t_field3;
+} HeapTupleFields;
+
+typedef struct DatumTupleFields
+{
+	int32		datum_len_;		/* varlena header (do not touch directly!) */
+
+	int32		datum_typmod;	/* -1, or identifier of a record type */
+
+	Oid			datum_typeid;	/* composite type OID, or RECORDOID */
+
+	/*
+	 * Note: field ordering is chosen with thought that Oid might someday
+	 * widen to 64 bits.
+	 */
+} DatumTupleFields;
+
+/*
+ * BlockId:
+ *
+ * this is a storage type for BlockNumber.  in other words, this type
+ * is used for on-disk structures (e.g., in HeapTupleData) whereas
+ * BlockNumber is the type on which calculations are performed (e.g.,
+ * in access method code).
+ *
+ * there doesn't appear to be any reason to have separate types except
+ * for the fact that BlockIds can be SHORTALIGN'd (and therefore any
+ * structures that contains them, such as ItemPointerData, can also be
+ * SHORTALIGN'd).  this is an important consideration for reducing the
+ * space requirements of the line pointer (ItemIdData) array on each
+ * page and the header of each heap or index tuple, so it doesn't seem
+ * wise to change this without good reason.
+ */
+typedef struct BlockIdData
+{
+	uint16		bi_hi;
+	uint16		bi_lo;
+} BlockIdData;
+/*
+ * ItemPointer:
+ *
+ * This is a pointer to an item within a disk page of a known file
+ * (for example, a cross-link from an index to its parent table).
+ * blkid tells us which block, posid tells us which entry in the linp
+ * (ItemIdData) array we want.
+ *
+ * Note: because there is an item pointer in each tuple header and index
+ * tuple header on disk, it's very important not to waste space with
+ * structure padding bytes.  The struct is designed to be six bytes long
+ * (it contains three int16 fields) but a few compilers will pad it to
+ * eight bytes unless coerced.  We apply appropriate persuasion where
+ * possible, and to cope with unpersuadable compilers, we try to use
+ * "SizeOfIptrData" rather than "sizeof(ItemPointerData)" when computing
+ * on-disk sizes.
+ */
+typedef struct ItemPointerData
+{
+	BlockIdData ip_blkid;
+	OffsetNumber ip_posid;
+}
+struct HeapTupleHeaderData
+{
+	union
+	{
+		HeapTupleFields t_heap;　// 表文件结构使用
+		DatumTupleFields t_datum; // 内存新元组结构，插入表文件时需转HeapTupleFields
+	}			t_choice;
+
+	ItemPointerData t_ctid;		/* current TID of this or newer tuple (or a
+					 * speculative insertion token) /HOT*/
+
+	/* Fields below here must match MinimalTupleData! */
+
+	uint16		t_infomask2;	/* number of attributes + various flags */
+
+	uint16		t_infomask;		/* various flag bits, see below */
+
+	uint8		t_hoff;			/* sizeof header incl. bitmap, padding */
+
+	/* ^ - 23 bytes - ^ */
+
+	bits8		t_bits[FLEXIBLE_ARRAY_MEMBER];	/* bitmap of NULLs */
+
+	/* MORE DATA FOLLOWS AT END OF STRUCT */
+};
+
+ //===============================================================================
 3.2.2 磁盘管理器
 src/backend/storage/smgr/md.c //magnetic disk
 typedef struct _MdfdVec
@@ -1031,7 +1179,7 @@ static Size SizeVfdCache = 0;
 3.2.4空闲空间映射表
 typedef uint32 BlockNumber; // 4G block * 8KB = 32TB;
 1Byte ~ 8KB // 0-0~31 1-32~63 ...
-效率：否定数组形式，采用层次+堆模式式
+效率：否定数组形式，采用层次+堆模式
 每次一个FSM block(8K) * 3层 = 24KB 每个FSM最小值
 level0: 0 8KB // 其中4000byte存放最大空闲值
 level1: 1 4001+1 4001*2+1
