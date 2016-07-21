@@ -573,3 +573,220 @@
  #include <sys/time.h> // CLOCK_REALTIME
  int clock_gettime(clockid_t clock_id, struct timespec *tsp); // 0:ok -1:error
  int clock_getres(clockid_t clock_id, struct timespec *tsp);
+
+7 进程环境
+7.1 引言
+ 进程控制原语，进程环境
+
+7.2 main
+ int main(int argc, char *argv[]);
+ exit()/_exit()/_Exit()
+
+7.5 环境表
+ extern char **environ;
+ getenv()/putenv();
+
+7.6 C程序的存储空间布局
+ 逻辑布局：
+ .正文段：CPU执行机器指令部分，可共享
+ .初始化数据段：
+ .未初始化数据的：bss(block started by symbol)
+ .栈：自动变量及每次函数调用所需保持的信息都存放在此段中；
+ .堆：动态对内存分配；
+ 例如：32位Intel x86 Linux正文段从0x08048000开始，栈低从0xC00000000开始；
+ a.out中还有若干其他类型的段，如符合表段、调试信息段、动态共享库连接表段等，这些部分不装载到进程执行程序映像中；
+
+7.7 共享库
+ cc(1)/ld(1)/ldd
+ $gcc -static hello1.c // 阻止gcc使用共享库
+ $size a.out
+ text    data	bss	dec	hex	filename
+ 787775  6128   11272   805175  c4937   a.out
+ $gcc hello1.c  // gcc默认使用共享库
+ $size a.out
+ text  data	bss	dec	hex	filename
+ 1176  504	16	1696	6a0	a.out
+
+7.8 存储空间分配
+ #include <stdlib.h>
+ void *malloc(size_t size);
+ void *calloc(size_t nobj, size_t size);
+ void *realloc(void *ptr, size_t newsize); // NULL:error
+ void free(void *ptr);
+ 返回指针一定是适当对齐的，使其可用于任何数据对象；
+ sbrk(2)实现上述函数；
+ alloca(3): 在栈中分配空间，自动释放；
+
+7.9 环境变量
+ #include <stdlib.h>
+ char *getenv(const char *name);
+ int putenv(char *str);
+ int setenv(const hcar *name, const char *value, int rewrite);
+ int unsetenv(const char *name);
+
+7.10 setjmp()/longjmp()
+ 应用于深层嵌套调用出现的错误；
+ #include <setjmp.h>
+ int setjmp(jmp_buf env);
+ void longjmp(jmp_buf env, int val);
+ // sigsetjmp/siglongjmp()
+
+ 自动变量、寄存器变量、易失变量、静态变量、全局变量
+
+7.11 getrlimit/setrlimit
+ #include <sys/resource.h>
+ int getrlimit(int resource, struct rlimit *rptr);
+ int setrlimit(int resource, const struct rlimit * rlptr);
+
+8 进程控制
+ 创建、执行、终止进程；
+ 进程属性；
+ 
+8.2 进程标识
+ pid()
+ ID：0 调度进程swapper，内核的一部分
+ ID：1 init进程，自举内核启动后启动一个UNIX系统；孤儿进程的父进程
+ ID：2 页守护进程，支持虚拟存储器系统的分页操作
+ #include <unistd.h>
+ pid_t getpid(void);
+ pid_t getppid(void);
+ uid_t getuid(void);
+ uit_t geteuid(void);
+ gid_t getgid(void);
+ gid_t getegid(void);
+
+8.3 fork
+ #include <unistd.h>
+ pid_t fork(void); // 0:子进程 >0:父进程 -1：error
+ fork后经常跟随一个exec，写时复制（Copy-On-Write）
+
+ 1）fork复制自己，如网络服务器
+ 2）vfork（子进程先执行），执行不同程序，如shell，子进程fork返回后立即调用exec；组合成一个操作spawn
+
+ 父进程等待子进程
+ wait()/waitpid()
+ 孤儿进程：父进程先于子进程结束，子进程的父进程将变为init
+ zombie进程：子进程结束，但父进程为对器进行善后处理；
+  避免僵尸进程：fork两次；
+ 
+ 文件共享
+ 1）父进程等待子进程完成。不进行任何操作
+ 2）父子进程各种执行不同操作，需要各自关闭不需要的文件描述符
+ 
+8.6 wait/waitpid
+ #include <sys/wait.h>
+ pid_t wait(int *statloc); // 简单阻塞等待
+ /* param pid_t pid [in]
+    -1 any pid
+    >0 wait pid
+    =0 等待组ID等于调用进程组ID的任意一个子进程（进程组）
+    <-1 等待组ID等于pid绝对值的任意一个子进程
+    param options [in]
+     0
+     WCONTINUED 支持作业控制，控制子进程继续
+     WNOHANG 不阻塞
+     WUNTRACED 
+ */
+ pid_t waitpid(pid_t pid, int *statloc, int options); // options可设置不阻塞，控制等待其期望的子进程结束
+ int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options); // 0:ok -1:error
+  // pid_t:ok 0,-1:error
+  // statloc 由实现定义，其中某些未表示退出状态，其他未表示喜好编号，有一位指示是否产生了core文件；定义在<sys/wait.h>中；
+  // WIFEXITED(status) true 正常终止
+  // WIFSIGNALED(status) true 异常终止
+  // WIFSTOPPED(status) WSTOPSIG(status),获取子进程涨停信号编号；
+  // WIFCONTINUED(status) 子进程继续执行
+ 进程终止时内核向父进程发送SIGCHILD信号；
+ .如果所有子进程都还在运行，则阻塞
+ .如果一个子进程终止，正在等待父进程获取终止状态，则取得子进程的终止状态立即返回；
+ .如果没有任何子进程，则立即返回出错；
+ 如果进程由于接收到SIGCHILE后调用wait，我们期望wait会立即返回，但如果随机时间点wait，则进程会阻塞；
+
+8.8 wait3/wait4
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ #include <sys/time.h>
+ #include <sys/resource.h>
+ pid_t wait3(int *statloc, int options, struct reusage *rusage);
+ pid_t wait4(pid_t pid, int *statloc, int options, statuct rusage *rusage);
+ 获取更详细的资源状态；
+
+8.9 竞争条件（race condition）
+ 子进程等待父进程结束:
+ while(getppind() != 1)sleep(1); // 简单粗暴笨方法，IPC机制更好
+ 
+8.10 exec
+ fork创建新进程，exec执行新程序，exit终止进程，wait等待终止；
+ #include <unistd.h>
+ int exec[lv][ep]()
+ int fexecve(int fd, char *const argv[], char *const envp[]);
+
+8.11 更改用户ID和更改组ID
+ 最小特权(least privilege)
+ #include <unistd.h>
+ int setuid(uid_t uid);
+ int setgid(gid_t gid);
+ int setreuid(uid_t ruid, uid_t euid);
+ int setregid(gid_t rgid, gid_t egid);
+
+ 1)at(1) root
+  实际用户ID = uid；
+  有效用户ID = root；
+  保存的设置用户ID = root;
+ 2)at 第一件事
+  实际用户ID = uid；
+  有效用户ID = uid；
+  保存的设置用户ID = root;
+ 3)需要时调整有效用户ID
+ 4)守护进程代用户运行命令
+  实际用户ID = uid；
+  有效用户ID = uid；
+  保存的设置用户ID = uid;
+
+8.12 解释器文件 interpreter file
+ #! pathname [optional-argument]
+ #! /bin/sh
+
+ $ /bin/su
+ Password:
+ #mv /usr/bin/awk /usr/bin/awk.save
+ #cp /home/sar/bin/echoarg /usr/bin/awk
+ #suspend // 挂起超级用户shell
+ [1] + Stopped /bin/su
+ $ swkexample file1 FILENAME2 f3
+ argv[0]: /bin/awk
+ argv[1]: -f
+ argv[2]: /usr/local/bin/awkexample
+ argv[3]: file1
+ argv[4]: FILENAME2
+ argv[5]: f3
+ $fg
+ /bin/su
+ # mv /usr/bin/awk.save /usr/bin/awk
+ # exit
+
+8.13 system
+ #include <stdlib.h>
+ int system(conat char *cmdstring);
+
+8.14 进程会计 process accounting
+ 
+8.15 用户标识
+ #include <unistd.h>
+ char *getlogin(vodi);
+ 
+8.16 进程调度
+ #include <unistd.h>
+ int nice(int incr);
+ int getpriority(int which, id_t who);
+ int setpriority(int whick, id_t who, int value);
+
+8.17 进程时间
+ #include <sys/times.h>
+ clock_t times(struct tms* buf);
+
+9 进程关系
+
+9.3 网络登录
+ pseudo terminal 伪终端；
+ inetd 因特网超级服务器
+ 
