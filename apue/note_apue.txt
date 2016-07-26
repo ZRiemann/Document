@@ -789,4 +789,129 @@
 9.3 网络登录
  pseudo terminal 伪终端；
  inetd 因特网超级服务器
+
+9.4 进程组
+ #include <unistd.h>
+ pid_t getpgrp(void);
+ pid_t getpgid(pid_t pid); // pid=0 == getpgrp();
+ 组长进程，组长进程ID == 进程组ID
+ int setpid(pid_t pid, pid_t pgid);
+
+9.5 会话
+ #include <unistd.h>
+ pid_t setsid(void);
+ pid_t getsid(pid_t pid);
+ 会话首进程ID == 会话ID
+
+9.6 控制终端
+ 进程组合会话其他特性
+  .一个会话可以有一个控制终端(controlling terminal)
+  .建立与控制终端连接的会话首进程被称为控制进程(controlling process)
+  .一个会话中的几个进程组可被分成一个前台进程组(foreground process group)以及一个或多个后台进程组(background process group)
+  .如果会话有控制终端，则他有一个前台进程组和其他后台进程组
+  .无论何时键入中断键(Ctrl+C)或退出键(Ctrl+\)，都会将中断信号发送至前台进程组所有进程
+  .如连接断开，挂断信号发送到控制进程；
+  
+ #include <unistd.h>
+ pid_t tcgetpgrp(int fd);
+ int tcsetpgrp(int fd, pid_t pgrpid);
+ pid_t tcgetsid(int fd);
+
+9.8 作业控制（进程组控制）
+ Ctrl+C SIGINT
+ Ctrl+\ SIGQUIT
+ Ctrl+Z SIGTSTP
  
+ $ cat > temp.foo &
+ [1] 1681
+ $
+ [1] + Stopped (SIGTTIN)
+ $ fg %1
+ cat > temp.foo
+ ^D
+ $ cat temp.foo
+ hello, world
+
+ $ cat temp.foo &
+ [1] 1719
+ $ hello, world
+
+ [1] + Done cat temp.foo &
+ $stty tostop
+ $ cat temp.foo &
+ [1] 1721
+ $
+ [1] + Stopped(SIGTTOU) cat temp.foo &
+ $ fg %1
+ cat temp.foo
+ hello, world
+
+9.9 shell执行程序
+ $ps -o pid,ppid,pgid,sid,comm
+ PID PPID PGID SID COMMAND
+ 949 947  949  949 sh
+ 1774 949 949  949 ps
+ 
+9.10 孤儿进程组 orphaned process group
+ 
+
+10 信号
+ 信号是软件中断；
+ SIG*
+ #include <signal.h>
+ 不存在编号0的信号，kill对编号0有特殊应用；
+ 信号产生：
+  .按键
+  .硬件异常 SIGSEGV
+  .kill(2)
+  .kill(1)
+  .SIGURG/PIPE/ALRM
+ 信号处理方式：
+  .忽略，SIGKILL/STOP除外
+  .捕捉信号，不能捕捉SIGKILL/STOP
+  .默认操作
+ 信号列表： *终止加core -忽略 +终止
+  .SIGABRT 异常终止		*	abort()
+  .SIGALRM 定时器超时		+	alarm()/setitimer()
+  .SIGBUS  硬件故障	        *	
+  .SIGCANCEL 线程库内部使用
+  .SIGCHLD 子进程状态改变	-	父进程接收子进程状态变化
+  .SIGCONT 使暂停进程继续	-	
+  .SIGEMT  硬件故障		*
+  .SIGFPE  算术异常		*
+  .SIGFREEZE 检查点冻结		+
+  .SIGHUP  连接断开		+	当CLOCAL标志没有设置是
+  .SIGILL  非法硬件指令		*
+  .SIGINFO 键盘状态请求		-
+  .SIGINT  终端中断		+
+  .SIGIO   异步IO		-
+  .SIGIOT  硬件故障		*
+  .SIGJVM1
+  .SIGJVM2
+  .SIGKILL 终止			+
+  .SIGLOST 资源丢失		+
+  .SIGLWP  线程库内部使用
+  .SIGPIPE 写到无读进程的管道	+
+  .SIGPOLL 可轮训事件
+  .SIGROF  梗概时间超时
+  .SIGPWR  电源失效、重启
+  .SIGQUIT 终端退出符
+  .SIGSEGV 无效内存引用		*
+  .SIGSTKFLT 协处理器栈故障	+
+  .SIGSTOP 停止			*
+  .SIGSYS  无效系统调用		*
+  .SIGTERM 终止			+
+  .SIGTHAW 检查点解冻
+  .SIGTRAP 硬件故障		*
+  .SIGTSTP 终端终止符
+  .SIGTTIN 后台控制读TTY
+  .SIGTTOU 后台控制写TTY
+  .SIGURG  带外数据
+  .SIGUSR1
+  .SIGUSR2 用户信号
+  .SIGVTALRM 虚拟时间闹钟
+  .SIGWAITING 线程内部使用
+  .SIGWINCH 窗口大小改变
+  .SIGXCPU  超过CPU限制
+  .SIGXFSZ  超过文件长度限制
+  .SIGXRES  超过资源控制
