@@ -915,3 +915,373 @@
   .SIGXCPU  超过CPU限制
   .SIGXFSZ  超过文件长度限制
   .SIGXRES  超过资源控制
+
+10.3 signal();
+ #include <signal.h>
+ #define SIG_ERR (void (*)())-1
+ #define SIG_DFL (void (*)())0
+ /**@param int signo [in] SIG*
+    @param func [SIG_IGN|SIG_DFL|*userfunc]
+    */
+ void (*signal(int signo, void (*func)(int)))(int);
+ typedef void Sigfunc(int);
+ Sigfunc *signal(int, Sigfunc*);
+
+ // signal sample
+ #include <signal.h>
+ #include <stdio.h>
+ #include <unistd.h>
+
+ static void sig_usr(int);
+ int main(void){
+  if(signal(SIGUSR1, sig_usr) == SIG_ERR)return -1;
+  if(signal(SIGUSR2, sig_usr) == SIG_ERR)return -1;
+  for(;;)pause;
+ }
+ static void sig_usr(int signo){
+  if(signo == SIGUSR1)printf("received SIGUSR1\n");
+  else if(signo == SIGUSR2)printf("received SIGUSR2\n");
+  else printf("secived signal %d\n",signo);
+ }
+ $ ./a.out &
+ [1] 7216
+ $ kill -USR1 7216
+ received SIGUSR1
+ $ kill -USR2 7216
+ received SIGUSR2
+ $ kill 7216
+ [1] + Terminated ./a.out
+ 
+10.5 中断的系统调用
+ again:
+ if((n=read(rd, buf, BUFSIZE)) < 0){
+  if(errno == EINTR)goto again;
+  //...
+ }
+
+10.7 SIGCLD
+
+10.8 可靠信号术语和语义
+ #include <signal.h>
+ int sigpending(sigset_t *set);
+ 信号解阻塞前发生多次， POSIX.1实时扩展支持信号排队，否则不排队值投递异常；
+ signal mask 信号屏蔽字，规定阻塞投递到该进程的信号集。
+ sigprocmask(int how, const sigset_t *set, sigset_t *oldset);修改信号屏蔽字
+
+10.9 函数kill和raise
+ #include <signal.h>
+ int kill(pid_t pid, int signo); // 发送信号给进程，或进程组
+ int raise(int signo); // 发送信号给自身；kill(gitpid(), signo);
+ pid > 0 delivery to  pid
+ pid ==0 deliver to process group
+ pid < 0 -pid process group
+ pid == -1 发送给所有有权发送的进程
+
+ 测试一个进程是否存在：kill(pid, 0); -1 errno=ESRCH不存在，0存在；不是原子操作
+
+10.10 alarm/pause
+ #include <unistd.h>
+ unsigned int alarm(unsigned int seconds);
+  seconds [in] 时间间隔， 0取消上传闹钟设置
+  return       上次alarm剩余时间间隔
+  每个进程只能有一个闹钟
+ int pause(void); // 只有执行了一个信号处理程序并返回时pause才返回， return -1 errno=EINTR
+
+10.11 信号集
+ #include <signal.h>
+ int sigemptyset(sigset_t *set); // #define sigemptyset(ptr) (*(ptr)=0)
+ int sigfillset(sigset_t *set);  // #define sigfillset(ptr) (*(ptr) = (~sigset_t)0, 0) 返回0
+ int sigaddset(sigset_t *set, int signo);
+ int sigdelset(sigset_t *set, int signo);
+ int sigismember(const sigset_t *set, int signo);
+
+10.12 sigprocmask
+ #include <signal.h>
+ int sigprocmask(int how, const sigset_t *set, sigset_t *oset); //单线程进程，多线程进程用其他的
+  .how SIG_BLOCK/UNBLOCK/SETMASK
+ int sigpending(sigset_t *set);
+
+10.14 sigaction // 替代signal
+ #include <signal.h>
+ int sigaction(int signo, const struct sigaction *act, struct sigaction oact);
+ 
+
+10.15 sigsetjmp/siglongjmp/sigsuspend
+ 处理信号屏蔽字的问题
+
+10.16 sigsuspend
+
+10.17 abort
+
+10.18 system
+ 
+10.19 sleep/nanosleep/clock_nalosleep
+
+10.20 sigqueue
+ 
+10.21 作业控制信号
+
+10.22 信号名和编号
+
+11 线程
+ 优点：
+  .简化异步事件处理代码
+  .内存和文件描述符共享方便
+  .提高吞吐量
+ #ifdef _POSIX_THREADS 测试线程
+ #define _POSIX_THREADS 200809L
+
+ #include <pthread.h>
+ int pthread_equal(pthread_t tid1, pthread_t tid2); // 64位为结构体
+ pthread_t pthread_self(void);
+
+11.4 线程创建
+ #include <pthread.h>
+ int pthread_create(pthread_t *tidp, const pthread_attr_t* attr, void *(*start_rtn)(void*), void* arg);
+ int pthread_join(pthread_t tid);
+ int pthread_cancel(pthread_t tid);
+ int pthread_detach(pthread_t tid);
+ 
+ voit pthread_cleanup_push(void (*rtn)(void*),void *arg);
+ void pthread_cleanup_pop(int execute);
+11.5 线程终止
+ .正常返回终止
+ .被其他线程取消
+ .pthread_exit
+
+11.5.1 mutex
+ #include <pthread.h>
+ int pthread_mutex_init(pthread_mutex_t *mtx, const pthread_mutexattr_t * attr);
+ int pthread_mutex_destroy(pthread_mutex_t *mutex);
+ int pthread_mutex_lock(pthread_mutex_t *mutex);
+ int pthread_mutex_trylock(pthread_mutex_t *mutex);
+ int pthread_mutex_unlock(pthread_mutex_t *mutex);
+ int pthread_mutex_timedlock(pthrad_mutex_t *mutex, const struct timespec *tsptr);
+
+11.6.4 读写锁
+ read-writer lock
+  .读模式下加锁 多个读线程占用
+  .写模式下加锁 一个线程占用，独占锁
+  .不加锁
+ #include <pthread.h>
+ int pthread_wrlock_init(pthread_rwlock_t* rwlock, const pthread_rwlockattr_t *attr);
+ int pthread_wrlock_destroy(pthread_rwlock_t *rwlock);
+ int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+ int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
+ int pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
+ int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock); //0 EBUSY
+ int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock); //0 EBUSY
+ int pthread_rwlock_timedrdlock(pthread_rwlock_t *rwlock, const struct timespec *tsptr);
+ int pthread_rwlock_timedwrlock(pthread_rwlock_t *rwlock, const struct timespec *tsptr);
+ 
+ 11.6.6 条件变量 // 可以替代windows下的事件
+  #include <pthread.h>
+  int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr);
+  int pthread_cond_destroy(pthread_cond_t *cond);
+  int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
+  int pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec tsptr);
+  int pthread_cond_signal(pthread_cond_t *cond);
+  int pthread_cond_broadcast(pthread_cond_t *cond);
+
+  // 条件变量实现消息队列
+  #include <pthread.h>
+  struct msg{
+   struct msg *m_next;
+   /* ... more stuff here ...*/
+  };
+  struct msg *workq;
+  pthread_cond_t qready = PTHRAD_COND_INITIALIZER;
+  pthread_mutex_t qlock = PTHREAD_MUTEX_INITIALIZER;
+  void process_msg(void){
+   struct msg *mp;
+   for(;;){
+    pthread_mutex_lock(&qlock);
+    while(workq == NULL){pthread_cond_wait(&qready, &qlock);} // wait 时会解锁去lock，wait返回时会锁定lock
+    mp = workq;
+    workq = mp->m_next;
+    pthread_mutex_unlock(&qlock);
+    /* now process the message mp */
+   }
+  }
+
+ void enqueue_msg(struct msg *mp){
+  pthread_mutex_lock(&qlock);
+  mp->m_next = workq;
+  workq = mp; // 这个消息队列是反的，后进先出
+  pthread_mutex_unlock(&qlock);
+  pthread_cond_signal(&qready);
+ }
+11.6.7 自旋锁
+ 不休眠，忙等；
+ 适用条件：锁被持有的时间短，且线程不希望重新调度；
+ 通常作为底层原因实现其他类型的锁；
+ 非抢占式内核中非常有用，提供互斥，会阻塞终端，
+ #include <pthraed.h>
+ int pthread_spin_init(pthread_spinlock_t *lock, int pshared);
+  .pshared PTHREAD_PROCESS_SHARED/PRIVATE
+ int pthread_spin_destroy(pthread_spinlock_t *lock);
+ int pthread_spin_lock(pthread_spinlock_t *lock);
+ int pthread_spin_trylock(pthread_spinlock_t *lock);
+ int pthread_spin_unlock(pthread_spintlock_t *lock);
+
+11.6.8 屏障
+ barrier 用户协调多线程并行工作的同步机制。屏障运行每个线程等待，直到所有的合作线程都到达某点。
+ #include <pthread.h>
+ int pthread_barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_t *attr, unsigned int count);
+ int pthread_barrier_destroy(pthread_barrier_t *barrier);
+ int pthread_barrier_wait(pthread_barrier_t *barrier); // 0,PTHREAD_BARRIER_SERIAL_THREAD，errno
+
+12 线程控制
+12.2 线程限制
+12.3 线程属性
+ #include <pthread.h>
+ int pthread_attr_init(pthread_attr_t *attr);
+ int pthread_attr_destroy(pthread_attr_t *attr);
+  .detachstat 线程分离状态属性
+   pthread_attr_get/setdetachstate(pthread_attr_t *attr, int *detachstat);
+   detachstate = [PTHREAD_CREATE_DETACHED/JOINABLE] 默认joinable
+  .guardsize  栈尾的警戒缓冲区大小
+   pthread_attr_get/setstack(pthread_attr_t *attr, void *attraddr, size stacksize);
+  .stackaddr  栈地址
+  .stacksize  栈最小长度
+
+12.6 线程特点数据
+ #include <pthread.h>
+ int pthread_key_create(pthread_key_t *keyp, void （*destructor)(void*));
+ int pthread_key_delete(pthread_key_t key);
+ int pthread_once(pthread_once_t *initflag, void(*iitfn)(void));
+ void* pthread_getspecific(pthread_key_t key);
+ int pthread_setspecific(pthread_key_t key, const void* value);
+
+12.7 线程取消
+ #include <pthread.h>
+ int pthread_setcanceltype(int type, int *oldtype);
+  PTHREADCANCEL_DEFERRED/ASYNCHRONOUS
+
+12.8 线程和信号
+ 每个线程有自己的信号屏字，
+ #include <signal.h>
+ int pthread_sigmask(int how, const sigset_t *set, sigset_t *oset);
+ int sigwait(const sigset_t *set, int *signop);
+ int pthread_kill(pthead_t thread, int signo);
+
+12.9 fork 与线程
+ #include <pthread.h>
+ int thread_atfork(void (*prepare)(vodi), void (*parent)(void), void (*child)(void));
+
+12.10 线程与IO
+ pread/pwrite // 原子操作
+
+13 守护进程 daemon
+ 生存周期长的一种进程。
+13.2 守护进程的特征
+ $ps -axj //
+13.3 编程规则
+ 1. 调用umask将文件模式创建屏蔽字设置为一个已知值（通常是0）。
+ 2. 调用fork()，然后父进程exit。
+ 3. 调用setsid创建一个新会话。执行9.5节的3个步骤，使进程成为
+    a.新会话首进程
+    b.新进程组组长
+    c.没有控制终端
+ 4. 将当前工作目录更改为根目录或指定目录；
+ 5. 关闭不需要的文件描述符
+ 6. 某些守护进程打开/dev/null 使其具有0,1,2
+
+ // demo
+ #include <unistd.h>
+ #include <syslog.h>
+ #include <fcntl.h>
+ #include <sys/resource.h>
+
+ void daemonize(const char *cmd){
+  int i,fd0,fd1,fd2;
+  pid_t pid;
+  struct rlimit rl;
+  struct sigaction sa;
+  //1.clear file creation mask
+  umask(0);
+  // Get maximum number of file descriptors
+  if(getrlimit(RLIMIT_NOFILE, &rl)<0){return;}
+  // Becom a sesson leader to lose controlling TTY.
+  if((pid == fork())<0)return;
+  else if(pid != 0) exit(0);// exit parent
+  setsid();
+  // Ensure future opens wont allocate controlling TTYs.
+  sa.sa_handler = SIG_IGN;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  if(sigaction(SIGHUP, &sa, NULL)<0)return;//$cmd can not ignore SIGHUP
+  if((pid == fork())<0)reutrn; // cmd can't fork
+  else if(pid != 0)exit(0); // exit parent
+  // change the current working directory to the root
+  // so we won't prevent file system form being unmounted.
+  if(chdir("/") < 0)return; // can't change directory to /
+  //close all open file descriptors
+  if(rl.rlim_max == RLIM_INFINITY)rl.rlim_max = 1024;
+  for(i=0; i<rl.rlim_max; i++)close(i);
+  // Attach file descriptors 0,1,2 to /dev/null
+  fd0 = open("/dev/null", O_RDWR);
+  df1 = dup(0);
+  df2 = dup(0);
+  // Initialize the log file.
+  openlog(cmd, LOG_CONS, LOG_DAEMON);
+  if(fd0 != 0 || fd1 != 1 || fd2 != 2)exit(1);
+ }
+
+13.4 出错记录
+ syslog 设施；
+ 产生日志消息3种方法
+  .内核例程调用log()
+  .守护进程调用syslog(3),发送到/dev/log
+  .网络编程发送到对端UDP 514端口
+ syslogd 读取/etc/syslog.conf 配置消息控制
+ #include <syslog.h>
+ void openlog(const cahr *ident, int optoin, int facility);
+  .ident 一般是程序名称被加至每则日志消息中
+  .option LOG_CONS/NDELAY/NOWAIT/ODELAY/PERROR/PID
+  .facility LOG_AUDIT/AUTH/AUTHPRIV/CONSOLE/CRON/ 
+ void syslog(int priority, const char *format, ...);
+  .priority facility|level[LOG_EMERG/ALERT/CRIT/ERR/WARNING/NOTICE/INFO/DEBUG]
+  .format %m被替换成errno值对应的出错消息字符串(strerror());
+ void closelog(void);
+ int setlogmask(int maskpri);
+
+13.5 单实例守护进程
+ 文件和记录锁实现只有一个副本在运行；
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <fcntl.h>
+ #include <syslog.h>
+ #include <string.h>
+ #include <errno.>
+ #include <stdio.h>
+ #include <sys/stat.h>
+
+ #define LOCKFILE "/var/run/daemon.pid"
+ #define LOCKMODE (S_IRUSER|S_IWUSER|S_IRGRP|S_IROTH)
+
+ extern int lockfile(int);
+
+ int already_running(void){
+  int fd;
+  char buf[16];
+  fd = open(LOCKFILE, O_RDWR | O_CREATE, LOCKMODE);
+  if(fd < 0){exit(1);}
+  if(lockfile(fd) < 0){
+   if(errno == EACCES || errno == EAGAIN){close(fd);reutrn(1);}
+   exit(1);
+  }
+  ftruncate(fd, 0);
+  sprintf(buf,"%ld",(long)getpid());
+  write(fd, buf, strlen(buf)+1);
+  return 0;
+ }
+
+13.6 守护进程的惯例
+ .若守护进程使用锁文件，那么该文件通常存储在/var/run目录中
+ .守护进程配置项通常存放在/etc 目录中
+ .守护进程可以用命令行启动，但通常他们由系统初始化脚本之一/etc/rc*或/etc/init.d/* 启动。
+  若守护进程终止时应当自动的重新启动它则在/etc/inittab中为该守护进程包括respawn记录项。
+ .某些守护进程步骤SIGHUP信号，重读配置文件；
+
+13.7 守护进程-服务器进程模型
