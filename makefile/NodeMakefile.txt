@@ -1,0 +1,75 @@
+1.1 Makefile Rules
+
+target... : prerequistites...
+	  command
+...
+
+target : object file|label
+
+command : shell command
+
+1.2 sample
+
+edit : main.o kbd.o command.o display.o insert.o search.o files.o utils.o
+     cc -o edit main.o kbd.o command.o display.o insert.o search.o files.o utils.o
+main.o : main.c defs.h
+      cc -c main.c
+kbd.o : kbd.c defs.h command.h
+      cc -c kbd.c
+...
+
+1.3 command make work
+
+.a command make find current dir makefile
+.b command make find first target in makefile
+.c if edit not exist or *.o new then edit then cc -o edit *.o
+.d *.o ...
+.e *.h *.c to *.o
+
+1.4 makefile variable
+
+OBJS = main.o kbd.o command.o display.o insert.o search.o files.o utils.o
+edit : $(objects)
+     cc -o edit $(objects)
+main.o : main.c defs.h
+       cc -c main.c
+...
+
+clean 
+      -rm edit $(objects)
+
+1.5 make auto build
+
+OBJS = main.o kbd.o command.o display.o insert.o search.o files.o utils.o
+edit : $(objects)
+     cc -o edit $(objects)
+main.o : defs.h
+kbd.o : defs.h command.h
+...
+
+.PHONY : clean
+clean :
+      -rm edit $(objects)
+
+1.6 other make
+//... dummy
+
+2.0 
+2.1 makefile
+makefile includes : rule / rule* / variable / file / recommand
+
+file:
+#include
+#if
+
+recommand
+#recommand 
+
+2.2 makefile file name
+GNUmakefile->makefile->Makefile
+make -f/--file Make.Linux
+
+2.3 include other makefile
+include <filename>
+include foo.make *.mk $(bar)
+include foo.make a.mk b.mk c.mk f.mk
