@@ -73,3 +73,133 @@ make -f/--file Make.Linux
 include <filename>
 include foo.make *.mk $(bar)
 include foo.make a.mk b.mk c.mk f.mk
+
+2.4 MAKEFILES environment
+
+3.0 make rules
+
+~ $HOME
+* *.h *.c
+objects := $(wildcard *.o)
+
+3.4 File find
+VPATH = src:../headers // . -> src -> ../headers
+.vpath <pattern> <directories>
+.vpath <pattern>
+.vpath
+
+vpath %.h ../headers
+
+3.5 .PHONY
+.PHONY : clean
+clean :
+      rm *.o temp
+
+3.6
+bigoutput littleoutput : text.g
+	  generate text.g -$(subst output,$@) > $@
+
+==
+bigoutput : text.g
+	  generate text.g -big > bigoutput
+
+littleoutput : text.g
+	  generate text.g -little > littleoutput
+
+3.7 static mode
+<targets...> : <target-pattern> : <prereq-patterns...>
+    <commands>
+...
+sample:
+OBJS = foo.o bar.o
+
+all : $(BBJS)
+
+$(OBJS) : %.o : %.c
+   $(CC) -c $(FLAGS) $< -o $@
+
+<==>
+foo.o : foo.c
+    $(CC) -c $(FLAGS)foo.c -o foo.o
+bar.o : bar.c
+    $(CC) -c $(FLAGS) bar.c -o bar.o
+
+sample2:
+files = foo.elc bar.o lose.o
+$(filter %.o,$(files)):%.o:%.c
+    $(CC) -c $(FLAGS) $< -o $@
+$(filter %.elc,$(files)):%.elc:%.el
+    emacs -f batch-byte-compile $<
+    
+
+3.8 auto find depandence
+main.o : main.c defs.h
+    $(CC) -c $(FLAGS) main.c -o main.o
+
+gcc -M main.c  ==> main.o:main.c defs.h <***.h>
+gcc -MM main.c ==> main.o:main.c defs.h
+name.c ==> name.d
+%.d:%.c
+  @set -e; rm -f $@;\
+  $(CC) -MM $(CFLAGS) $< > $@
+;\
+  set 's,$*\.o[:],\1.o $@:,g' < $@.
+> $@;
+  rm -f $@
+
+include $(sources:.c=.d)
+
+4.1 echo command
+@echo compiling xxx module
+conpiling xxx module
+echo compileing xxx module
+echo compileing xxx module
+
+exec :
+    cd /home/hchen;pwd  #ok
+exec :
+    cd /home/hchen
+    pwd                 #not work
+
+4.4 sub make
+subsystem:
+  cd subdir && $(MAKE)
+<==>
+sbysystem:
+  $(MAKE) -C subdir
+
+export <variable...>
+unexport <variable...>
+
+sybsystem:
+  cd subdir && $(MAKE) MAKEFLAGS=
+
+make -w/--print-directory
+
+4.5 define command
+define run-yacc
+yacc $(firstword $^)
+mv y.tab.c $@
+endif
+
+
+x := foo
+y := $(x)bar
+x := late
+<==>
+y := foo bar
+x := later
+
+y := $(x)bar
+x := foo
+<==>
+y := bar
+x := foo
+
+sample
+ifeq(0,$(MAKELEVEL))
+cur-dir := $(shell pwd)
+whoami :=$(shell whoami)
+host-type := $(shell arch)
+MKAKE := $(MAKE) host-type=${host-type} whoami=${whoami}
+endif
