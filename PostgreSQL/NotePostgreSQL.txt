@@ -2390,7 +2390,12 @@ typedef struct SnapshotData{...}SnapshotData;
     SLRU缓冲池 = 8 缓冲区（8KB）；
     typedef struct SlruCtlData{...};//
     typedef struct SlruFlashData{...};//
-    
+
+7.11.5 XLOG 日志管理器
+  8K per page
+  16M per segment
+  xlog记录 =》xlog文件号+偏移量
+  
 8 数据库安全
   NCSC/TDI/TCSEC
   7个安全级别：D/C1/C2/B1/B2/B3/A1
