@@ -1,0 +1,36 @@
+$# 排版约定
+DEFUN语法，标志函数定义宏：
+ (defun name (parameter*)
+  [documentation-string]
+  body-form*)
+REPL(读-求职-打印 循环 read-eval-print loop)
+*** Welcome to IELM ***  Type (describe-mode) for help.
+ELISP> (+ 1 2)
+3
+ELISP> (+ 1 2 3)
+6
+ELISP> (+ (+ 1 2) 3)
+6
+ELISP> (+ 1 2 3 4 5 6 7 8 9)
+45
+ELISP> 
+
+$1 为什么是Lisp
+
+ 可以编程的编程语言；
+ 可以为语言添加任何想要的特性；
+ CLOS(Common Lisp Object System)
+ 
+ $1.2 Lisp的诞生
+
+  1956 John McCarthy 设计用于“符合数据处理；
+  LISt Processing 列表处理；
+  
+$2 REPL简介
+
+ ELISP>"Hello, world"
+ "Hello, world"
+ #必须用双引号表示字符串
+
+ (format t "hello, world")
+ (defun hello-world()(format t "Hello, world"))

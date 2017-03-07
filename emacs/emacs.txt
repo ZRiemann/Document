@@ -1,0 +1,41 @@
+$1. emacs
+
+$2. 杂项
+
+M-x ielm
+ 打开Emacs Lisp交互解释器；
+M-x eval-buffer
+ 重新解释运行一遍当前buffer的内容；
+
+el-get
+ 扩展包管理
+ M-x el-get -install jedi
+
+window分割改建
+(global-set-key (kbd "M-1") 'delete-other-windows)
+(global-set-key (kbd "M-2") 'split-window-below)
+(global-set-key (kbd "M-3") 'split-window-right)
+(global-set-key (kbd "M-0") 'delete-window)
+
+eval-region
+(define-key emacs-lisp-mode-map (kbd "C-x C-r") 'eval-region)
+(define-key lisp-interactione-mod-map (kbd "C-x C-r") 'eval-region)
+
+Emacs Client/Server 加速打开Emacs
+ emacs --daemon
+ ~/.bashrc
+  alias ec='emacsclient -t -a=""'
+  alias se='SUDO_EDITOR="emacsclient -t" sudo -e'
+ ec <filename>
+
+宏
+ 录制 C-x [(|)]
+保存宏
+ M-x name-last-kbd-macro
+ M-x insert-kbd-macro
+
+插件
+Helm/smex/session/undo-tree
+
+UI定制
+
