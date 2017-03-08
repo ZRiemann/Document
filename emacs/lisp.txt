@@ -34,3 +34,61 @@ $2 REPL简介
 
  (format t "hello, world")
  (defun hello-world()(format t "Hello, world"))
+
+$3 简单的数据库
+ 
+ >(defun make-cd (title artist rating ripped)
+    (list :title title :artist artist :rating rating :ripped ripped))
+ >(defvar *db* nil)
+ >(defun add-record (cd) (push cd *db*))
+ >(add-record (make-cd "Fly"  "Dixie Chicks" 8 t))
+
+$4 语法和语义
+ 
+ $4.3 S-表达式
+  
+  基本元素：列表(list)/原子(atom)
+  列表(list):由括号所包围， 包含任意数量有空格分隔的元素；
+             列表元素本身也可以是S-表达式
+  原子(atom):所有其他内容，数字、字符串、名字；
+  注释::以';'开始的一行，本质是空白行处理
+
+  数字：
+   123 ；
+   3/7
+   1.0
+   1.0e0
+   1.0d0
+   1.0e-4
+   -42
+
+  字符串：
+   "foo"
+   "fo\o" ; == "foo"
+   "fo\\o" ; == fo\o
+   "fo\"o" ; == fo"o
+
+  名字
+   format/hello-world/*db* 均由称为符号的对象所表示；
+   名字可以包含句点，但单一句点不是名字；
+   不包含10个字符(但可转义包含)：{ } " ' / , : ; ` |
+   foo=>FOO 
+   \f\o\o & |foo| => foo
+   相同名字指向同一个对象；
+   全局变量：*<name>*
+   常量： +<name>
+   底层函数： %<name> %%<name>
+
+  x ;符号x
+  () ;空列表
+  (1 2 3) ; 三个数字组成的列表
+  ("foo" "bar") ;两个字符串组成的列表
+  (x y z) ; 三个符号组成的列表
+  (x 1 "foo")
+  (+ (* 2 3) 4)
+  (defun hello-world()
+   (format t "hello, world"))
+
+ $4.4 作为Lisp形式的S-表达式
+
+  
