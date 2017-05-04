@@ -1,0 +1,28 @@
+
+ar
+  ar -crsv libzit.a <...*.o> ;制作静态库
+
+nm
+  nm a.out ; 打印可执行程序/动态库/obj文件符号表
+
+strings
+  strings a.out ; 打印二进制文件静态字符串
+
+strip *****
+  strip libzit.so.0.0.0 ; 脱掉动态库/程序的符号表，做小动态库体积
+
+file ***
+  file a.out ; 打印可执行文件类型
+
+readelf ***
+  readelf a.out ; 读取elf文件内容
+
+ldd ****
+  ldd a.out
+  ldd libzit.so ; 打印依赖库
+
+du
+  du -h a.out ; 查看文件大小
+
+df
+  df ; 查看剩余空间
