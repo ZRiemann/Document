@@ -1,0 +1,58 @@
+* 常用命令
+ar
+  ar -crsv libzit.a <...*.o> ;制作静态库
+
+nm
+  nm a.out ; 打印可执行程序/动态库/obj文件符号表
+
+strings
+  strings a.out ; 打印二进制文件静态字符串
+
+strip *****
+  strip libzit.so.0.0.0 ; 脱掉动态库/程序的符号表，做小动态库体积
+
+file ***
+  file a.out ; 打印可执行文件类型
+
+readelf ***
+  readelf a.out ; 读取elf文件内容
+
+ldd ****
+  ldd a.out
+  ldd libzit.so ; 打印依赖库
+
+du
+  du -h a.out ; 查看文件大小
+
+df
+  df ; 查看剩余空间
+
+strace
+  strace ./program ; 查看动态库加载过程
+
+* 动态库加载相关
+  ldd -u <program> ; 查看未使用的动态库
+  g++ -Wl,--as-needed -o demo -lz -lm -lrt main.cpp ; 不加载未使用的动态库
+
+** 解决找不到依赖库
+- $ export LD_LIBRARY_PATH+=/tmp
+- $ sudo echo export LD_LIBRARY_PATH +=/tmp >> ~/.bashrc
+- $ g++ -o demo /tmp/libtmp.so main.cpp 
+  缺点，libtmp.so只能放在绝对路径下
+- $ g++ -o demo -Wl,-rpath /tmp/ -L/tmp -ltmp main.cpp
+
+** 符号重定位
+
+$ gcc -c a.c main.c -g
+$ objdump -S a.o ; assamble code
+$ objdump -r a.o ; relocation table
+$ gcc -o am a.o main.o
+$ objdump -s am
+
+$ gcc -c a.c main.c
+$ gcc -shared -o liba.so a.o ; 无-fPIC，少一层调整效率高，但不能共享内存；
+$ gcc -o am main.o -L. -la
+$ objdump -S liba.so
+
+$ gcc -o liba.so -fPIC -shared a.cm
+$ objdump -S liba.so

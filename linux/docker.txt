@@ -1,0 +1,24 @@
+docker
+
+1. 2013 Go dotCloud
+   2017 docker -> moby https://github.com/moby/moby
+
+2. 基本概念
+
+2.1 镜像Image
+    . 只读模版(一个完整系统环境，仅安装用户应用程序)
+    . 创建容器
+    
+2.2 容器Container
+    . 运行实例 启动、开始、停在、删除
+    
+2.3 仓库Repository
+    . 集中存放镜像文件
+
+2.4 安装
+
+2.4.1 Ubuntu
+      $ sudo apt-get update
+      $ sudo apt-get install -y docker.io
+      $ sudo ln -sf /usr/bin/docker.io /usr/local/bin/docker
+      $ sudo sed -i '$acomplete -F _docker docker' /etc/hash_completion.d/docker.io

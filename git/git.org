@@ -1,0 +1,940 @@
+git 用户手册
+
+https://git-scm.com/book/zh/v2
+
+* 1. 起步
+** 1.1 关于版本控制
+Version Control System(VCS)
+版本控制是一种记录一个或若干文件内容变化，以便将来查阅特定版本修订情况的系统。
+ - 本地; RCS
+ - 集中化: VCS/Subversion
+ - 分布式: Git/Mercurial/Bazaar/Darcs
+** 1.2 简史
+   1991~2002 NULL
+   2002 BitKeeper; linux kernal
+   2005 Git; 目标:速度/简单/非线性支持/分布式/高效
+** 1.3　基础
+   - 直接记录快照，而非差异比较
+     | diff  | version1 | version 2 | version 3 |
+     |-------+----------+-----------+-----------|
+     | fileA | delta1   |           | delta2    |
+     | fileB |          | delta1    | deltA2    |
+     |-------+----------+-----------+-----------|
+     | snap  | version1 | version2  | version3  |
+     |-------+----------+-----------+-----------|
+     | fileA | A1       | (A1)      | A2        |
+     | fileB | (B)      | (B)       | B1        |
+   - 几乎所有操作都是本地执行
+     离线操作/在线提交
+   - 保证完整性
+     存储前计算校验和;
+   - 一般只添加数据
+   - 三种状态
+     + committed(已提交)
+     + modified(已修改)
+     + staged(已暂存)
+   - 三个工作区
+     + WorkingDirectory(modified) -StageFixes->StageinArea
+     + StagingArea(staged) -Commit->Repository
+     + .git directory(Repository)(committed) -Checkout->WorkDirectory
+** 1.4 命令行
+   - 原生命令行模式
+   - GUI 模式
+** 1.5 安装
+   - Linux
+     $ sudo yum install git
+     $ sudo apt-get install git
+   - Mac
+     http://mac.github.com
+   - Windows
+     http://git-scm.com/download/win
+   - 源码安装
+     依赖库curl/zlib/openssl/expat/libiconv
+     $ sudo yum install curl-devel expat-devel gettext-devel openssl-devel zlib-devel
+     $ sudo apt-get install libcurl4-gnutls-dev libexpat1-dev gettext libz-dev libssl-dev
+     $ sudo yum install asciidoc xmlto docbook2x
+     $ apt-get install asciidoc xmlto docbook2x
+     https://github.com/git/git/release
+     $ tar -zxf git-2.0.0.0.tar.gz
+     $ cd git-2.0.0
+     $ make configure
+     $ ./configure --prefix=/usr
+     $ make all doc info
+     $ sudo make install install-doc install-html install-info
+     $ git clone git://git.kernel.org/pub/scm/git.git
+** 1.6 初次运行 git 前的配置
+   - git config 
+     /etc/gitconfig ; git config --system ...
+     ~/.gitconfig | ~/.config/git/config ; git config --global ...
+     .git/config ;针对该仓库
+   - 用户信息
+     $ git config --global user.name "John Doe"
+     $ git config --global user.email johndoe@example.com
+   - 文本编辑(default vim)
+     $ git config --global core.editor emacs
+   - 检查配置信息
+     $ git config --list
+     $ git config <key> ; git config user.name
+   - 
+** 1.7 获取帮助
+   $ git help <verb>
+   $ git <verv> --help
+   $ man git-<verb>
+   
+   $ git help configure
+
+   irc.freenode.net
+* 2. Git基础
+** 2.1 获取 git 仓库
+   - 现有目录中初始化仓库
+     $ git init
+     将创建一个.git子目录
+     $ git add *.c
+     $ git add LICENSE
+     $ git commit -m 'initial project version'
+   - 克隆现有仓库
+     $ git clone <url>
+     $ git clone https://github.com/libgit2/libgit2
+     $ git clone https://github.com/libgit2/libgit2 mylibgit ;重命名本地仓库
+** 2.2 记录每次更新到仓库
+   - 文件状态
+     + 已跟踪
+     + 未跟踪
+    untracked  unmodified  modified  staged 
+     add file-------------------------->|
+     edit file--->|
+     Stage file-->|
+     [<------ remove file
+     [<-----------commit
+   - 检查当前文件状态
+     $ git status 
+
+     $ echo "My Project" > README
+     $ git status 
+   - 跟踪新文件
+     $ git add README
+   - 暂存已修改文件
+     
+     $ git add CONTRIBUTING.md
+     $ git status -s
+   - 忽略文件
+     .gitignore
+     $ cat .gitignore
+     *.[oa]
+     *.~
+     格式规范:
+     + 所有空行或以#开头的行被或略;(注释)
+     + 可以使用标准的glob模式匹配
+       - * 匹配0~n任意字符
+       - [abc] 匹配方括号中任意一个字符
+       - ? 单字符任意匹配
+       - [0-9]　所有两字符范围内都匹配
+       - a/**/z 匹配任何中间目录
+     + 以(/)开头防止递归
+     + 以(/)结尾指定目录
+     + (!)取反
+   - 查看已暂存和未暂存的修改
+     $ git diff 
+     $ git diff --cached ; 已暂存内容
+     $ git diff --staged ; 
+     $ git difftool --tool-help
+   - 提交更新
+     $ git commit -m 'commit message...'
+   - 跳过暂存区
+     $ git commit -a -m 'commit message...'
+   - 移除文件
+     $ git rm <file>
+     $ git rm --cached README ;从仓库中移除，但保留磁盘文件
+   - 移动文件
+     $ git mv <src_file> <dest_file>
+** 2.3 查看提交历史
+   $ git log 
+   $ git log -p ;显示每次提交的内容差异
+   $ git log -2 ;显示最近２次提交
+   $ git log --stat ;带简略统计信息
+   $ git log --pretty=oneline/short/full/fuller ; 单行显示
+   $ git log --pretty=format:"%h - %an, %ar : %s"
+
+%H ; 提交对象（commit）的完整哈希字串
+%h ; 提交对象的简短哈希字串
+%T ; 树对象（tree）的完整哈希字串
+%t ; 树对象的简短哈希字串
+%P ; 父对象（parent）的完整哈希字串
+%p ; 父对象的简短哈希字串
+%an ; 作者（author）的名字
+%ae ; 作者的电子邮件地址
+%ad ; 作者修订日期（可以用 --date= 选项定制格式）
+%ar ; 作者修订日期，按多久以前的方式显示
+%cn ; 提交者（committer）的名字
+%ce ; 提交者的电子邮件地址
+%cd ; 提交日期
+%cr ; 提交日期，按多久以前的方式显示
+%s ; 提交说明
+
+   $ git log --pretty=format:"%h %s" --graph ; 图像分支
+
+
+Table 2. git log 的常用选项
+-p
+按补丁格式显示每个更新之间的差异。
+
+--stat
+显示每次更新的文件修改统计信息。
+
+--shortstat
+只显示 --stat 中最后的行数修改添加移除统计。
+
+--name-only
+仅在提交信息后显示已修改的文件清单。
+
+--name-status
+显示新增、修改、删除的文件清单。
+
+--abbrev-commit
+仅显示 SHA-1 的前几个字符，而非所有的 40 个字符。
+
+--relative-date
+使用较短的相对时间显示（比如，“2 weeks ago”）。
+
+--graph
+显示 ASCII 图形表示的分支合并历史。
+
+--pretty
+使用其他格式显示历史提交信息。可用的选项包括 oneline，short，full，fuller 和 format（后跟指定格式）。
+
+--since=2.weeks
+--until
+--auther ;指定作者
+--grep ; 指定搜索关键字
+--all-match ; 同时满足指定多个条件；默认只要满足其中一个
+--Sfunction_name ;添加/移除某些特定字符串的提交
+-(n)
+仅显示最近的 n 条提交
+
+--since, --after
+仅显示指定时间之后的提交。
+
+--until, --before
+仅显示指定时间之前的提交。
+
+--author
+仅显示指定作者相关的提交。
+
+--committer
+仅显示指定提交者相关的提交。
+
+--grep
+仅显示含指定关键字的提交
+
+-S
+仅显示添加或移除了某个关键字的提交
+
+如果要查看 Git 仓库中，2008 年 10 月期间，Junio Hamano 提交的但未合并的测试文件，可以用下面的查询命令：
+$ git log --pretty="%h - %s" --author=gitster --since="2008-10-01" \
+   --before="2008-11-01" --no-merges -- t/
+** 2.4 撤销操作
+   有时候我们提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。 此时，可以运行带有 --amend 选项的提交命令尝试重新提交：
+   $ git commit --amend
+   
+   $ git reset HEAD <files...> ; 取消暂存的文件
+   
+   $ git checkout -- <files...> ; 取消对文件的修改
+** 2.5 远程仓库的使用
+   $ git remote -v
+   - 添加远程仓库
+     $ git remote add <shortname> <url>
+     
+     $ git remote
+     origin
+     $ git remote add pb https://github.com/paulboone/ticgit 
+     $ git remote -v
+     ...
+     $ git fetch pb
+
+   - 从远程仓库在那个抓取与拉取
+     $ git fetch <remote-name>
+
+   - 推送到仓库
+     $ git push <remote-name> <branch-name>
+     $ git push origin master
+
+   - 查看远程仓库
+     $ git remote show <remote-name>
+
+   - 移除和重命名
+     $ git remote rename pb paul
+     $ git remote
+     $ git remote rm paul
+
+** 2.6 打标签
+   - 列出标签
+     $ git tag
+     v0.1
+     v1.3
+     $ git tag -l 'v1.8.5*'
+     v1.8.5
+     v1.8.5-rc0
+     ...
+     
+   - 创建标签
+     + ligntweight(轻量级标签)
+       $ git tag v1.4-lw
+       $ git tag 
+       v0.1
+       v1.3
+       v1.4
+       v1.4-lw
+       $ git show v1.4-lw
+     + annotated(附注标签)
+       $ git tag -a v1.4 -m 'my version 1.4'
+       $ git tag 
+       v0.1
+       v1.3
+       v1.4
+       $ git show v1.4
+       ...
+   - 后期打标签
+     $ git log --pretty=oneline
+     15027957....
+     a6b4c974....
+     ....
+     $ git tag -a v1.2 a6b4c974
+     $ git tag 
+     v0.1
+     v1.2
+     v1.3
+     ...
+   - 共享标签
+     $ git push origin <tagname>　; 推送指定标签
+     $ git push origin --tags ; 一次性推送所有为上次标签
+   - 检出标签
+     $git checkout -b <brenchname> <tagname> ; 创建tagname分支;
+** 2.7 别名
+   Git 并不会在你输入部分命令时自动推断出你想要的命令。 如果不想每次都输入完整的 Git 命令，可以通过 git config 文件来轻松地为每一个命令设置一个别名。 这里有一些例子你可以试试：
+
+$ git config --global alias.co checkout
+$ git config --global alias.br branch
+$ git config --global alias.ci commit
+$ git config --global alias.st status
+$ git config --global alias.unstage 'reset HEAD --'
+$ git config --global alias.last 'log -1 HEAD'
+$ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
+** 2.8
+* 3 分支
+** 3.1 简介
+    Git 处理分支的方式可谓是难以置信的轻量；必杀技特性
+    98ca9 <------ 34ac2 <----- f30ab<--v1.0/master/HEADER
+
+   - 分支创建
+     $ git branch testing
+
+     98ca9 <------ 34ac2 <----- f30ab<--v1.0/master/HEADER/testing
+
+     $ glt log --oneline --decorate 
+     f30ab(HEAD,master,testing)....
+
+   - 分支切换
+     $ git checkout testing
+     
+     98ca9 <------ 34ac2 <----- f30ab<--\-\
+                   v1.0/master----------/ |
+            HEADER---->testing------------/
+
+     $ vim test.rb
+     $ git commit -a -m 'made a change'
+
+     98ca9 <------ 34ac2 <----- f30ab<--\-- 87ab2 --\
+                   v1.0/master----------/           |
+            HEADER---->testing----------------------/
+     
+     $ git checkout master 
+     $ vim test.rb
+     $ git commit -a -m 'make other changes'
+     
+                   HEADER----> master ----> -------\
+                                         /--c2b93--/
+     98ca9 <------ 34ac2 <----- f30ab<--/
+                                        \-- 87ab2 --\
+                       testing----------------------/
+     $ git log --oneline --decorate --graph --all 
+     ...
+** 3.2 分支的新建与合并
+   让我们来看一个简单的分支新建与分支合并的例子，实际工作中你可能会用到类似的工作流。 你将经历如下步骤：
+ 1. 开发某个网站。
+ 2. 为实现某个新的需求，创建一个分支。
+ 3. 在这个分支上开展工作。
+正在此时，你突然接到一个电话说有个很严重的问题需要紧急修补。 你将按照如下方式来处理：
+ 1. 切换到你的线上分支（production branch）。
+ 2. 为这个紧急任务新建一个分支，并在其中修复它。
+ 3.　在测试通过之后，切换回线上分支，然后合并这个修补分支，最后将改动推送到线上分支。
+ 4. 切换回你最初工作的分支上，继续工作。
+
+*** 推演:
+  1. 新建分支
+     C0 <---- C1 <---- C2 <----master 
+     现在，你已经决定要解决你的公司使用的问题追踪系统中的 #53         问题。想要新建一个分支并同时切换到那个分支上，你可以运行一个带有 -b 参数的      git checkout 命令：
+     $ git checkout -b iss53 ; git branch iss53 && git checkout iss53
+     Switched to a new branch "iss53"
+
+     C0 <---- C1 <---- C2 <--\----master 
+                              \---iss53(HEADER)
+    $ vim index.html
+    $ git commit -a -m 'add a new footer [issue 53]'
+
+     C0 <---- C1 <---- C2 <--\---- master 
+                              \--- C3 <---- iss53
+  2. 处理紧急问题：
+    $ git checkout master 
+    $ git checkout -b hotfix
+    $ vim index.html 
+    ...
+    $ git commit -a -m 'fixed the broken email address'
+    ...
+    
+     C0 <---- C1 <---- C2 <--\---- master 
+                              \--- C3 <---- iss53
+                               \--- C4 <---- hotfix
+  3. 合并分支
+      $ git checkout master 
+      $ git merge hotfix
+      ......(Fast-forword)
+   
+   C0 <---- C1 <---- C2 <--\
+                            \--- C3 <---- iss53
+                             \--- C4 <---- hotfix -- master(高效合并)
+  4. 删除不需要的紧急分支
+     $ git branch -d hotfix
+     Deleted branch hotfix(3a0874c)
+
+   C0 <---- C1 <---- C2 <--\
+                            \--- C3 <---- iss53
+                             \--- C4 <-------------- master(高效合并)
+  5. 切换会#53问题分支
+     $ git checkout iss53
+     $ vim index.html
+     ...
+     $ git commit -a -m 'finished the new footer [issue 53]'
+   
+     C0 <---- C1 <---- C2 <--\
+                              \--- C3 <---- C5 <---- iss53
+                               \--- C4 <-------------- master(高效合并)
+  6. 分支合并
+     - 无冲突分支合并
+       $ git checkout master 
+       $ git merge iss53
+       Merge made by the 'recursive' strategy.
+                    commonAncestor
+      　C0 <---- C1 <---- C2 <--\             MergeInto
+        　                       \--- C3 <---- C5 <---- iss53
+          　                      \--- C4 <-------------- master(高效合并)
+            　                      MergeIn
+              　      commonAncestor
+      　C0 <---- C1 <---- C2 <--\---- C4 <------------/-- C6 <-- master
+        　                       \--- C3 <---- C5 <--/-- iss53
+     - 有冲突分支合并
+       $ git merge iss53
+       Atuo-merging idex.html 
+       CONFLICT(content): Merge conflict in index.html 
+       Atomatic merge failed: fix conflicts and then commit the result.
+       $ git status
+       On branch master 
+       You have unmerged paths.
+         (fix conflict and run "git commit")
+       Unmerged paths:
+         (use "git add <file>..." to mark resolution)
+           both modified: index.html 
+       no changes added to commit (use "git add" and/or "git commit -a")
+       任何因包含合并冲突而有待解决的文件，都会以未合并状态标识出来。 Git    
+        会在有冲突的文件中加入标准的冲突解决标记，这样你可以打开这些包含冲突的
+        文件然后手动解决冲突。 出现冲突的文件会包含一些特殊区段，看起来像下面
+        这个样子：
+        <<<<<<< HEAD:index.html
+        <div id="footer">contact : email.support@github.com</div>
+        =======
+        <div id="footer">
+          please contact us at support@github.com
+        </div>
+        >>>>>>> iss53:index.html
+        这表示 HEAD 所指示的版本（也就是你的 master        
+        分支所在的位置，因为你在运行 merge 命令的时候已经检出到了这个分支）
+        在这个区段的上半部分（======= 的上半部分），而 iss53 分支所指示的
+        版本在======= 的下半部分。 为了解决冲突，你必须选择使用由 =======
+        分割的两部分中的一个，或者你也可以自行合并这些内容。 例如，你可以
+        通过把这段内容换成下面的样子来解决冲突：
+        <div id="footer">
+          please contact us at email.support@github.com
+        </div>
+        $git mergetool
+  7. 删除iss53分支
+     $ git branch -d iss53
+   
+** 3.3 分支管理
+   - 分支管理
+     $ git branch 
+     iss53 
+     *master 
+     testing
+     
+     $ git breach -v
+     $ git branch --merged/--no-merged 
+     $ git branch -d <name>
+
+** 3.4 分支开发工作流
+ - 概述
+   鼓励分支开发;(指针操作，极其高效)
+   分支策略(branching scheme);
+ - 长期分支
+   + 只在 master 分支上保留完全稳定的代码;
+   + develop/next 平行分支，做后续开发测试;
+     不必绝对稳定，一旦稳定就合并如 master 分支;
+   + 渐近稳定分支线性图(work silos 流水线)
+     C1 <--\-- master
+            \-- C2 <-- C3 <--\-- develop 
+                              \-- C4 <-- C5 topic 
+   + 大型项目proposed(建议)/proposed_updates(建议更新)
+     使分支具有不同级别的稳定性;
+ - 特性分支
+   被用来实现单一特性或其相关工作;
+   iss53/hotfix 特性分支
+   合并后删除
+   不必在乎他们的建立顺序和工作进度
+                              /- C12<--C13 dumbidea
+   C0<--C1<-\-C3<--C9<--C10<-/- master 
+                \-C2<--C4<-\-C5<--C6<-- iss91
+                                \- C7<--C8<--C11 iss91v2
+
+   使用iss91v2 / dumbidea 方案;
+   放弃 iss91
+                                          /--- dumbidea
+   C0<--C1<-\-C3<--C9<--C10<--C12<--C13<-/--/-- master 
+             \-C2<--C4<--C7<--C8<--C11<----/-- iss91v2
+
+** 3.5 远程分支
+ - 概述
+   远程引用(指针),包括分支标签...;
+   $ git ls-remote 
+   $ git remote show (remote)
+   已(remote)/(branch)形式命名;
+ - 用例: 同时远程推送iss53分支
+   origin/iss53 
+   git.ourcompany.commit
+   $ git clone git.ourcompany.commit 
+   origin/master 
+   $ git clone <url> -o booyah
+   booyah/master 
+   
+   C1<--C2<--C3<--\-- origin/master(remote branch)
+                   \-- master(local branch)
+
+   C3<--C2<--C3<--\--C4<--C5<-- master(local branch)
+                   \-- origin/master(remote branch)
+
+   同步远程分支
+   $ get fetch origin 
+
+   C3<--C2<--C3<--\--C4<--C5<-- master(local branch)
+                   \-- C3_1 <-- C3_2 origin/master(remote branch)
+
+   有另一个内部Git服务器(git.team1.ourcompany.com)
+   $ git remote add teamone git://git.team1.xxx.com; 添加一个新的远程仓库
+   $ git fetch teamone
+                          /-- teamone/master 
+   C3<--C2<--C3<--\--C4<-/-C5<-- master(local branch)
+                   \-- C3_1 <-- C3_2 origin/master(remote branch)
+ - 推送
+   推送到有写入权限的远程仓库上;
+   $ git push origin serverfix
+   $ git push origin serverfix:awesomebranch
+   $ git config --golbal credential.helper cache ; 缓存用户名密码
+   $ git fetch origin ; 抓取远程分支 serverfix
+   $ git merge origin/serverix ; 合并 serverfix 分支到当前分支
+   $ git checkout -b serverfix origin/serverfix ; 远程分支到拉本地分支
+   $ git checkout --track origin/serverix ; 等同上一条命令
+ - 跟踪分支
+   从一个远程跟踪分支检出一个本地分支会自动创建一个叫做 “跟踪分支
+   或 “上游分支。
+   $ git pull ; 拉去远程分支数据
+   $ git branch -u origin/serverfix ; 设置随时更新上游分支
+   $ git merge @{u} ; git merge origin/master 
+   $ git fetch --all ; 同步所有远程分支
+   $ git branch -vv ; 显示所有设置的跟踪分支
+     iss53     7e424c3 [origin/iss53: ahead 2(2个为提交)] log
+     master    1ae2a45 [origin/master] deploying index fix
+   * serverfix f8674d9 [teamone/server-fix-good: ahead 3, behind 1] fix
+ - 拉取
+   $ git pull ; git fetch && git merge
+ - 删除远程分支
+   $ git push origin --delete serverfix ; 删除 serverfix 远程分支
+   
+** 3.6 变基
+ - 概述
+   在 Git 中整合来自不同分支的修改主要有两种方法：merge 以及 rebase;
+   在本节中我们将学习什么是“变基”，怎样使用“变基
+   展示该操作的惊艳之处，以及指出在何种情况下你应避免使用它。
+ - 你可以提取在 C4 中引入的补丁和修改，然后在 C3 的基础上应用一次。
+   在 Git 中，这种操作就叫做 变基(rebase)。
+   C0<--C1<--C2<--<-\-C3<--master 
+                     \--C4<--experiment 
+   $ git checkout experiment
+   $ git rebase master
+
+   C0<--C1<--C2<--<-\-C3<--C4'<--experiment/master
+
+   First, rewinding head to replay your work on top of it...
+   Applying: added staged command
+   $ git checkout master
+   $ git merge experiment 
+                                  /-- master   
+   C0<--C1<--C2<--<-\-C3<--C4'<--/---experiment
+ - 更有趣的变更基用例
+   C1<--C2<--\-C5<--C6<-- master 
+              \--C3<--\-C4<--C10<-- server 
+                       \--C8<--C9<-- clinet
+   合并client分支; 不合并server分支; 利用--onto选项
+   $ git rebase --onto master server client
+                          /-- master 
+   C1<--C2<--\-C5<--C6<--/-C8'<--C9'<-- client
+              \--C3<--C4<--C10<-- server 
+                       
+   $ git checkout master 
+   $ git merge client 
+   C1<--C2<--\-C5<--C6<--C8'<--C9'<-- client/master
+              \--C3<--C4<--C10<-- server 
+ 
+   $ git rebase master server
+   C1<--C2<--\-C5<--C6<--C8'<--C9'<-\-C3'<--C4'<--C10'<-- server 
+                                     \-- client/master
+   $ git checkout master 
+   $ git merge server
+   C1<--C2<--\-C5<--C6<--C8'<--C9'<-\-C3'<--C4'<--C10'<-- server/master/client 
+
+   $ git branch -d client
+   $ git branch -d server
+ - 不要对在你的仓库外有副本的分支执行变基
+   总的原则是，只对尚未推送或分享给别人的本地修改执行变基操作清理历史，
+   从不对已推送至别处的提交执行变基操作，这样，你才能享受到两种方式带来的便利。
+   C1<-- master 
+   C1<-\- teamone/master 
+        \--C2<--C3<-- master 
+
+   C1<--\-C4<----/-C6<-- teamone/master 
+         \--C5--/
+
+         /--C5--\
+   C1<--/-C4<----\-C6<-\- teamone/master 
+        \--C2<--C3<-----\--C7<-- master 
+   
+   $ git push --force
+   C1<--C5<--C4'<-- origin/master 
+
+         /--C5--\--C4'<-- termone/master 
+   C1<--/-C4<----\-C6<-\
+        \--C2<--C3<-----\--C7<-- master
+
+         /--C5--\--C4'<-------\ termone/master 
+   C1<--/-C4<----\-C6<-\       \
+        \--C2<--C3<-----\--C7<--\--C8  master
+   
+ - 用变基解决变基
+   $ git rebase teamone/master
+   C1<--C5<--C4'<--\-C2'<--C3'<-- master
+                    \-- termone/master 
+
+   $ git pull --rebase ; get fetch && git rebase teamone/master 
+   $ git config --global pull.rebase true
+   
+* 4 服务器上的Git
+** 4.1 协议
+ - Local(本地协议)
+   NFS挂载
+   $ git clone /opt/git/project.git
+   $ git clone file:///opt/git/porject.git
+   $ git remote add local_broj /opt/git/project.git
+ - HTTP
+   + Smart HTTP
+     
+   + Dumb HTTP
+     $ cd /var/www/htdocs/
+     $ git clone --bare /path/to/git_project gitproject.git
+     $ cd gitproject.git
+     $ mv hooks/post-update.sample hooks/post-update
+     $ chmod a+x hooks/post-update
+
+ - SSH 
+   $ git clone ssh://user@server/project.git
+
+ - Git  
+   无加密, 全部只读或读写;
+** 4.2 搭建Git服务
+ 1. 导出裸仓库
+   $ git clone --bare my_project my_project.git
+   ; $ cp -Rf my_project/.git my_project.git
+ 2. 把裸仓库放到服务器上
+    $ scp -r my_project.git user@git.example.com:/opt/git
+    $ git clone user@git.example.com:/opt/git/my_project.git
+    
+    分享仓库可写
+    $ ssh user@git.example.com 
+    $ cd /opt/git/my_project.git
+    $ git init --bire --shared
+
+** 4.3 生成SSH公钥
+    $ cd ~/.ssh
+    $ ls
+    ... id_dsa id_dsa.pub
+    ;... id_rsa id_rsa.pub 
+    $ ssh-keygen ; 生成密钥对
+    ... ; 找不到的情况下自己生成
+    
+** 4.4 配置服务器
+ $ sudo adduser git
+ $ su git 
+ $ cd 
+ $ mkdir .ssh && chmod 700 .ssh
+ $ touch .ssh/authorized_keys && chmod 600 .ssh/authorized_keys
+ $ cat /tmp/id_rsa.john.pub
+ ...
+ $ cat /tmp/id_rsa.john.pub >> ~/.ssh/authorized_keys  
+ $ cat /tmp/id_rsa.***.pub >> ~/.ssh/authorized_keys
+ $ cd /opt/git
+ $ mkdir project.git
+ $ cd project.git
+ $ git init --bare 
+ 
+ # on John's computer 
+ $ cd myproject
+ $ git init 
+ $ git add .
+ $ git commit -m 'initial commit'
+ $ git remote add origin git@gitserver:/opt/git/project.git
+ $ git push origin master 
+ 
+ # other developer 
+ $ git clone git@gitserver:/opt/git/project.git
+ $ cd project 
+ $ vim README 
+ $ git commit -am 'fix for the README file' 
+ $ git push origin master 
+ 
+ # 利用 git-shell 进行权限控制
+ $ cat /etc/shells ; see if git-shell is already in here
+ $ which git-shell ; make sure git-shell is installed on you system.
+ $ sudo vim /etc/shells ; add the path to git-shell from last command 
+ $ sudo chsh git # and enter the path to git-shell, usually:/usr/bin/git-shell 
+
+ $ ssh git@gitserver ; fatal: Interactive get shell is not enabled 
+ $ git help shell 
+** 4.5 Git守护进程
+ - 概述
+   建立一个基于守护进程的仓库
+   它可用于支撑大量参与人员或自动系统（用于持续集成或编译的主机）只读访问的项目
+   省去配置SSH公钥的麻烦
+ - git daemon -reuseaddr --base-path=/opt/git/ /opt/git/
+   需要开放9418端口
+   /etc/event.d/local-git-daemon
+   start on startup 
+   stop on shutdown 
+   exec /usr/bin/git daemon \
+        --user=git --group=git \
+        --reuseaddr --base-path=/opt/git /opt/git 
+   respawn
+   建议使用git-ro用户只读数据；
+   initctl start local-git-daemon 
+  - 无需授权访问
+    $ cd /path/to/project.git
+    $ touch git-daemon-export-ok ; 该文件将允许 Git 提供无需授权的项目访问服务
+** 4.6 Smart HTTP
+ - git-http-backend CGI脚本
+ - 安装Apache 
+   $ sudo apt-get install apache2 apache2-utils 
+   $ a2enmod cgi alias env 
+ - 让 git-http-backend 作为Web服务器对/git路径请求处理器
+   Apache 配置文件总添加以下内容:
+   # 环境配置
+   SetEnv GIT_PROJECT_ROOT /opt/git
+   SetEnv GIT_HTTP_EXPORT_ALL 
+   ScriptAlias /git/ /usr/lib/git-core/git-http-backend/
+   # 你需要让 Apache 接受通过该路径的请求
+   <Directory "/usr/lib/git-core*">
+     Options ExecCGI Indexs 
+     Order allow,deny 
+     Require all granted 
+   </Directory>
+   # 如果想实现写操作授权验证，使用如下的未授权屏蔽配置即可：
+   <LocationMatch "^/git/.*/git-receive-pack$">
+      AuthType Basic
+      AuthName "Git Access"
+      AuthUserFile /opt/git/.htpasswd
+      Require valid-user
+    </LocationMatch>
+ - 添加合法用户文件
+   $ htdigest -c /opt/git/.htpasswd "Git Access" schacon 
+   
+
+ 
+** 4.7 GitWeb(基于网页的简易查看器)
+ - 在项目里运行
+   $ git instaweb ; 监听1234端口
+   $ git instaweb --stop 
+ - 安装
+   $ git clone git://git.kernel.org/pub/scm/git/git.git
+   $ cd git/
+   $ make GITWEB_PROJECTROOT="/opt/git" prefix=/usr gitweb
+    SUBDIR gitweb
+    SUBDIR ../
+    make[2]: `GIT-VERSION-FILE' is up to date.
+    GEN gitweb.cgi
+    GEN static/gitweb.js
+   $ sudo cp -Rf gitweb /var/www/
+   Apach配置文件
+   <VirtualHost *:80>
+    ServerName gitserver
+    DocumentRoot /var/www/gitweb
+    <Directory /var/www/gitweb>
+        Options ExecCGI +FollowSymLinks +SymLinksIfOwnerMatch
+        AllowOverride All
+        order allow,deny
+        Allow from all
+        AddHandler cgi-script cgi
+        DirectoryIndex gitweb.cgi
+    </Directory>
+    </VirtualHost>
+** 4.8 GitLab
+ - 安装
+ https://bitnami.com/stack/gitlab 
+ https://gitlab.com/gitlab-org/gitlab-ce/tree/master
+* 7 Git工具
+** 7.11 子模块
+ - 概述
+   子模块允许你将一个 Git 仓库作为另一个 Git 仓库的子目录。 
+   它能让你将另一个仓库克隆到自己的项目中，同时还保持提交的独立。
+ - 开始使用子模块
+   $ git submodule add https://github.com/chanconinc/DbCounnector <path>
+   $ git status 
+   ...
+   new file: .gitmodules
+   new file: DbConnector
+   $ cat .gitmodules
+   [submodule "DbConnector"]
+     path = DbConnecter
+     url = https://github.com/chaconinc/DbConnector 
+   
+   $ git submodule init 
+   ...
+** 7.12 打包
+   $ git bundle create repo.bundle HEAD master 
+   $ git clone repo.bundle repo 
+   $ git bundle create repo.bundl -b master 
+* 8 自定义Git
+** 8.1 配置Git
+ - 客户端基本配置
+   $ man git-config 
+   $ git config --global core.editor emacs ; 默认vi
+   $ git config --global core.page less ; '' 关闭默认分页器
+   $ git config --global commit.template ~/.gitmessage.txt 
+   $ git config --global coure.excludesfile ~/.gitignore_global 
+   $ git config --global color.ui false 
+   
+ - 格式化多余的空白字符
+   $ git config --global core.autocrlf true ; windows 系统设置
+   $ git config --global core.whitspace \
+     trailing-space,space-before-tab,ident-with-non-tab
+   
+** 8.2 属性 
+   添加 .gitattributes
+ - 二进制文件
+   *.pbxproj binrary
+ - 比较二进制文件 
+   *.docx diff=word 
+   首先，你需要安装 docx2txt；它可以从 http://docx2txt.sourceforge.net 下载
+   #!/bin/bash
+   docx2txt.pl $1 -
+   $ git config diff.word.textconv docx2txt
+ - 导出版本库
+   text/ export-ignore ; 忽略text目录
+** 8.3 Git钩子 
+   存储目录: .git/hooks 
+   示例: .git/hooks/*.sample 
+   启用示例: mv .git/hooks/aaa.sample .git/hooks/aaa 
+
+ - 客户端钩子
+   + 提交工作流钩子 
+     - pre-commit 键入提交信息前运行。 
+       它用于检查即将提交的快照
+       如果该钩子以非零值退出，Git 将放弃此次提交，
+       不过你可以用 git commit --no-verify 来绕过这个环节。 
+       你可以利用该钩子，来检查代码风格是否一致
+      （运行类似 lint     的程序）、尾随空白字符是否存在
+       (自带的钩子就是这么做的)，或新方法的文档是否适当。
+     - prepare-commit-msg 启动提交信息编辑器之前
+        你可以结合提交模板来使用它，动态地插入信息。
+     - commit-msg 使用该钩子来核对提交信息是否遵循指定的模板。
+     - post-commit 运行 git log -1 HEAD 来获得最后一次的提交信息。
+       该钩子一般用于通知之类的事情。
+   + 电子邮件工作流钩子
+     $ git am 如果你需要通过电子邮件接收由 git format-patch 产生的补丁，
+     这些钩子也许用得上。
+     - applypatch-msg
+     - pre-applypatch
+     - post-applypatch
+ - 服务端钩子
+* 10 Git 内部原理
+** 10.1 底层命令和高层命令 
+ - 概述 
+   从根本上来讲 Git是一个内容寻址（content-addressable）文件系统，
+   并在此之上提供了一个版本控制系统的用户界面。
+   内容寻址文件系统层是一套相当酷的东西，所以在本章我们会先讲解这部分内容。
+   随后我们会学习传输机制和版本库管理任务——你迟早会和它们打交道。
+ - 高层（porcelain）
+   chapter 0~9 commands
+ - 底层（plumbing）
+   本章主要面对底层命令
+   $ ls -F1
+   HEAD ; 文件指示目前被检出的分支
+   config* ; 文件包含项目特有的配置选项
+   description ; 文件仅供 GitWeb 程序使用，我们无需关心
+   hooks/ ; 目录包含客户端或服务端的钩子脚本
+   info/ ; 包含一个全局性排除文件，用以放置那些不希望被记录在 .gitignore
+   objects/ ; 目录存储所有数据内容
+   refs/ ; 目录存储指向数据（分支）的提交对象的指针
+   index ; 文件保存暂存区信息
+** Git对象 
+ - 概述
+   Git 的核心部分是一个简单的键值对数据库（key-value data store）
+   hash-object
+   -w 选项指示 hash-object
+      命令存储数据对象；若不指定此选项，则该命令仅返回对应的键值。
+      --stdin 选项则指示该命令从标准输入读取内容；
+   $ git init test 
+   $ cd test 
+   $ find .git/objects 
+   $ echo 'test content' | git hash-object -w --stdin
+   d670460b...
+   $ find .git/objects -type f
+   .git/objects/d6/7046...
+   $ git cat-file -p d67046...
+   test content
+ - 对文件进行简单的版本控制
+   $ ehco 'version 1' > test.txt
+   $ git hash-object -w test.txt 
+   83baa3...
+ - 增加新内容
+   $ echo 'version 2' > test.txt
+   $ git hash-object -w test.txt 
+   1f7a7a...
+   $ find .git/objects -type f
+   ...
+   $ git cat-file -p 83... > test.txt
+   $ cat test.txt 
+   version 1 
+   $ git cat-file -t 1f7a7a...
+   blob (数据对象)
+ - 树对象(tree-object)
+   解决文件名保存的问题，也允许我们将多个文件组织到一起
+* A2.2 嵌入应用程序
+ - 命令行模式
+ - Libgit2 
+    http://libgit2.github.com
+   
+   
+

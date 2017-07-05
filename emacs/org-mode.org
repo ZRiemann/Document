@@ -1,0 +1,152 @@
+# +TITLE: org-mode 基础教程
+
+* 精选
+** 教程连接
+http://orgmode.org/orgguide.pdf
+http://www.fuzihao.org/blog/2015/02/19/org-mode%E6%95%99%E7%A8%8B/
+** 常用快捷键
+| Shortcut key | describe            |
+|--------------+---------------------|
+| Tab/S+Tab    | 展开、折叠所有章节  |
+| M+up/down    | 升级/降级标题       |
+| M+RET        | 自动添加同级标题    |
+| C-c C-c      | 自动对齐表格        |
+|              | 对代码快进行求值    |
+|              | 改变checkboxbox状态 |
+| C-c C-t      | TODO 标记切换       |
+| C-c / t      | 以树的形式展示TODO  |
+| C-c C-q      | 加标签              |
+| C-c / m      | 生成带标签的树      |
+| C-c .        | 插入时间按          |
+| C-c C-e      | 导出其他格式        |
+|              |                     |
+
+* 1 基本语法
+** 1 章节
+  org-mode用* 标识章节，一个* 代表一级标题，两个* 代表两级标题，以此类推。
+  * 标题一
+  ** 标题二
+　　注意型号后面有空格。可以发现，不同层级标题的颜色是不一样的。按Alt加左右键能够升降标题的层级。一些常用快捷键如下：
+
+  ~ S+Tab 展开、折叠所有章节
+  ~ Tab 对光标所在章节进行展开、折叠
+  ~ M+left/right 升级/降级标题
+
+** 2 列表
+   列出待完成的事项等。
+任务 [ ] [%] or [/]
+
+无序: + or - 开头+空格
++ treeroot
+  + branch1
+  + branch2
+M-RET 可以自动输入同级条目；
+
+分有序： 1. or 1) at 开头+空格
+1. [-] 任务1
+   1) [X] 子任务1
+   2) [ ] 子任务2
+   3) [X] 子任务3
+2. [X] 任务2
+
+M-S-RET可以输入一个带checkbox的列表项，而在总任务后面可以输入一个[%]或者[/]则能自动计算总任务进度。最后结果如图所示。
+
+** 3 脚注
+   [fn:1] 本文参考：http://orgmode.org/orgguide.pdf
+
+** 4 表格
+   下面我们填入一些数据，在填写的过程中，按Tab键可以调到右方表格，按Enter则能跳到下方表格。如果同时按住Shift，则是反方向跳。输入表格完成后，按 C-c C-c则能自动对齐表格，出入完成对齐后，表格如下：
+下面我们来体验下org-mode的强大的表格函数。我们在total列任选一个位置，输入=$3+$4 ，然后按C-u C-c C-c ，org-mode便能自动为我们计算所有三列加四列的和，并放到第五列。最后完成的表格如下
+
+| Name   |     Phone | sub1 | sub2 | total |
+|--------+-----------+------+------+-------|
+| mame1  | 123456789 |  123 |  456 |   579 |
+| wizard |   1234567 |   89 |   76 |   165 |
+| hehe   |  12834381 |   78 |   62 |   140 |
+#+TBLFM: $5=$3+$4
+** 5 连接
+   连接资源（图片，文件，URL等）
+   [ [连接地址] [连接内容] ]
+   [[http://orgmode.org/orgguid.pdf][orgguid.pdf]]
+   [[file:/home/maple/test.jpg][a picture]]
+   如果去掉标签，则能直接显示图片
+   [[file:/home/maple/test.jpg]]
+   Emacs默认不显示，需要C-c C-x C-v 才能显示
+** 6 待办事项(TODO)
+C-c C-t 改变TODO状态
+C-c / t
+C-c C-c 改变checkbox状态
+*** TODO [# A] 任务1
+*** TODO [# B] 任务2
+*** TODO 总任务 [33%]
+**** TODO 子任务 1 [%]
+**** TODO 子任务 2 [66%]
+     + [ ] sub1
+     + [X] sub2
+     + [X] sub3
+     SCHEDULED:<2017-06-25 Sun>
+     DEADLINE:<2017-06-26 Mon>
+**** DONE 已完成
+     CLOSED: [2017-06-24 Sat 13:32]
+     - State "DONE"       from "TODO"       [2017-06-24 Sat 13:32]
+** 7 标签Tags
+   C-c C-q add tags
+   C-c / m tag tree
+** 8 时间
+   C-c .
+   SCHEDULED:<2017-06-25 Sun>
+   DEADLINE:<2017-06-26 Mon>
+** 9 特殊文本格式
+   *bold*
+   /italic/
+   _underlined_
+   =code=
+   ~vervatim~
+   +strike-through+
+** 10 富文本导出
+   html/pdf
+*** 1 设置标题和目录
+# +TITLE: This is the title of the document
+# +OPTIONS: toc:2 (only to two levels in TOC)
+# +OPTIONS: toc:nil (no TOC at all)
+*** 2 添加引用
+# +BEGIN_QUOTE
+Everything should be made as simple as possible,
+but not any simpler -- Albert Einstein
+# +END_QUOTE
+*** 3 设置居中
+# +BEGIN_CENTER
+    Everything should be made as simple as possible, but not any simpler
+# +END_CENTER
+*** 4 设置样例
+# +BEGIN_EXAMPL
+这里的注释不会被导出E
+# +END_EXAMPLE
+*** 5 Latex使用
+\begin{equation}
+\nabla^n{i=1}a_i d\Omegafrac{a}{\log{b}}\sum^n{i=1}a_i d\Omega
+\end{equation}
+*** 6 插入源代码
+设置加载运行语言：
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '(
+   (sh . t)
+   (python . t)
+   (R . t)
+   (ruby . t)
+   (ditaa . t)
+   (dot . t)
+   (octave . t)
+   (sqlite . t)
+   (perl . t)
+   (C . t)
+   ))
+设置好后输入
+# +BEGIN_SRC emacs-lisp
+(+ 1 2 3 4)
+# +END_SRC
+*** 7 关于导出
+    C-c C-e
+    导出PGF需要LaTex支持
+    到处html

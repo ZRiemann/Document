@@ -1,0 +1,325 @@
+* 1 温故而知新
+** 1.4 操作系统做什么
+*** 1.4.1 不让CPU打盹
+    1. Multiprogramming 多道程序
+    2. Time-Sharing-System 分时系统
+       每个程序运行一段时间，让出CPU
+    3. Multi-tasking 多任务系统
+       OS接管所有硬件资源，应用程序以进程(Process)方式运行；
+       抢占式Preemptive
+*** 1.4.2 设备驱动
+    1. Windows Device-Driver: GDI/DirectX/
+               Kernal
+    2. 磁盘：2盘片：2面：65536磁道：1024扇区：512Byte
+       容量：2 *2*65536*1024*512 = 137,348,953,472(128G)
+       LBA(Logical Block Address): 逻辑扇区号
+       read(system call)=>I/O寄存器=>IDE0 0x1F0~0x1F7(LBA:000003E8)
+       => 0x1F2 8扇区 => 0x1F7 0x20 读操作
+       out 0x1F3, 0x00
+       out 0x1F4, 0x00
+       out 0x1F5, 0x03
+       out 0x1F6, 0xE8
+       out 0x1F2, 0x08
+       out 0x1F7, 0x20
+       
+** 1.5 内存不够怎么办
+   1. total:128MB; A:10MB; B:100MB; C:20MB
+      - 地址空间不隔离
+      - 内存使用效率低
+      - 运行地址不确定
+   2. 虚拟地址(Virutal Address)
+*** 1.5.1 关于隔离
+    虚拟地址空间(Virtuall Address Space)
+    物理地址空间(Physical Address Space)
+    + 32 条地址线(36)
+    + 512MB 0~1FFFFFFF
+      
+*** 1.5.2 分段(Segmentation)
+    A:1MB 0~0x00A00000 (Virtual Address Space)
+    0x00100000~0x00B00000 (Physical Address Space)
+    映射程序：0x00001000 => 0x00101000
+*** 1.5.3 分页(Paging)
+    解决内存使用效率问题；
+    4KB 每页 4GB = 1MPage;
+    虚拟地址空间可能被映射到同一物理页面，实现内存共享；
+    页错误(Page Fault)=>Os换出需要的页面；
+    MMU(Memory Management Unit)
+    CPU == MMU == Memory
+    
+
+    
+** 1.6 众人拾柴火焰高
+*** 1.6.1 线程基础
+    调度(Schedule)、安全、用户级、内核级线程映射；
+    Thread(Lightweight Process)
+    ID/PC/REG/STACK
+    status:Running/Ready/Waiting
+    [IO|CPU] Bound Thread
+* 2 静态链接
+** 2.1 被隐藏的过程
+  hello.h/.c ==(cpp)==> hello.i ==(gcc)==> hello.s ==(as)==>hello.o
+  ==(ld)==>a.out
+  1. Prepressing(预处理)
+     $gcc -E hello.c -o hello.i
+     $cpp hello.c > hello.i
+  2. Compilation(编译)
+     $gcc -S hello.i -o hello.s
+  3. Assembly(汇编)
+     $as hello.s -o hello.o
+  4. Linking(链接)
+     $ld -static crt1.o crti.o crtbeginT.o hello.o -start-group -lgcc -lgcc_en
+     -lc -end-group crtend.o crtn.o
+** 2.2 编译器做了什么
+   SourceCode =(Scanner)=> Tokens =(Parser)=> SyntaxTree =(SemanticAnalyzer)=>
+   CommentedSyntaxTree =(SorceCodeOptimizer)=> IntermediateRepresentation
+   =(CodeGenerator)=> TargetCode =(CodeOptimizer) => FinalTargetCode
+
+   array[index] = (index + 4）* (2 + 6)
+   1. 扫描(Scanner)
+      有限状态机(FiniteStateMachine)
+      记号(Token)
+      | token | type   |
+      |-------+--------|
+      | array | 标识符 |
+      | [     |        |
+      | index | 标识符 |
+      | ]     |        |
+      | =     |        |
+      | (     |        |
+      | index |        |
+      | +     |        |
+      | 4     |        |
+      | )     |        |
+      | *     |        |
+      | (     |        |
+      | 2     |        |
+      | +     |        |
+      | 6     |        |
+      | )     |        | 
+
+      token分类：关键字、标识符、字面量、特殊符号
+      其他工作：符号表、文字表填充；
+      lex程序实现词法扫描；
+   2. 语法分析(GrammerParser)
+      语法树(SyntaxTree)
+      上下文无关语法(Context-freeGrammar)
+      yacc(YetAnotherCompilerCompiler)
+   3. 语义分析(SemanticAnalyzer)
+      静态语义(StaticSemantic)
+      - 类型转换匹配(检查报错)
+      动态语义(DynamicSemantic)
+   4. 源码优化(SourceCodeOptimizer)
+      (中间代码)
+      (2+6) =(SourceCodeOptimizer)=> 8
+      t1 = 2 + 6
+      t2 = index + 4
+      t3 = t2 * t1
+      array[index] = t3
+      ==>
+      t2 = index + 4
+      t2 = t2 * 8
+      array[index] = t2
+      - 三地址码(Three-addressCode)
+
+      - P-Code
+
+   5. 代码生成
+      (目标机器代码)
+      mov1 index, %ecx ;value of index to ecx
+      addl $4, %ecx ; ecx += 4
+      mull $8, %ecx ; ecx *= 8
+      movl index, %eax ;value of index to eax
+      movl %ecx, array(,eax,4) ; array[index] = ecx
+   6. 目标代码优化
+** 2.3 链接器年龄比编译器长
+   重定位(Relocation)
+   符号(Symbol):表示一个(子程序/变量)地址
+   模块符号的引用(路由)(链接Link)
+   
+   
+** 2.4 模块拼装-静态链接
+   1. 地址空间分配(Address and Storage Allocation)
+   2. 符号决议(Symbol/Name Resolution(static)/Binding(daynamic))
+   3. 重定位(Relocation)
+   4. 运行时库(Runtime Library)支持程序运行的基本函数集合
+     
+      movl $0x2a, var
+      c705 00000000 2a000000
+      重定位(Relocation) 重定位入口(RelocationEntry)
+      c705 0x00010000 2a000000
+* 3 目标文件里有什么
+** 3.1 目标文件格式
+   object：标准可执行文件格式
+   exe：
+   + COFF(Common File Format)
+     - PE(Portable Executable)(可执行文件格式) Windows平台
+     - ELF(Executable Linkable Format) Linux
+   + OMF(ObjectModuleFormat/Unix a.out/MS-DOS .COM)
+   + DLL(DynamicLinkingLibrary)/SLL(StaticLinkingLibrary)
+  
+   | ELF 文件类型     | 说明           | 实例     |
+   |------------------+----------------+----------|
+   | 可重定位文件     | 包含代码，数据 | .o/.obj  |
+   | (Relocatable)    | 可用来被链接   |          |
+   | 可执行文件       |                |          |
+   | (ExecutableFile) |                |          |
+   | 共享目标文件     |                | .so/.dll |
+   | 核心转储文件     |                |          |
+   | (CoreDumpFile)   |                |          |
+
+   $ file foobar.o
+   COFF 引入"”"段的机制,定义调试数据格式
+** 3.2 目标文件是什么样的
+   + 分段优点：
+     - 分别映射到两个虚存储区，数据区RW，指令去R；防止篡改；
+     - 提高缓存命中率
+     - 共享指令区
+   + Section(节)的形式储存，有时候也叫段(Segment)
+   (Section)标识一定长度区域
+     - File Header
+       描述整个文件属性：入口地址、目标硬件、目标操作系统、段表(SectionTable)
+     - Code Section(代码段)
+       .code/.text
+     - Data Section(数据段)
+       .data
+     - BSS(Block Started By Symbol)
+     - .rodata 只读数据
+     - .comment 编译器版本信息
+     - .debug 调试信息
+     - .dynamic 动态链接信息
+     - .hash 符号哈希表
+     - .line 调试行号表
+     - .note 额外编译器信息，公司名，发布版本
+     - .strtab 字符串表
+     - .systab 符号表
+     - .shstrtab section string table
+     - .plt/.got 动态链接跳转表和全局入口表
+     - .init/fini 程序初始化/总结代码段 C++全局构造与析构
+     - musis 用于程序自定义段，存放MP3
+       objcopy 工具自定段
+       objcopy -I binary -O elf32-i386 -B i386 image.jpg image.o
+       objdump -ht image.o
+
+       __attribute__((section("FOO"))) int global = 42;
+       __attribute__((section("BAR"))) void foo()
+     - 符号表
+     - 调试信息
+     - 字符串
+** 3.3 SimpleSection.o
+   [[./SimpleSection.c][]]
+   $ objdump -h SimpleSection.o
+     + Size 段长度
+     + File off 段位置
+     + 段属性
+       - CONTENTS 文件中存在内容
+   $ readelf SimpleSection.o
+   $ size SimpleSection.o
+   
+   | offset |   size | section    |
+   |--------+--------+------------|
+   | 0x0000 | 0x0034 | ELF Header |
+   | 0x0034 | 0x005b | .text      |
+   | 0x0090 | 0x0008 | .data      |
+   | 0x0098 | 0x0004 | .rodata    |
+   | 0x009c | 0x002a | .comment   |
+   | 0x00c6 |    ... | OtherData  |
+*** 3.3.1 代码段
+    $ objdump -s -d SimpleSection.o
+*** 3.3.2 数据段和只读数据段
+    .data
+     global_init_varabal + static_val = 8Byte
+    .rodata
+     "%d\n"
+*** 3.3.3 BBS段
+    global_uninit_var/static_var2 4Byte
+    SymbolTable
+*** 3.3.4 其他段
+*** 3.4.1 文件头
+    + 打印头
+      $ readelf -h SimpleSecton.o
+      elf header file: /etc/include/elf.h
+    +  ELF 魔数
+       ELF标记0x7F 字节序:0-无效;1-小端;2-大端
+7f 45 4c 46 01/02     01     01   00 ...
+DEL E L  F  32/64bit  字节序 版本
+PC/COFFey
+4d 5a
+M  Z
+a.out
+01 07 跳转机器字
+    + e_type 文件类型
+      ET_REL 1 .o Relocationblel
+      ET_EXEC 2 Executable
+      ET_DYN 3 .so dynamic link file
+    + 机器类型
+      EM_M32 1 AT&WE 32100
+      EM_SPARC 2 SPARC
+      EM_386 3 Interl X86
+      EM_68k 4 Motorola 68000
+      EM_88k 5 Motorola 88000
+      EM_860 6 Intel 80860
+      
+*** 3.4.2 段表
+    $ readelf -S SimpleSection.o
+/* Section header.  */
+typedef struct
+{
+  Elf32_Word	sh_name;		/* Section name (string tbl index) */
+  Elf32_Word	sh_type;		/* Section type */
+  Elf32_Word	sh_flags;		/* Section flags */
+  Elf32_Addr	sh_addr;		/* Section virtual addr at execution */
+  Elf32_Off	sh_offset;		/* Section file offset */
+  Elf32_Word	sh_size;		/* Section size in bytes */
+  Elf32_Word	sh_link;		/* Link to another section */
+  Elf32_Word	sh_info;		/* Additional section information */
+  Elf32_Word	sh_addralign;		/* Section alignment */
+  Elf32_Word	sh_entsize;		/* Entry size if section holds table */
+} Elf32_Shdr;
+
+*** 3.4.3 重定位表
+    .rel.txt(Relocation Table)
+*** 3.4.4
+    字符串表
+** 3.5 链接的接口-符号
+*** 3.5.0 
+    A Define foo
+    B Reference foo
+    函数和变量统称符号(Symbol)
+    函数名/变量名称符号名(SymbolName)
+    符号表(SymbolTable)
+    符号值(SymbolValue) 地址
+
+    $ nm SimpleSection.o
+*** 3.5.1 ELF 符号表结构
+    .symtab
+/* Symbol table entry.  */
+typedef struct
+{
+  Elf32_Word	st_name;		/* Symbol name (string tbl index) */
+  Elf32_Addr	st_value;		/* Symbol value */
+  Elf32_Word	st_size;		/* Symbol size */
+  unsigned char	st_info;		/* Symbol type and binding */
+  unsigned char	st_other;		/* Symbol visibility */
+  Elf32_Section	st_shndx;		/* Section index */
+} Elf32_Sym;
+
+$ readelf -s SimpleSection.o
+
+*** 3.5.2 特殊符号
+./SpecialSymbol.c
+- __executable_start 程序起始地址
+- __etext/_etext/etext 段结束地址
+- _end 程序结束地址
+ 
+*** 3.5.3 符号修饰与函数签名
+
+gcc -fleading-undersource/-fno-leading-undersore
+
+NameDecoration(符号修饰)/NameMangling(符号改编)
+FunctionSignagure(函数签名)
+
+$ c++filte _ZN1N1C4funcEi
+
+WINAPI UnDecorateSymbolName()
+
+*** 3.5.4 extern "C"
