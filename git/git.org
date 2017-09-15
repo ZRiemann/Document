@@ -286,7 +286,7 @@ $ git log --pretty="%h - %s" --author=gitster --since="2008-10-01" \
        v1.4-lw
        $ git show v1.4-lw
      + annotated(附注标签)
-       $ git tag -a v1.4 -m 'my version 1.4'
+i       $ git tag -a v1.4 -m 'my version 1.4'
        $ git tag 
        v0.1
        v1.3
@@ -357,7 +357,7 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
                                         \-- 87ab2 --\
                        testing----------------------/
      $ git log --oneline --decorate --graph --all 
-     ...
+     
 ** 3.2 分支的新建与合并
    让我们来看一个简单的分支新建与分支合并的例子，实际工作中你可能会用到类似的工作流。 你将经历如下步骤：
  1. 开发某个网站。
@@ -372,7 +372,9 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
 *** 推演:
   1. 新建分支
      C0 <---- C1 <---- C2 <----master 
-     现在，你已经决定要解决你的公司使用的问题追踪系统中的 #53         问题。想要新建一个分支并同时切换到那个分支上，你可以运行一个带有 -b 参数的      git checkout 命令：
+     现在，你已经决定要解决你的公司使用的问题追踪系统中的 #53         
+     问题。想要新建一个分支并同时切换到那个分支上，你可以运行一个带有 -b 参数的
+     git checkout 命令：
      $ git checkout -b iss53 ; git branch iss53 && git checkout iss53
      Switched to a new branch "iss53"
 
@@ -578,7 +580,7 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
    $ git checkout experiment
    $ git rebase master
 
-   C0<--C1<--C2<--<-\-C3<--C4'<--experiment/master
+   C0<--C1<--C2<--<--C3<--C4'<--experiment/master
 
    First, rewinding head to replay your work on top of it...
    Applying: added staged command

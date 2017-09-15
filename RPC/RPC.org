@@ -1,0 +1,349 @@
+* rpcgen-manual
+  rpcgen Programming guide
+** rpc service 
+  ubuntu:
+  $ sudo apt install rstat-client 
+  $ sudo apt-get rpcbind
+** The rpc Protocol Compiler
+ - rpcgen is a compiler, accepts RPC Language(similar to C);
+ - It produces a C language output includes:
+   + stub versions of the client routines;
+   + server skeleton;
+   + XDR filter routines for both parameters and results;
+   + header file that contains common definitions.
+** Converting Local Procedure into Remote Procedure 
+ - local procedure
+   int printmessage(char *msg){
+     FILE *f;
+     f = fopen("dev/console", "w");
+     fprintf(f, "%s\n", msg);
+     fclose(f);
+     return(1);
+   }
+ - remote procedure
+   + msg.x ; Remote message printing protocol 
+     program MESSAGEPROG{ // RProcedure part of RPrograms;
+       version MESSAGEVERS{ // PRoducer version 1;
+         int PRINTMESSAGE(string) = 1; // RPriducre definition;
+       } = 1; // not 0;
+     } = 99;
+   + everyting is declare(d) with capital letters; this is not required;
+   + notice argument type is "string" not "char *".
+   + definition of RProcedure:
+     [[./msg_proc.c]]
+     - They always take pointers to their arugments rather then arguments themselves;
+     - It return a pointer to an integer instead of an integer itself;
+     - It has an "_1" appended to its name, version number append;
+   + delcare main client program:
+     [[./printmsg.c]]
+     
+** Generating XDR Routine 
+   rpcgen may also be use(d) to generate XDR routne;
+   /* dir.x: Remote directory listing protocol */
+   const MAXNAMELEN = 255; /* maximum length of a directory entry */
+   typedef string nametype<MAXNAMELEN>; /* a directory entry */
+   typedef struct namenode *namelist; /* a ling in the listing */
+   /* A node in the directory listing */
+   struct namenode{
+     nametype name; /* name of directory entry */
+     namelist next; /* next entry */
+   };
+   /* The result of a READDIR operation */
+   union readdir_res switch (int errno){
+     case 0:
+       namelist list; /* no error: return directory listing */
+     default:
+       void; /* error occured: nothig else to return*/
+   };
+   /* The directory progam definition */
+   program DIRPROG{
+     version DIRVERS{
+       readdir_res 
+       READDIR(nametype) = 1;
+     } = 1;
+   } = 76;
+   
+ - Note: Types like readdir_res in the example above can be defined using the 
+   "struct","union" and "enum" key words.
+** The C-Preprocessor
+   | Symbol   | Usage                      |
+   |----------+----------------------------|
+   | RPC_HDR  | for header-file output     |
+   | RPC_XDR  | for XDR routine output     |
+   | RPC_SVC  | for server-skeleton output |
+   | RPC_CLNT | for client stub output     |
+   |          |                            |
+   /* time.x: Remote time protocol
+   */
+   program TIMEPROG{
+     version TIMEVRES{
+       unsigned int TIMEGET(void) = 1;
+     } = 1;
+   } = 44;
+   #ifdef RPC_SVC
+   %int *
+   %timeget_1(){
+   %  static int thetime;
+   %
+   %  the time = time(0);
+   %  return (&thetime);
+   %}
+   #endif
+
+   The '%' feature is not generally recommended, 
+** rpcgen Programming Notes
+   - Timeout Changes
+     RPC set a default toumeout of 25 seconds.
+     struct timeval tv;
+     CLIENT *cl;
+     cl = clnt_create("somehost", SOMEPROG, SOMEVER, "tcp");
+     if(cl == NULL){exit(1);}
+     tv.tv_sec = 60;
+     tv.tv_usec = 0;
+     clnt_control(cl, CLSET_TIMEOUT, &tv);
+   - Handling Broadcast on the server sice
+     void *reply_if_nfsserver(){
+       char notnull; /*just here so we can use its address */
+       if(access("/etc/exprots", F_OK)<0){
+         return (NULL); /*prevent RPC from replying*/
+       }
+       /* return non-null pointer so RPC will send out a reply
+       */
+       return((void*)&notnul);
+     }
+   - Other Infomation Passed to Server Procedures
+     //only allow root user to print a messsage to the console
+     int *
+     printmessage(char **msg, struct svc_req *rq){
+       //...
+       struct suthunix_parms *qup;
+       aup = (struct authunix_parms*)rq->rq_clntcred;
+       if(aup->qup_uid!=0){
+         result = 0;
+         return(&result);
+       }
+       //...
+     }
+   - RPC Language 
+     + Is a extention of XDR language.
+       External Data Representation Standard 
+       Remote Rrocedure Calls: Protocol Specification chapter.
+     + Definitions 
+       definition-list:
+         definition ";"
+         definition ";" definition-list 
+       definition:
+         enum-definition
+         struct-definition 
+         union-definition 
+         typedef-definition 
+         const-definition 
+         program-definition
+     + Structers 
+       struct-definition:
+         "struct" struct-ident "{"
+           declaration-list
+         "}"
+       declaration-list:
+         declaration ";"
+         declaration ";" declaration-list
+       struct coord{
+         int x;
+         int y;
+       };
+     + Unions 
+       union-definition:
+         "union" union-ident "switch" "(" declaration "){"
+           case-list "}"
+       case-list:
+         "case" value ":" declaration ";"
+         "default" ":" declaration ";"
+         "case" value ":" decaration ";" case-list 
+       union read_result switch (int errno){
+         case 0:
+           opaque data[1024];
+         default:
+           void;
+       }
+       struct read_result{
+         int errno;
+         union{
+           char data[1024];
+         }read_result_u;
+       };
+       typedef struct read_result read_result;
+     + Enumerations 
+       enum-definition:
+         "enum" enum-ident "{" enum-value-list "}"
+       enum colortype{
+         RED = 0,
+         GREEN = 1,
+         BLUE = 2
+       };
+     + typedef 
+       typedef string fname_type<255>;
+       typedef char *name_type;
+     + Constants 
+       const-definition:
+         "const" const-ident "=" integer 
+       const DOZEN = 12; --> #define DOZEN 12
+     + Program 
+       RPC program are declared using the following syntax:
+       program-definition:
+         "program" program-ident "{"
+            version-list
+         "}=" value
+       version-list:
+         version ";"
+         version ";" version-list
+       version:
+         "version" version-ident "{"
+           procedure-list 
+         "}="value 
+       procedure-list:
+         procedure ";"
+         procedure ";" procedure-list 
+       procedure: 
+         type-ident procedure-ident "("type-ident")" "=" value 
+       program TIMEPROG{
+         version TIMEVERS{
+           unsigned int TIMEGET(void) = 1;
+           void TIMESET(unsigned) = 2;
+         } = 1;
+       } = 44;
+     + Declaration 
+       - simple declarations 
+         colortype color;
+       - fixed-length array declarations
+         colortype palette[8];
+       - variable-length array declarations 
+         int heights<12>; /* at most 12 items */
+         int width<>; /* any number of items */
+         struct{
+           u_int heights_len;
+           int *heights_val;
+         }heights;
+       - Pointer declarations 
+         listitem *next;
+     + Special case 
+       - Booleans
+         bool married; --> bool_t married;
+       - Strings 
+         string name<32>; --> char *name;
+         string longname<>; --> char *longname;
+       - Opaque Data:
+         opaque diskblock[512]; --> char distblock[512];
+         opaque filedata<1024>; --> struct {
+                                              u_int filedata_len;
+                                              char *filedata_val;
+                                           }filedata;
+       - Voids(can only occur in two places) 
+         + union definiions
+         + program definitions(as argument or result of a remote procdeure)
+
+* RPC 编程
+** 1.1 XDR(EXtensional Data Representation) 扩展(外部)数据表示
+   XDR 属于ISO表示层
+*** 1.1.1 XDR工作原理
+    1.1.2 初始化XDR流
+    #include <rpc/xdr.h>
+    #include <rpc/types.h>
+    void xdrstdio_create(XDR *handle, FILE *fp, enum xdr_op op);
+    void xdr_destroy(XDR *handle);
+    // 转换函数
+    bool_t xdr_int(XDR *handle, int *p);
+    bool_t xdr_u_int(XDR *handle, uint_t *p);
+    //...
+    // 示例
+    main{
+    FILE *fp;
+    XDR *xh;
+    struct utmp *up;
+    int err = 0;
+    if(argc!=2){exit(1);}
+    if(utmpname("var/run/utmp")!=0){exit(1);}
+    fp = fopen(argv[1],"w");
+    xdrstdio_create(&xh, fp, XDR_ENCODE);
+    while(NULL != (up=getutent())){
+    xdr_vector(&xh, up->ut_user, sizeof(up->ut_user), sizeof(char),
+      (xdrproc_t)xdr_char));
+    xdr_vector(&xh, up->ut_line, sizeof(...)...);
+    //...
+    }
+    }
+*** 1.2 RPC 编程
+ - 要素
+   + 程序号、版本号、过程号
+   + 网络选择
+     /etc/neconfig 
+     #
+     # The network configuration file. This file is currently only used in
+     # conjunction with the TI-RPC code in the libtirpc library.
+     #
+     # Entries consist of:
+     #
+     #       <network_id> <semantics> <flags> <protofamily> <protoname> \
+     #               <device> <nametoaddr_libs>
+     #
+     # The <device> and <nametoaddr_libs> fields are always empty in this
+     # implementation.
+     #
+     udp        tpi_clts      v     inet     udp     -       -
+     tcp        tpi_cots_ord  v     inet     tcp     -       -
+     udp6       tpi_clts      v     inet6    udp     -       -
+     tcp6       tpi_cots_ord  v     inet6    tcp     -       -
+     rawip      tpi_raw       -     inet      -      -       -
+     local      tpi_cots_ord  -     loopback  -      -       -
+     unix       tpi_cots_ord  -     loopback  -      -       -
+
+     NETPATH 
+     
+   + rpcbind设施
+   + XDR
+
+** 2. RPC认证
+   |---------------+-----------|
+   | 认证风格      | 描述      |
+   |---------------+-----------|
+   | AUTH_SYS/UNIX | System V4 |
+   | AUTH_SHORT    |           |
+   | AUTH_DEST     | DES加密   |
+   | AUTH_NONE     | 无认证    |
+   |---------------+-----------|
+   svc_req.rq_clntcred{
+     enum_t oa_flavor; // 认证风格
+     caddr_t oa_base;
+     u_int oa_length; // not to exceed MAX_AUTH_BYTES
+   }opaque_auth;
+   clnt->cl_auth=authunix_create(name,uid,gid,0,NULL);
+   
+* RPC 概念模型与实现解析
+** 起源
+   1980 Bruce Jay Nelson <Implementing Remote Procedure Calls>
+** 目标
+   简单、高效、通用
+** 分类
+   - 同步调用
+   - 异步调用
+** 结构
+*** 模型
+ - User
+ - User-stub
+ - RPCRuntime
+ - Server-stub
+ - Server 
+
+ Caller                   Network               Callee
+ User         User-stub RPCRuntime         RPCRuntime  Server-stub   Server
+ local call   PackArg   transmit/waiit --> receive  UnpackArg  call/work 
+ local return UnPackRes receive        <-- strsmit  PackRes     return
+*** 拆解/组件
+ Caller-(import)->RpcClient
+       \-(call)->RemoteAPI-->RpcProxy-->RpcInvoker->RpcConnector-\
+                                                                  >RpcChannel(RpcProtocol)
+     /-Callee<-RemoteAPI->RpcInvoker<-RpcProcessor<-RpcAcceptor--/
+ RpcServer
+*** 实现
+ CORBAR IDL(Interfaace Definition Language)
+ Web Service(SOAP)
+ Thrft 

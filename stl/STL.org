@@ -1,0 +1,130 @@
+1. 概论
+   reusability(复用性): subroutine, procedures, functions, classes, library,
+   object oriented, patterns.
+   复用必须建立在标准化之上，STL 标准化 data structures + algorithms;
+   coupling(耦合), interoperability(合作性)，Generic Paradigm(泛型思维)
+   assignable(可被赋值),default constructible(默认构造),equality comparable,
+   less-than-comparable,regular,input(output)-iterator,
+
+   allocator -- containers --- iterators --- algorithms --- functors
+   
+   1. 静态常量在class内直接初始化
+    class A{
+     static const int i = 5;
+     static const char = 'c';
+     //...
+    }
+
+   2. increment/decrement/dereference
+      iterator operate++()
+   3. function call operator()
+ 
+2. allocator 分配器
+   1) 必要接口 allocator::*; see stl/allocator
+      value_type, pointer, const_pointer, reference, size_type, difference_type
+      rebind;
+
+   2) sub-allocation(次配置)
+      vector<int, std::alloc> iv; // 非vector<int, std::allocator<int> >
+      template <class T, class Alloc = alloc> class vector{...};
+
+   3) <memory> --> <stl_construct.h> 定义construct()/destroy()
+        \--> stl_alloc.h 定义alloc
+         \--> stl_uninitialized.h 定义全局函数
+
+   4) 一级、二级分配器
+
+   5) 空间配置函数 allocate()
+
+   6) 空间释放函数 deallocate()
+
+   7) 重新填充free lists
+
+   8) 内存基本处理工具
+      uninitialized_[copy|fill]() // 将内存配置和对象构造行为分开
+   9) 
+3. iterator 迭代器
+   1) iterator 将containers 和 algorithms 分开
+
+   2) Taits 编程技巧
+      template <class T>
+      struct MyIter{
+        typedef T value_type; // 内嵌类型声明
+        //...
+      };
+      template <class I>
+      typename I::value_type
+      func(I ite){...;}
+
+      template<class I>
+      struct iterator_traits{ // 特性
+        typedef typename I::value_type value_type;
+      }
+      template<class I>
+      typename iterator_traits<I>::value_type
+      func(I ite){return *ite;}
+
+      template <class T>
+      struct iterator_traints<T*>{
+        typedef T value_type;
+      }
+      
+      template <class T>
+      struct iterator_traints<const T*>{
+        typedef T value_type;
+      }
+
+   3) value type 迭代器对象类型
+
+   4) difference type 代表连个迭代器之间的距离，容量
+
+   5) reference type 迭代器类别：const 、 non-const
+
+   6) pointer type: operate*() operate->()
+
+   7) iterator_category:
+      Input Iterator: read only
+      Output Iterator: write only
+      Forward Iterator: replace
+      Bidirectional Iterator: 双向移动
+      Random Access Iterator: 随机访问迭代器
+   8) 
+4. sequence container 序列式容器
+   1) array, list, tree, stack, queue, hash table, set, map 
+
+5. associative containers 关联式容器
+   1) key -- value 
+      balanced binary tree: {AVL|RB|AA}-tree
+      RB-tree 红黑树 nodes + edges, root, directed edgs, parent, child, leaf. binary tree has 2 edges;
+      siblings - 兄弟节点；path - 根节点路径； length - 路径长度；depth；height- 节点到最深节点的路径才长度；
+      A(ancestor祖代)->B(descendant 子代)； 节点size 所有子代节点(包括自己)
+
+   2) binary tree
+      - 二叉树非空，则有根节点及左右子树；
+
+      - 左右子树都可能为空；
+
+      - 出入规则：从跟节点开始，键值大向左，键值小向右；
+
+      - 删除规则：无子节点，直接删除；有一个子节点，子节点替代自身；有二个子节点：由子树最小值替代自身
+   3) balanced binary search tree
+      - AVL tree(Adelson-Velskii-Landis tree) 加上额外平衡条件
+        外侧(左左、右右) - Single Rotation
+        
+        内侧(左右、右左) - Double Rotation
+
+      - RB-tree 红黑树
+        1. 每个节点不是红色就是黑色
+
+        2. 根节点为黑色
+
+        3. 如果节点为红，其子节点必须为黑；(新增节点父节点比为黑)
+
+        4. 任一节点至NULL的任何路径，所含之黑节点数必须相同。(新增节点必为红)
+      - 
+        
+   4) 
+        
+6. algorithms 算法
+7. functors(function objects) 仿函数
+8. adapters 适配器

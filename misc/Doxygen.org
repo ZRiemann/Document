@@ -1,0 +1,141 @@
+* Doxygen
+** 指令
+ |-------------------------------------+---------------------------------------------|
+ | 指令                                | 说明                                        |
+ |-------------------------------------+---------------------------------------------|
+ | @file                               | 文档的批注说明                              |
+ | @brief                              | 简易说明                                    |
+ | @param                              | 参数说明                                    |
+ | @return                             | 返回值情况                                  |
+ | @retval                             | 返回值类型                                  |
+ | @note                               | 注解                                        |
+ | @attention                          | 注意 {attention text}                       |
+ | @warning                            | 警告信息                                    |
+ | @enum <value>                       | 引用某个枚举                                |
+ | @var                                | 引用某个变量                                |
+ | @class                              | 引用某个类                                  |
+ | @exception                          | 可能产生的异常描述                          |
+ | @struct                             |                                             |
+ | @union                              |                                             |
+ | @fn                                 |                                             |
+ | @var                                |                                             |
+ | @def                                |                                             |
+ | @typedef                            |                                             |
+ | @file                               |                                             |
+ | @namespace                          |                                             |
+ | @package                            |                                             |
+ | @interface                          |                                             |
+ | \author                             | \author {list of authors }                  |
+ | \version                            | 版本                                        |
+ | \date                               | 日期                                        |
+ | \pre                                | 前置条件                                    |
+ | \bug {bug description}              | 缺陷                                        |
+ | \warning                            | 警告                                        |
+ | \copyright                          | 版权                                        |
+ | \if                                 | \if (section-label)                         |
+ |                                     | \if cond1                                   |
+ |                                     | Only include if cond1 is set.               |
+ |                                     | \endif                                      |
+ | \anchro                             | 锚点 \anchro <word> \ref <workd>            |
+ | \class                              | \class <name> [<head-file>] [<header-name>] |
+ | \def <name>                         | /**@def MAX(x,y)                            |
+ |                                     | *  Computes the maxum of \a x and \a y      |
+ |                                     | */                                          |
+ | \dir [<path fragment>]              |                                             |
+ | \example <file-name>                |                                             |
+ | \namespace <name>                   |                                             |
+ | \relates <name>                     | 关联到某个类                                |
+ | \static                             |                                             |
+ | \details {detailed description }    | 详细信息，可以或略                          |
+ | \par [(title)] {paragraph}          | 段落                                        |
+ | \param [(dir)] <name> {desc}        | @param[in,out] name param descripter        |
+ |                                     | @param[in] x,y,z Coordinates of 3D pos      |
+ | \post {desc of the postcondition}   | 后置条件                                    |
+ | \pre {desc of the precondition}     | 前置条件                                    |
+ | \remark {remark tesxt}              | 评论                                        |
+ | \retval <ret val> {desc}            |                                             |
+ | \sa {ref}                           | \see {ref}                                  |
+ | \since {text}                       | 记录从那个版本或时间开始                    |
+ | \text {par desc a tst case}         | 测试用例                                    |
+ | \throw <exc-obj> {exception desc}   |                                             |
+ | \todo {par desc what is to be done} |                                             |
+ | \version {version number}           |                                             |
+ |-------------------------------------+---------------------------------------------|
+ | Commands to create links            | 创建链接命令                                |
+ | \addindex (text)                    | LaTex index                                 |
+ | \anchro <word>                      | \ref <name> ["(text)"]                      |
+ | \cite <label>                       |                                             |
+ | \link <link-object> \endlink        |                                             |
+ |-------------------------------------+---------------------------------------------|
+ | Commands for visual enhancements    | 视觉增强命令                                |
+ | \a                                  | 控制斜体字\a <word> <a>italics</a>          |
+ | \b                                  | 粗体字显示<b>multiple</b>                   |
+ | \c                                  | 打印机字体<tt>multiple words</tt>           |
+ | \arg                                | 参数列表                                    |
+ | \code ['{'<.cpp/.pb...'}']          | \endcode                                    |
+ | \copydoc[brief\] <link-object>      |                                             |
+ | \dot                                | dot graph                                   |
+ | \msc  \endmsc                       | 消息序列描述图message sequence chart        |
+ | \startuml                           | \enduml                                     |
+ | \e <word>                           | in italics                                  |
+ | \f[ formulas \f]                    | 插入TeX文本公式                             |
+ | \image <format> <file> ["cap."]     | IMAGE_PATH = my_image_dir                   |
+ | \li                                 | 同\arg                                      |
+ | \n                                  | new line                                    |
+ | \p                                  | \c 打印机字体                               |
+ | \[\,@,$,#,<,%,",']                  | 输出'\',字符逃逸                            |
+ | \~[LanguageId]                      | 启动或禁用语言筛选器                        |
+ |-------------------------------------+---------------------------------------------|
+ | Create Lists                        | 创建列表                                    |
+ | -,+,*                               | 生成无序号列表                              |
+ | -#                                  | 生成有序号列表                              |
+ | <table>...</table>                  | 支持html表格                                    |
+ |-------------------------------------+---------------------------------------------|
+http://www.stack.nl/~dimitri/doxygen/manual/commands.html
+** 配置选项
+ |-----------------------+------------------------------------------|
+ | 选项                  | 说明                                     |
+ |-----------------------+------------------------------------------|
+ | DOXFILE_ENCODING      | 文件编码方式，默认UTF-8                  |
+ | PROJEDCT_NAME         | 工程名称                                 |
+ | PROJEDCT_VERSION      | 工程版本号                               |
+ | OUTPUT_DIRECTORY      | 输出路径                                 |
+ | OUTPUT_LANGUAGE       | 输出语言，默认English                    |
+ | EXTRACT_ALL           | NO-只解释Doxygen格式                     |
+ | EXTRACT_PRIVATE       | 是否解析私有成员                         |
+ | EXTRACT_STATIC        | 是否解析静态项                           |
+ | EXTRACT_LOCAL_CLASSES | 是否解析源文件(cpp)中定义的类            |
+ | INPUT                 | 指定程序代码文件路径                     |
+ | FILE_PATTERNS         | 指定解析文件类型*.c,*.cpp,*.h            |
+ | RECURSIVE             | YES-搜索子目录 NO-...                    |
+ | EXCLUDE               | 排除指定文档或目录                       |
+ | EXCLUDE_PATTERNS      | 排除指定文档模式                         |
+ | SOURCE_BROWSER        | YES-产生源文件列表                       |
+ | INLINE_SOURCE         | YES-文档中包含实现代码                   |
+ | ALPHABETCAL_INDEX     | YES-生成字母排序列表                     |
+ | GENERATE_HTML         | YES-生成html格式                         |
+ | HTML_OUTPUT           | OUTPUT_DIERCTORY/HTML_OUTPUT             |
+ | GENERATE_HTMLHELP     | YES-生成.chm                             |
+ | HTML_FILE_EXTENSION   | .html                                    |
+ | HTML_HEADER           | 设置HTML <head>...</head>                |
+ | HTML_FOOTER           | 设置HTML footer                          |
+ | HTML_STYLESHEET       | 指定CSS                                  |
+ | GENERATE_HTMLHELP     | YES-产生chm索引                          |
+ | GENERATE_TREEVIEW     | YES-产生一个树状结构                     |
+ | TREEVEW_WIDTH         | 树状结构宽度                             |
+ | GENERATE_LATEX        | YES-产生LaTeX                            |
+ | LATEX_OUTPUT          | OUTPUT_DIRECTORY/LATEX_OUTPUT(def:latex) |
+ | LATEX_CMS_NAME        | LaTeX名称(def:latex)                     |
+ | GERERATE_RTF          |                                          |
+ | RTF_OUTPUT            | def:rtf                                  |
+ | GENERATE_MAN          | YES-Unix Man Page                        |
+ | MAN_OUTPUT            | def:man                                  |
+ | GENERATE_XML          |                                          |
+ | ENABLE_PREPROCESSING  | YES-激活C前置处理器处理原始档            |
+ | PREDEFINED            | gcc -D                                   |
+ | CLASS_DIAGRAMS        | Graphviz 下载dot工具                     |
+ | HAVE_DOT              | YES-使用dot生成图形(覆盖CLASS_DIAGRAMS)  |
+ | CLASS_GRAPH           | YES+HAVE_DOT:YES: 生成继承结构图         |
+ | GRAPHICAL_HIERARCHY   | YES: 会在一个图像表示的类图结构          |
+ |-----------------------+------------------------------------------|
+

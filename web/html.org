@@ -1,0 +1,616 @@
+* 2 HTML 
+** 2.1 标签和元素
+ - 标签(tag)
+   <标签名></标签名> ; 容器
+   <br><hr> ; 不配对，空标签
+ - 元素(item)
+   标签中嵌套的内容就是元素
+ - 属性(attribute)
+   <attr>="value"
+   空格分开多个标签
+   属性可使用(推荐)"" 或 ''
+ - 颜色
+   bgcolor="#00ff00"
+ - 注释
+   <!-- 注释 -->
+ - 字符实体
+   &lt;
+   &#60;
+   |------+------+----------+--------|
+   | 显示 | 描述 | 实体名称 | ascii  |
+   |------+------+----------+--------|
+   |      | 空格 | &nbsp;   | &#160; |
+   | <    |      | &lt;     |        |
+   | >    |      | &gt;     |        |
+   | &    |      | &amp;    |        |
+   | "    |      | &quot;   |        |
+   | `    |      | &apos;   |        |
+   |      | 商标 | &reg;    |        |
+   |      | 章节 | &sect    |        |
+   |      | 版权 | &copy    |        |
+   |      | 乘号 | &times   |        |
+   |      | 除号 | &divide  |        |
+   |------+------+----------+--------|
+** 2.2 主体结构
+   <html>
+     <head>
+      <title>必须有标题</title>
+      <base href="URL" target="WINDOW_NAME"/>
+      <link rel="stylesheet" type="text/css" href="style.css"/>
+      <meta name="keywords" content="meta keywords"/>
+      <meta name="description" content="meta description"/>
+      <object></object>
+      <style></style>
+      <script></script>
+      
+     </head>
+     <body>
+     </body>
+   </html>
+ - <head>
+   如上；
+ - <body>
+   常用属性
+   |--------------+--------------------------|
+   | text         | 页面文字颜色             |
+   | bgcolor      | 页面背景颜色             |
+   | background   | 页面背景图像             |
+   | bgproperties | 背景图像固定             |
+   | link         | 默认链接颜色             |
+   | alink        | 鼠标单击链接时的链接颜色 |
+   | vlink        | 访问后链接文字颜色       |
+   | topmargin    | 上边距                   |
+   | leftmargin   | 左边距                   |
+   |              |                          |
+   | id           | 设定标签ID               |
+   | name         | 标签名称                 |
+   | class        | 类选择器                 |
+   | style        | 样式属性                 |
+   |              |                          |
+** 2.3 格式标签
+   | 标签     | 描述     |
+   |----------+----------|
+   | <br>     | 换行     |
+   | <p>      | 换段落   |
+   | <center> | 居中     |
+   | <pre>    | 预格式化 |
+   | <li>     | 列表     |
+   | <ul>     | 无序列表 |
+   | <ol>     | 有序列表 |
+   | <hr>     | 水平分割线 |
+   |          |            | 
+** 2.4 文本标签
+   | 标签    | 描述         |
+   |---------+--------------|
+   | <hn>    | 标题字标记   |
+   | <b>     | 粗体字       |
+   | <i>     | 斜体字       |
+   | <u>     | 下划线       |
+   | <sub>   | 文字下标字体 |
+   | <sup>   | 文字上标字体 |
+   | <font>  | 字体         |
+   | <tt>    | 打字机文字   |
+   | <cite>  | 引证、举例   |
+   | <em>    | 强调斜体     |
+   | <stong> | 强调粗体     |
+   | <small> | 小型字体     |
+   | <bit>   | 大型字体     |
+   |         |              |
+** 2.5 图像和链接
+ - 插入图片
+   <img src=URL alt=text width=num height=num border=num/>
+   + alt 提示文字
+   + border 边框宽度 border="2"
+   + width 图片宽度
+   + height 图片高度
+ - 建立锚点和超链接
+   <a href=URL name="name" target="target">链接文字</a>
+   + target 
+     _self ;default 当前窗口打开
+     _blank ; 新窗口打开
+     _parent ; 父窗口打开
+     _top ; 顶层窗口打开
+** 2.6 使用HTML表格
+   | 表格        | 描述                 |
+   |-------------+----------------------|
+   | <table>     | 开始表格             |
+   | <caption>   | 表格名称             |
+   | <tr>        | 行标记               |
+   | <th>/<td>   | 单元格标记           |
+   |             |                      |
+   | 属性        | 描述                 |
+   | align       | 对齐                 |
+   | border      | 外边框宽度           |
+   | width       | 表格宽度             |
+   | height      | 高度                 |
+   | cellspacing | 单元格之间的间距(2)  |
+   | cellpadding | 内容与边框之间的间距 |
+   |             |                      |
+   | 列属性      |                      |
+   | width/he..  |                      |
+   | avalign     | 水平对齐             |
+   | valign      | 垂直对齐             |
+   | rowspan     | 跨越行数             |
+   | colspan     | 跨越列数             |
+** 2.7 框架结构
+   - <frameset> 划分框架
+     + cols 
+     + rows %分隔上下框
+     + frameborder 0-无边框 1-有边框
+     + border 边框粗细 5
+   - <frame> 子窗口
+     + src 指定文件地址
+     + name 框架窗口名称
+     + noresize 标记不能调整窗口大小
+     + scroling auto自动 Yes有 No无
+     + frameborder
+     + border
+** 2.8 表单设计
+   - <form> 表单
+     + <input>
+       <input type="text" name="field_name" value="field_value" size="n" maxlength="n">
+       <input type="password" name="field_name" value="field_value" size="n" maxlength="n">
+       <input type="submit" name="fname" value="fvalue">
+       <input type="reset" name="" value="">
+       <input type="button" name="" value="">
+       <input type="radio" name="" value="" checked>
+       <input type="checkbox" name="" value="" checked>
+       <input type="hidden" name="" value="">"
+     + <select>
+       <select name="" size="" multiple>
+         <option value="value" selected>选项A</option>
+         <option value="value" selected>选项B</option>
+       </select>
+     + <textarea>
+       <textarea name="" rows="" cols="" value="">
+       </textarea>
+     + 属性
+       <form action="login.php" method="post">
+       - method GET(default)/POST
+       - action URL(处理程序名)
+       - enctype 表单编码方式
+       - target 指定目标窗口或目标帧 
+
+* 3 CSS 层叠样式表
+** 3.1 简介
+   Cascading Style Sheet 
+   - 精确定位
+   - 分离内容和格式
+   - <style> 内嵌到HTML 或 单独保存
+     <style>
+       p{
+         font-size:30px;
+         color:yellow;
+         border:2px solid blue;
+         text-align:center;
+         background:green
+       }
+     </style>
+** 3.2 规则
+   选择器 + 声明
+   <h1 style="font-size:x-large;color:red">一级标题</h1>
+   - 长度单位
+   - 颜色单位
+     #rrggbb
+     rgb(r,g,b)
+     rgb(r%,g%,b%)
+   - 链接到外部样式表
+     <link rel="StyleSheet" href="style.css" type="text/css">
+** 3.4 选择器
+ - HTML选择器
+   p{text-ident:3em}
+   h1{color:red}
+ - 类选择器
+   p.dart-row{background-color:#EAEAEA;}
+   p.light-row{background-color:#F8F8F8;}
+   <p class="dark-row">第一段</p>
+   <p class="light-row">第二段</p>
+ - ID选择器
+   #main{text-ident:3em}
+   <p id="main">文本缩进3em</p>
+ - 关联选择器
+   table a {color:red} /*只有在表格<table> 内的 <a> 样式改变*/
+ - 组合选择器
+   h1,h2,h3,h4{color:red;font-family:sans-serif}
+ - 伪元素选择器
+   a:link{color:red}
+   a:hover{color:yellow;font-size:125%;}
+   a:active{color:blue;}
+   a:visited{color:blue;}
+** 3.5 属性和值
+ - 字体属性
+ - 颜色
+ - 背景
+ - 文本
+ - 边框
+   border-style:solid;
+ - 光标
+   p{cursor:pointer/hand/crosshair/text/wait/help;}
+ - 列表
+* 4 DIV+CSS
+  div/span 
+* PHP 基础篇
+** 5 搭建PHP开发环境
+  ubuntu:
+  $ sudo apt-
+** 6 PHP基础语法
+ - 服务器端语言
+   前端语言：HTML/CSS/JavaScript 
+   服务器端: PHP
+ - 嵌入到HTML
+   CSS/JavaScript可浏览器解析;
+   PHP服务器端解析；
+ - 脚本语言
+ - PHP功能
+   Wab开发服务器端脚本程序；
+   + 收集表单数据
+   + 生成动态页面
+   + 字符串处理
+   + 动态输出图像
+   + 处理服务器段文件系统
+   + 数据库支持
+   + 会话跟踪
+   + MXL处理
+   + 支持大量网络协议
+   + 其他操作
+ - 第一个脚本
+ - 变量
+   $<name> = <value>
+   $int = 100;
+   $str = "string";
+   $bool = true;
+   $double = 99.99
+   $var = $var1 = $int
+   
+   unset(); // 释放变量
+   isset(); // 测试变量
+   empty(); // 测试变量空
+
+   变量名区分大小写；
+   内置函数不区分大小写；
+   不能以数字打头；
+   不能带空格；
+
+   + 可变变量
+     $hi = "hello";
+     $$hi = "world";
+     echo "$hi $hello<br>";
+     echo "$hi ${$hi}<br>"; // hello world
+
+   + 变量总是传值赋值；
+
+   + &引用赋值；
+     $foo = "bob";
+     $bar = &$foo;
+     $bar = "My name is bob";
+     echo $bar<br>;
+     echo $foo<br>;
+
+   + 变量类型(php 根据程序上下文确定)
+     var_dump();
+     - 标准类型
+       + boolean
+       + integer
+       + float
+       + string 
+         $foo=123
+         "$foo" // 输出变量值 123
+         '$foo' // 输出变量名 $foo
+         <<<EOT
+           multiline
+           多行文本
+         EOT;
+     - 复合类型
+       array 
+
+       $arr = array("foo"=>"bar", 12=>true);
+       print_r($arr);
+       echo $arr["foo"];
+       echo $arr[12];
+
+       object 
+       
+       class Persion{
+       var $name;
+       function say(){
+       echo "$name Doing foo.";
+       }
+       }
+       $p = new Person;
+       $p->name = "Tom";
+       $p->say();
+     - 特殊类型
+       resource 
+       保存到外部资源的一个引用;
+       文件、数据库链接、画布区域等特殊句柄；
+       $file_handle = fopen("info.txt", "w");
+       var_dump($file_handle); // resource(3) of type (stream)
+
+       NULL
+       $a=NULL;
+       $b;
+       $c="ccc";
+       unset($
+     - 伪类型
+       mixed
+         gettype();str_replace();
+       number integer/float
+       callback 除array(),echo(),empty(),eval(),exit(),isset(),list(),print(),unset();
+     - 类型转换
+       自然转换
+       强制类型转换
+       $foo=10;
+       $bar=(boolean)$foo;
+     - 类型测试函数
+       is_bool/int/float/string/array/object/resource();
+       is_null/scalar/number/callable();
+     - 常量(只能是标量: boolean/integer/float/string)
+       boolean define(string name, mixed value, [, bool case_insensitive]);
+       define("CON_INT", 100);
+       if(defined("CON_INT")){
+       echo CON_INT;}
+       | 预定义常量         | 常量值     | 说明 |
+       |--------------------+------------+------|
+       | PHP_OS             | UNIX/WINNT |      |
+       | PHP_VERSION        |            |      |
+       | TRUE/FALSE         |            |      |
+       | DIRECTORY_SPARATOR | \or/       |      |
+       | PATH_SEPARATOR     | ;or:       |      |
+       | E_ERROR            | 1          |      |
+       | E_WARNING          | 2          |      |
+       | EPARSE             |            |      |
+       | E_NOTICE           |            |      |
+       | M_PI               | 3.1415926  | pi   |
+       | __FILE__           |            |      |
+       | __LINE__           |            |      |
+       | __FUNCTION__       |            |      |
+       | __CLASS__          |            |      |
+       | __METHOD__         |            |      |
+     - 运算符
+       +、-、*、/、%、++、--
+       str1.str2
+       =/+=/-=/*=//=/%=/.=
+       > < >= <= == === <> != !==
+       and && or || not ! xor
+       & | ^ ~ <(<) (>)>
+       ?:
+       `` ; `ls -la`
+       @ $sum=100/0 ; 忽略除0错误
+ - 流程控制
+   + 条件控制
+     if(exp){}elseif{}else{}
+     switch(exp){
+     case val1:
+     //...
+     break;
+     devault:
+     //...
+     }
+   + 循环
+     while(exp){}
+     do{}while(exp);
+     for(;;){}
+     break;
+     continue;
+     exit;
+ - 函数定义
+   + 声明
+     function <name>([arg1, arg2, ... ,argn]){
+       // body 
+       static $a=0; // 静态变量
+       return value;
+     }
+
+   + 默认参数、可变参数
+     func_num_args();
+     func_get_arg($i);
+
+   + 回调函数 
+     mixed funName(callback arg)
+     call_user_func_array() // 自定义回调函数
+     静态函数和对象方法回调
+
+   + include()/requare()
+     include() lazy load;
+     requare() preload;
+ - 数组和数据结构
+   + indexed 索引数组
+   + associatev 关联数组
+   + 多维数组
+     array{
+       array{},
+     };
+   + 遍历
+     mysql_fetch_row();
+     for($i=0; $i<count($arr);$i++){
+     echo $arr[$i];
+     }
+     foreach(arr as $value){
+       // body
+     }
+     list()/each()/while()
+   + 数组指针控制函数
+     current();
+     key();
+     next();
+     prev();
+     end();
+     reset();
+   + 预定义数据 
+     $_SERVER
+     $_ENV 
+     $_GET 
+     $_POST 
+     $_REQUEST 
+     $_FILES 
+     $_COOKIE 
+     $_SESSION 
+     $GLOBALS
+   + 数组操作函数
+     ...
+ - 面向对象程序设计 
+   + 类声明
+     [abstract|final] class Person{
+     function __construct($name=""){
+       $this->name=$name;
+     }
+     function __destruct(){
+       echo 'bye '.$this->name.'<br>';
+     }
+     function say(){
+     echo 'my name is'.$this->name.'<br';
+     }
+     var $name;
+     public $pub_val;
+     private $pri_val;
+     static $s_val;
+     }
+
+     class Student extends Person{
+     function __construct($name, $school){
+       parent::__construct($name);
+       self::$count++;
+       $this->school = $school;
+     }
+     function __clone(){
+       $this->name = "I'am clone of ".$that->name;
+     }
+     public __toString(){
+       return $this->name;
+     }
+     function __call($fun, $args){
+       // 调用不存在方法是自动进入该方法
+     echo 'function '.$fun.'not exists <br>';
+     print_r($args);
+     }
+     function __sleep(){
+     $arr=array("name");
+     return($arr);
+     }
+     function __wakeup(){
+     $this->name="aaa"; // 可对对象重新赋值;
+     }
+     static $count;
+     const CONSTANT='constant value';
+     public $school;
+     }
+
+     $man = new Student;
+     if($msn instanceof Person){
+       echo "$man is Person";
+     }
+     $man1 = clone $man;
+
+     function __autoload($className){
+     include(strtolower($className).'.class.php');
+     }
+
+     <?php 
+     // serialize.php
+     require "person.class.php";
+     $person = new Person("name");
+     $person_string = serialize($person);
+     file_put_contents("file.txt", $person_string);
+     ?>
+     <?php
+     // unserialize.pnp
+     require "person.class.php";
+     $person_string = file_get_contents("file.txt");
+     $person = unserialize($person_string);
+     $person->say();
+     ?>
+   + 预定义方法
+     __set(name, value);
+     __get();
+     __call();
+     __toString();
+     __autoload();
+   + 接口技术
+     interface <name>{
+     const CONSTANT = "CONSTANT value";
+     // member 
+     // function 
+     }
+     class Cname implements Iname1, Iname2, Iname3{}
+ - 字符串处理
+ - 正则表达式
+   preg_match/match_all/replace/split/grep/replace_callback();
+   '/<a.*?(?:|\\t|\\r|\\n)?href=[\'""]
+** 7 PHP常用功能模块
+*** 7.1 错误异常处理 
+*** 7.2 日期时间
+*** 7.3 文件系统
+ - 文件管理
+    filetype('/etc/passwd');
+    // Block/Char/Dir/Fifo/File/Link/Unknow
+    file_exists()
+    file_size()
+    is_readable()
+    is_wiritable()
+    is_executable()
+    file[c|n|a]time()
+    stat()
+    
+    basename();
+    dirname();
+    pathinfo();
+
+    opendir()
+    readdir()
+    closedir()
+    rewinddir()
+    
+    mkdir()
+    rmdir()
+    unlink()
+    
+    copy()
+    
+    fopen()
+    fclose();
+    fwrite();
+    ftell()
+    fseek()
+    frewind()
+    flock(handle, LOCK_SH/EX/UN/NB)
+
+    allow_url_fopen 
+ - 文件上传
+   <form action='upload.php' method='post' enctype='multipart/form-data'>
+   <input type='hidden' name="MAX_FILE_SIZE" value='1000000'>
+   选择文件:<input type='file' name='myfile'>
+   <input type='submit' value='上传文件'>
+   </form>
+   
+   is/move_uploaded_file()
+   <?php
+   $allowtype=array("gif", "png", "jpg", "cpp", "c", "h", "hpp"); // 设置允许上传类型
+   $size=2*1024*1024;
+   $path="./uploads";
+   if($_FILES['myfile']['error']>0){
+   echo '上传错误';
+   }
+   $hz = array_pop(expload(".", $_FILES['myfile']['name']));
+   if(!in_array($hz, $allowtype)){
+   die("not allow file type <b>($hz)</b>")
+   }
+   $filename = date("YmdHis").rand(100,999).".".$hz;
+   if(is_uploaded_file($_FILES['myfile']['tmp_name'])){
+   if(!move_upload_file($_FILES['myfile']['tmp_name'], $path."/".$filename)){
+   die("不能移动文件到指定目录");
+   }
+   }
+   ?>
+
+   文件下载
+   <a href="http://path/book.rar">下载文件</a>
+ - 动态图片处理
+   GD图片库
+ - 数据库开发
+   
+*** 高级开发
+ - memcache
+ - 会话控制
+ - 模板引擎
+ - MVC模式
+

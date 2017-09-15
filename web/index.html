@@ -1,0 +1,98 @@
+<html>
+    <head>
+        <!-- html 注释  -->
+        <title>title 标题</title>
+    </head>
+    <body bgcolor="f0f0f0" text="#0f0f0f">
+        <center><h1>first html</h1></center>
+        <hr width=80%>
+        <p>black background , wight text</p>
+        <p> 段落 </p>
+        <hr>
+        <pre>
+                           aaaa
+               bbbb      cccc              dddd
+                          eeee
+        </pre>
+        <hr>
+        无序列表:
+        <ul>
+            <li>第一项</li>
+            <li>第二项</li>
+        </ul>
+        有序列表:
+        <ol>
+            <li>第一项</li>
+            <li>第二项</li>
+        </ol>
+        <hr>
+        <center>文本标签<br>
+   | 标签    | 描述         |<br>
+   |---------+--------------|<br>
+   | &lt;hn&gt;    | 标题字标记   |<br>
+   <b>| &lt;b&gt;     | 粗体字       |</b><br>
+   <i>| &lt;i&gt;     | 斜体字       |</i><br>
+   <u>| &lt;u&gt;     | 下划线       |</u><br>
+   <sub>| &lt;sub&gt;   | 文字下标字体 |</sub><br>
+   <sup>| &lt;sup&gt;   | 文字上标字体 |</sup><br>
+   <fond face="楷体" color="blue" size="5">| &lt;font&gt;  | 字体         |</fond><br>
+   <tt>| &lt;tt&gt;    | 打字机文字   |</tt><br>
+   <cite>| &lt;cite&gt;  | 引证、举例   |</cite><br>
+   <em>| &lt;em&gt;    | 强调斜体     |</em><br>
+   <strong>| &lt;stong&gt; | 强调粗体     |</strong><br>
+   <small>| &lt;small&gt; | 小型字体     |</small><br>
+   <big>| &lt;bit&gt;   | 大型字体     |</big><br>
+   |         |              |<br>
+        </center>
+        <hr>
+        <h3>建立锚点和超链接</h3>
+        <!-- a name="声明一个锚点"" -->
+        <a href="http://bbs.lampbrother.net/index.php" target="_blank">绝对URL</a><br>
+        <a href="#声明一个锚点">链接到当前页面的锚点位置</a><br>
+
+        <hr> <!-- 分隔  -->
+        <h3>表格示例</h3>
+        <table width="400" border="5" cellpadding="3" cellspacing="0" align="center">
+            <caption><h4>学员表格</h4></caption>
+            <tr>
+                <th colspan="3">学员基本信息</th>
+                <th colspan="2">成绩</th>
+            </tr>
+            <tr>
+                <th>姓名</th>
+                <th>性别</th>
+                <th>专业</th>
+                <th>课程</th>
+                <th>分数</th>
+            </tr>
+            <tr align="center">
+                <td>小风</td>
+                <td>男</td>
+                <td rowspan="2">计算机</td>
+                <td rowspan="2">PHP开发</td>
+                <td>86</td>"
+            </tr>
+            <tr align="center">
+                <td>小B</td>
+                <td>女</td>
+                <td>86</td>"
+            </tr>
+        </table>
+        <hr>
+        <?php
+        $sysos = $_SERVER["SERVER_SOFTWARE"]; // 获取服务器标识字符串
+        $sysversion = PHP_VERSION; // PHP版本
+        mysql_connect("localhost", "root", "root");
+        $mysqlinfo=mysql_get_server_info();
+        if(function_exists("unisys")){
+           $unisys=unisys();
+        }slse{
+           $unisys="未知";
+        }
+        // 以HTML表格形式输出到客户端
+        echo "<table align=center cellspacing=0 cellpadding=0>";
+        echo "<caption><h2>系统信息</h2></caption>";
+        echo "<tr><td>Web服务器:</td><td>$sysos</td></tr>";
+        ?>
+    </body>
+</html>

@@ -1,0 +1,71 @@
+* linux epoll
+** interface
+   #include <sys/epoll.h>
+
+   int epoll_create(int size);
+   int epoll_create1(int flags); // EPOLL_CLOEXEC/0
+
+   int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+   event->events:
+   EPOLLIN ：表示对应的文件描述符可以读（包括对端SOCKET正常关闭）；
+   EPOLLOUT：表示对应的文件描述符可以写；
+   EPOLLPRI：表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）；
+   EPOLLERR：表示对应的文件描述符发生错误；
+   EPOLLHUP：表示对应的文件描述符被挂断；
+   EPOLLET： 将EPOLL设为边缘触发(Edge Triggered)模式，这是相对于水平触发(Level Triggered)来说的。
+   EPOLLONESHOT：只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里
+
+   int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+   int epoll_pwait(int epfd, struct epoll_event *events, int maxevents, int timeout, const sigset_t *sigmask);
+
+** sample
+   void client(){
+
+     int fd = epoll_create1(EPOLL_CLOEXEC);
+     if(-1 == fd){
+       return; // create failed
+     }
+     close(fd);
+   }
+
+   void server(){
+     int ret;
+     struct epoll_event epev;
+     int fd = epoll_create1(EPOLL_CLOEXEC);
+     if(-1 == fd){return;}
+
+     epev.data.fd = fd;
+     epev.events = EPOLL[IN|OUT|PRI|ERR|HUP|LET|LONESHOT]
+     ret = epoll_ctl(fd, EPOLL_CTL_ADD, new_fd, &epev);
+     close(fd);
+   }
+
+** Design module
+1. 退出模式，通过管道发送退出指令；(OK)
+2. 缓冲模式
+   1) ring buffer: 缺点，内存复制；优点，处理分包方便；
+   2) (zit)设置套接字读写缓冲区+queue buf：优点，无内存复制；缺点：分包方式需要合理设计；
+3. IO模式：
+   - 单线程IO，优点，安全设计方便；
+   - (zit)多线程IO，考虑竞态，设计辅助(IO效率待验证)
+     struct zemsg_t{
+       zsockaddr_in cli_addr; // 客户段地址
+       char *recv_buf; // 接收缓冲区(处理完所有包后，回收缓冲区；避免大量低通信量连接占有过多内存)
+       char *send_buf; // 发送缓冲区
+       zatm_t status; // 0 - 空闲状态 1 - 忙碌状态 (eof --(in lose)--> idel)
+     }
+   - 状态定义(低概率竟态，废弃)
+     (idel) ----> (ready) ----> (busy) ----> (idel)
+     in buffer nodify --> |(idel) --> (ready) / (busy) --> (pending)
+     替代方案：
+     hits 计数方案;
+     
+4. 心跳及会话超时关闭：时间点map插入及删除；
+5. 统计数据：
+   1) 连接统计：
+      - 活动连接数
+      - 历史连接数
+      - 包平均大小
+      - 接收包数
+      - 发送包数
+   2) 

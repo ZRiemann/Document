@@ -1,0 +1,165 @@
+后台系统性能统计系统设计
+* 前言
+《unix编程艺术》上关于性能优化的总结：
+
+ - 最有效的优化往往是优化之外的，如清晰干净的设计；
+ - 最有效的优化就是不优化，摩尔定律会为你优化；
+ - 如果确定要优化，必须找到真正的瓶颈；
+** 动机
+ - 我们需要知道系统的吞吐量，以此参数做部署等；
+ - 实时了解各个系统组件的性能，某组件发生故障，可以及时发现；
+ - 获得程序接口调用热点，调用多且慢的接口才需要优化；
+** 目标
+ - 可以汇总性能数据，如定时将1小时内说有接口调用开销、次数等数据汇总到文件
+ - 可以非常方便的与逻辑层接口集成，比如在现有接口增加一行代码即可
+ - 直观的报表，性能数据写入文件必须按照通用的格式，方便工具分析数据，生成报表
+** 性能分析工具区别
+ - 随守护进程长时间运行
+ - 用户自定义分析内容
+ - 支持排查线程卡死，内存泄漏，统计用户数据；
+* 设计
+** 用户功能
+ - 原始数据输出到指定目录，便于后期分析；
+ - 支持分析工具生成报表；
+ - 辅助定位线程卡住问题；
+** 设计功能
+ - 主线程(协程化)后台收集统计信息；
+ - 收集模块接口的调用总数、调用频率、 平均耗时统计；
+** 设计推演
+   resource + operaate and thread + stack map
+
+     fn[0] fn[1] ... fn[n]
+     res[0]   X     O   ...
+     res[1]   O     O   ... O
+     ...      ...
+     stack[0] stack[1] ... stack[n]
+     thr[0] r0f1     r1f0
+     thr[1] r1f1     r1fn
+
+# +begin_src C++ :includes <stdio.h> 
+   // zit_statistic.h
+   zstat_res_t** g_stat_res;
+   #define SRI_GLOBAL 0 // statistic resource index global function
+   #define SRI_A 1 // statistic resource index class A functions
+   #define SRI_B 2 // statistic resource index class B funcitons
+   #define SRI_C 3 // ...
+   #define SRI_SIZE 4
+   
+   #define SFI_A_fa 0 // statistic function index A::fa
+   #define SFI_A_fa1 1 // statistic function index A::fa1
+   #define SFI_A_SIZE 3
+
+   #define SFI_B_fb 0
+   #define SFI_B_fb1 1
+   #define SFI_B_SIZE 2
+
+   zstat_hots_t *zstat_hots_alloc(int size){
+     calloc(1, sizeof(zstat_res_t) + SFI_A_SIZE);
+   }
+   void zstat_hots_free(zstat_hots_t * hots){
+     
+   }
+
+   zstat_init(){
+     g_stat_res = (zstat_res_t**)calloc(SRI_SIZE, sizeof(zstat_res_t*));
+     g_stat_res[SRI_GLOBAL] = NULL;
+     g_stat_res[SRI_A] = zstat_hots_alloc();
+   }
+
+   zstat_fini(zstat_res_t **ress){
+     for(int i = 0; i < SRI_SIZE; ++i){
+       zstat_hots_free(ress[i]);
+     }
+     free(ress);
+   }
+   
+   zstat_push_hots(){
+   }
+   zstat_pop_hots(){
+   }
+
+   class  Hits{
+     zstat_hits_t *hits;
+     ztime_stamp_t begin, end;
+     uint64_t interval;
+     int idx;
+     ztid_t tid;
+   public:
+     Hits(int idxRes, int idxFun){
+       hits = g_stat_res[sri]->hits[sfi];
+       tid = thread_self();
+       idx = (*zatm_inc(hits->stack_idx)) & 0xff;
+       hits->tid_stack[idx] = (tid | 0x100000000);
+       ztime_stamp(&begin);
+     }
+     ~Hits(){
+       ztime_stamp(&end);
+       ztime_interval(&begin, &end, &interval);
+       hits->total_time += interva;
+       zatm64_inc(hits->hits);
+       idx = (*zatm_inc(hits->hots_idx)) & 0xff;
+       hits->hotspot[idx] = begin;
+       hits->real_time[idx] = interval;
+       idx = (*zatm_inc(hits->stack_idx)) & 0xff;
+       hits->tid_stack[idx] = tid;
+     }
+   };
+
+   // zit.h
+   class A{
+   public:
+     fa(...){
+       Hots hots(SRI_A, SFI_A_fa);
+       fa1(hint, ...);
+     }
+
+     fa1(...){
+       Hots hots(SRI_A, SFI_A_fa1);
+       //...
+     }
+   };
+
+   class B{
+     fb(...){
+       Hots hots(SRI_B, SFI_B_fb);
+       // ...
+     }
+
+     fb1(...){
+       Hots hots(SRI_B, SFI_B_fb);
+     }
+   };
+
+   int porc(void *param){
+     A a;
+     B b;
+     while(true){
+       a.fa(...);
+       a.fa1(...);
+       b.fb(...);
+       b.fb1(...);
+     }
+     return 0;
+   }
+
+   main(){
+     thr_t thr1;
+     thr_t thr2;
+     // init static environments;
+     Astat astat;
+     A.statRes = &astat;
+     Bstat bstat;
+     B.statRes = &bstat;
+
+     // run stat
+     create_thread(thr1, proc);
+     create_thread(thr2, proc);
+     while(true){
+       sleep(1000);
+       zstat_dump();
+     }
+
+     // fini static enviroments;
+     //...
+   }
+# +end_src

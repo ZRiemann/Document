@@ -1,0 +1,8 @@
+* plan 
+
+* schedule 
+1. <2017-07-17 Mon>
+   - test php_zmq;
+   - test php_json;
+2. <2017-08-15 Tue> linux/core_dump.sh
+3. 
