@@ -1,0 +1,118 @@
+* 基础
+$1. emacs
+https://github.com/redguardtoo/emacs.d.git
+$2. 杂项
+
+M-x ielm
+ 打开Emacs Lisp交互解释器；
+M-x eval-buffer
+ 重新解释运行一遍当前buffer的内容；
+
+el-get
+ 扩展包管理
+ M-x el-get -install jedi
+
+window分割改建
+(global-set-key (kbd "M-1") 'delete-other-windows)
+(global-set-key (kbd "M-2") 'split-window-below)
+(global-set-key (kbd "M-3") 'split-window-right)
+(global-set-key (kbd "M-0") 'delete-window)
+
+eval-region
+(define-key emacs-lisp-mode-map (kbd "C-x C-r") 'eval-region)
+(define-key lisp-interactione-mod-map (kbd "C-x C-r") 'eval-region)
+
+Emacs Client/Server 加速打开Emacs
+ emacs --daemon
+ ~/.bashrc
+  alias ec='emacsclient -t -a=""'
+  alias se='SUDO_EDITOR="emacsclient -t" sudo -e'
+ ec <filename>
+
+宏
+ 录制 C-x [(|)]
+保存宏
+ M-x name-last-kbd-macro
+ M-x insert-kbd-macro
+
+插件
+Helm/smex/session/undo-tree
+
+UI定制
+
+* Emacs Lisp
+- *Function from*:
+  (message "Hello word %d" (+ 10 2))
+- *Special form*:
+  (if (condition) (true-case) (false-case))
+  (and (condition) (condition1) ...)
+- *Macro form*:
+  (defmacro ())
+** Function:
+- *(setq [SYM VAL] ...)* 配置值
+  (setq global-mark-ring-max 50000)
+- *(load FILE &optional NOERROR NOMESSAGE NOSUFFIX MUST-SUFFIX)*
+  加载文件 xxx.elc > xxx.el
+  *FILE* looked up in variable *load-path*
+  *&optional* everything after &optional is optional
+
+  ;; first try to load $@.elc, if not find try to load $@.el
+  (load (substitute-in-file-name "$HOME/.emacs.d/module"))
+- *(require FEATURE &optional FILENAME NOERROR)*
+  加载工具包
+  (require '<installed-package) ;; load a package 
+  (require 'volatile-hightlights)
+- *(provide FEATURE &optional SUBFEATURES)*
+  提供可加载特性，工具包最后一行添加。(load ...) + (require '...)
+  (provide 'setup-editing)
+- *(add-to-list LIST-VAR ELEMENT &optional APPEND COMPARE-FN)*
+  添加 ELEMENT 到 LIST—VAR.
+  (add-to-list 'load-path "~/.emacs.d/personal")
+- *(add-hook HOOK-FUNCTION &optional APPEND LOCAL)*
+  A *hook* is a Lisp variable which holds a list of functions
+  (add-hook 'prog-mode-hook 'linum-mode)
+- *(global-set-key KEY COMMAND)*
+  (global-set-key (kbd "C-x C-b") 'ibuffer)
+  (global-set-key "\C-x\C-b" 'ibuffer)
+  (global-set-key [?\C-x?\C-b] 'ibuffer)
+  (global-set-key (kbd "<f3>") 'kmacro-start-macro-or-insert-counter)
+- *(define-key KEYMAP KEY DEF)*
+  (define-key dired-mode-map (kbd "e") 'wdired-change-to-wdired-mode)
+- *(defalias SYMBOL DEFINITION &optional DOCSTRING)*
+  重命名，常用于缩写命令
+  Remane a command. It is usually used to abbreviate command name.
+  (defalias 'yes-or-no-p 'y-or-n-p) ; y or n is enough
+  (defalias 'list-buffers 'ibuffer) ; always use ibuffer
+  (defalias 'eb 'eval-buffer)
+  (defalias 'er 'eval-region)
+  (defalias 'ed 'eval-defun)
+  (defalias 'wsm 'whitespace-mode)
+- *(mapc FUNCTION SEQUENCE)*
+  Mapc calls the function on each element of the sequence.
+  ;; load every .el file inside ~/.emacs.d/custom/
+  (mapc 'load (directory-files "~/.emacs.d/custom" t ".*\.el"))
+- *(defun NAME ARGLIST &optional DOCSTRING DECL &rest BODY)*
+  defun is a LIST macro that allow you to define a function, like any other language.
+  A function is a collection of Lisp forms to be executed. The return value is 
+  the last form.
+  (defun demo () (message "Hello World" number string))
+  (defun demo() (interactive) (message "hello world"))
+  *interactive* is a special form that turns a function into a command and 
+  allow a command to accept various types of prefix arguments, such as a number, 
+  a string, symbol, buffer names… You can C-h f and type interactive to find out more.
+
+
+* Emacs IDE
+  http://tuhdo.github.io/c-ide.html
+  https://github.com/emacs-helm/helm
+  git clone https://github.com/tuhdo/emacs-c-ide-demo.git ~/.emacs.d
+  init.el
+  (require 'setup-helm-gtags)
+  ;; (require 'setup-ggtags)
+  (require 'setup-helm)
+
+  M-x load-file RET init.el
+* Copy
+  A package in a league of its own:Helm
+  Helm is a incremental completion and selection narrowing framework for Emacs.
+  

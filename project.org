@@ -1,3 +1,5 @@
+* task
+
 * plan 
 
 * schedule 
@@ -5,4 +7,4 @@
    - test php_zmq;
    - test php_json;
 2. <2017-08-15 Tue> linux/core_dump.sh
-3. 
+3. <2017-12-29 Fri> ctp;net_router;

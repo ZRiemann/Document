@@ -1,0 +1,28 @@
+* ggtags 环境配置
+** 安装GLOBAL
+  https://www.gnu.org/software/global/download.html
+  ./configure [--with-exuberant-ctags=/usr/local/bin/ctags]
+  make
+  sudo make install 
+** 安装ggtags
+  编辑 ~/.emacs.d/init.el
+(require-package 'ggtags)
+(require 'ggtags)
+(add-hook 'c-mode-common-hook
+          (lambda ()
+            (when (derived-mode-p 'c-mode 'c++-mode 'java-mode 'asm-mode)
+              (ggtags-mode 1))))
+(provide 'init-ggtags)
+** 下载linux源码
+  https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git ~/linux
+* ggtags 命令
+| 命令(M-x)          | 快捷键(C-c) | 功能                       | 示例                  |
+|--------------------+-------------+----------------------------+-----------------------|
+| ggtags-mode        |             | 开启/关闭ggtags-mode       |                       |
+| ggtags-create-tags |             | 创建项目标签(no ctags)     |                       |
+| ggtags-find-file   | M-f         | 查找文件                   | M-f main.c            |
+|                    | M-.         | 调转到定义/引用            | cursor on kernel_init |
+|                    | M-*         | 回到原位置                 |                       |
+|                    | M-..        | 从include <*.h> 跳转到文件 |                       |
+|                    | M-h         | 列出历史查询记录           |                       |
+|                    | M-/         | stores tag operation       |                       |

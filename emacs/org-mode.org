@@ -100,6 +100,8 @@ C-c C-c 改变checkbox状态
    *bold*
    /italic/
    _underlined_
+   <s + TAB 开始代码块
+   (setq org-src-fontify-natively t)
    =code=
    ~vervatim~
    +strike-through+

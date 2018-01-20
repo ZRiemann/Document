@@ -1,0 +1,1641 @@
+*  排版约定
+DEFUN语法，标志函数定义宏：
+ (defun name (parameter*)
+  [documentation-string]
+  body-form*)
+REPL(读-求职-打印 循环 read-eval-print loop)
+
+* 为什么是Lisp
+
+ 可以编程的编程语言；
+ 可以为语言添加任何想要的特性；
+ CLOS(Common Lisp Object System)
+ 
+ $1.2 Lisp的诞生
+
+  1956 John McCarthy 设计用于“符合数据处理；
+  LISt Processing 列表处理；
+  
+* REPL简介
+
+ ELISP>"Hello, world"
+ "Hello, world"
+ #必须用双引号表示字符串
+
+ (format t "hello, world")
+ (defun hello-world()(format t "Hello, world"))
+
+* 简单的数据库
+ 
+ >(defun make-cd (title artist rating ripped)
+    (list :title title :artist artist :rating rating :ripped ripped))
+ >(defvar *db* nil)
+ >(defun add-record (cd) (push cd *db*))
+ >(add-record (make-cd "Fly"  "Dixie Chicks" 8 t))
+
+* 语法和语义
+ 
+ $4.3 S-表达式
+  
+  基本元素：列表(list)/原子(atom)
+  列表(list):由括号所包围， 包含任意数量有空格分隔的元素；
+             列表元素本身也可以是S-表达式
+  原子(atom):所有其他内容，数字、字符串、名字；
+  注释::以';'开始的一行，本质是空白行处理
+
+  数字：
+   123 ；
+   3/7
+   1.0
+   1.0e0
+   1.0d0
+   1.0e-4
+   -42
+
+  字符串：
+   "foo"
+   "fo\o" ; == "foo"
+   "fo\\o" ; == fo\o
+   "fo\"o" ; == fo"o
+
+  名字
+   format/hello-world/*db* 均由称为符号的对象所表示；
+   名字可以包含句点，但单一句点不是名字；
+   不包含10个字符(但可转义包含)：{ } " ' / , : ; ` |
+   foo=>FOO 
+   \f\o\o & |foo| => foo
+   相同名字指向同一个对象；
+   全局变量：*<name>*
+   常量： +<name>
+   底层函数： %<name> %%<name>
+
+  x ;符号x
+  () ;空列表
+  (1 2 3) ; 三个数字组成的列表
+  ("foo" "bar") ;两个字符串组成的列表
+  (x y z) ; 三个符号组成的列表
+  (x 1 "foo")
+  (+ (* 2 3) 4)
+  (defun hello-world()
+   (format t "hello, world"))
+
+ $4.4 作为Lisp形式的S-表达式
+
+* 基本语法语义
+  1. 一切都是list，it's an atom;
+  2. Anything is not an atom, it's a list that contains atoms.
+     List is just anything contained in a pairof parentheses.
+     list can be both as CODE or as DATA;
+  3. Data:
+     - Atomic-data(Atom):
+       + Number 1 2 3 1.5 ...
+       + String "string" ...
+       + NIL / ()
+       + Symbol: 4 components:
+         1) Print name: symbol's name as string
+         2) Value: value of symbol as variable
+            (symbol-value 'buffer-file-name)
+         3) Function: function definiction, can be both value + fun;
+            (symbol-function 'buff-file-name)
+         4) Property-list: list of key-value pairs.
+     - Non-atomic: With the single quote ' before parentheses
+       '(...)
+  4. Code: no single quote ' before parentheses
+     (...)
+  One of the benefits of Clojure as a Lisp variant is that code is data
+  (also known as homoiconicity). 作为Lips的一种变体，Clojure的优势之一就是
+  代码即数据（也称为同像（homoiconicity））。
+  It makes Lisp so powerful: code can be data, data can be code；
+  代码即数据，数据即代码，使得LISP非常强大；
+  list that holds data is referred simply as list; 数据列表；
+  while list that holds code is Lisp form； 形式列表；
+  This is why Lisp is so expressive: minimal syntax and follow the will of programmer.
+** list forms
+  - Lisp forms are classfied into 3 types:
+    1. *Function form*: (动 宾 ...)
+       (+ 1 (+ 2 3) (* 3 4) (/ 4 2))
+    2. *Special form*: Special form has special evaluation rules or special syntax or both.
+       (if condition  ;; condition is a valid Lisp form
+       ...do something if true...
+       ...do something if false...)
+    3. *Mocro form*:
+  - *reader micro*  
+      A reader macro transforms raw text into valid Lisp objects. 
+    Reader macro is a special type of macro that allows you to 
+    transform non-Lisp code into Lisp code.
+      A regular macro transforms Lisp's list into valid Lisp code.
+** Syntax error
+- Unbalanced parentheses
+- Mini-language syntax error
+** Semantic error
+* common lisp
+1. 简介绍
+   1) New Tools; Lexical Closure;
+   2) New Techniques; 自下向上设计
+   3) New Approach; 规划-实现不太有效，规格不可能完整无缺；
+   4) emacs lisp; ergoemacs.org/emacs/elisp_list_vs_vector.html
+2. Welcome to Lisp
+   1) *Form(形式)*
+      toplevel:交互式前端
+      前序表达式: (+ 2 3); (operator arg1 arg2 ...);
+      表达式嵌套: (/ (- 7 1) (- 4 2))
+   2) *Evaluation(求值)*
+      求值过程:
+      1. 从左至右对实参求值；
+      2. 实参值传入操作符函数；
+      quote/' 特殊操作符(求值逃逸);
+      > (quote (+ 3 5)) <==> > '(+ 3 5)
+   3) *Data(数据)*
+      - integer: 1 2 3
+      - string: "ora et lebora"
+      - symbol: is a words; > 'Symbol
+      - list: represented as zero or more elements enclosed in parentheses;
+        > () <==> nil 
+        > (...)
+   4) *List Operations(列表操作)*
+      (list 'my (+ 2 3) "Sons") ==> (my 5 "Sons")
+      (cons 'a '(b c)) ==> (a b c)
+      (car '(a b c)) ==> a
+      (cdr '(a b c)) ==> (b c)
+   5) *Truth(真与假)*
+      t/nil true/false
+      predicate(谓词)
+      (if (test) (then) (else)); (if (listp '(a b c)) (+ 1 2) (+ 3 4))
+      (and/or ...) 宏操作符
+   6) *Functions(函数)*
+      (defun <name> (<args>) (<express>))
+      (defun our-third (x) (car (cdr (cdr x))))
+   7) *Recursion(递归)*
+      函数调用自身
+      > (defun our-member (obj lst) (if(null lst) nil (if(eql (car lst) obj) 
+          lst (our-member obj (cdr lst)))))
+   8) *Reading Lisp(阅读List)*
+   9) *Input and Output(I/O)*
+      (format ...)
+      (read)
+   10) *Variables(变量)*
+       (let ((x 1) (y 2)) 
+            (+ x y))
+       (defparameter *global* 99); elisp: (defvar *global* 99)
+   11) *Assignment(赋值)*
+       > (setf *glob* 98)
+          98
+       > (let ((n 10))
+           (setf n 2)
+            n)
+       > (setf global-val (list 'a 'b 'c)) ; 隐式创建全局变量 global-val = (a b c)
+       > (setf (car global-val) 'n) ; 替换值 global-val = (n b c)
+   12) *Functional Programming(函数式编程)*
+       利用返回值而工作的程序，而不是修改东西。
+       (setf *global-list* (remove 'a *global-list*)) ;; 删除列表中的 a
+   13) *Iteration(迭代)*
+       (do ((<var> <init> <update>)) ((<test-exp>) <ret-val>) (<body>))
+       (defun show-squares (start end)
+         (do ((i start (+ i 1))) ((> i end) 'done) 
+         (format t "~A ~A~%" i (* i i))))
+       *recursion*
+       (defun show-square (i end)
+         (if (> i end) 'done
+           (progn
+             (format t "~A ~A ~%" i (* i i))
+             (show-square (+ i 1) end))))
+   14) *Function as Objects(函数作为对象)*
+       (function <func-name>)
+       #'<func-name>
+       (apply (function <func-name>) (<args>))
+       (apply #'<func-name> (<args>))
+       (funcall 'cons 'x 'y) returns (x . y).
+       什么是lambda：
+       lambda 是符号，((x)(+ x 100))/ (lambda (x) (+ x 100))
+   15) *Types(类型)*
+       > (typep 27 'integer)
+   16) *Looking Forward(展望)*
+3. List (列表)
+   1) *Conses(构造)*
+      cons/car/cdr/list
+   2) *Equality(等式)*
+      (eql (cons 'a nil) (cons 'a nil)) ;; false
+   3) *Lisp 没有指针*
+      > (setf x '(a b c))
+      > (setf y x)
+      y -> x -> (a b c) ;; 指向同一内存块
+   4) *Building List(建立列表)*
+      > (setf x '(a b c) 
+          y (copy-list x))
+      > (append '(a b) '(c d) 'e)
+      (a b c d . e)
+      > (defun our-copy-list (lst)
+          if(atom lst)
+            lst
+            (cons (car lst) (our-copy-list(cdr lst))))
+   5) *Example:Compression(压缩)*
+      游程编码(run-length encoding)
+      (defun compress (x)
+        (if (consp x)
+          (compr (car x) 1 (cdr x))
+          x))
+      (defun compr (elt n lst)
+        (if (null lst)
+          (list (n-elts elt n))
+            (let ((next (car lst)))
+              (if (eql next elt)
+                (compr elt (+ n 1) (cdr lst))
+                (cons (n-elts elt n)
+                  (compr next 1 (cdr lst)))))))
+      (defun n-elts (elt n)
+        (if (> n 1)
+          (list n elt)
+          elt))
+      A,B,C: 特餐
+      D:蛋奶酥
+      compress: 3特餐 + 1蛋奶酥
+      
+      (defun uncompress (lst)
+        (if (null lst)
+          nil
+          (let ((elt (car lst))
+            (rest (uncompress (cdr lst))))
+              (if (consp elt)
+                (append (apply #'list-of elt)
+                  rest)
+                (cons elt rest)))))
+
+      (defun list-of (n elt)
+        (if (zerop n)
+          nil
+        (cons elt (list-of (- n 1) elt))))
+      
+      #'list-of == #'make-list 
+      (load "compress.lisp")
+   6) *Access(访问)*
+      nth/nthcdr
+      (defun our-nthcdr (n lst)
+        (if (zerop n)
+          lst
+          (our-nthcdr (- n 1) (cdr lst))))
+   7) *Mapping Functions(映射函数)*
+      *#'mapcar*
+      (mapcar #'(lambda (x) (+ x 10)) '(1 2 3)) ;;(11 12 13)
+      (mapcar #'list
+        '(a b c)
+        '(1 2 3 4))
+      *#'maplist*
+      > (maplist #'(lambda (x) x) '(a b c))
+      *#'mapc*
+      *#'mapcan*
+   8) *Trees(树)*
+      *#'copy-tree*
+      (defun our-copy-tree (tr)
+        (if (atom tr)
+          tr
+          (cons (our-copy-tree (car tr))
+            (our-copy-tree (cdr tr)))))
+
+      (and (integerp x) (zerop (mod x 2)))
+      > (substitute 'y 'x '(and (integerp x) (zerop (mod x 2))))
+        (AND (INTEGERP X) (ZEROP (MOD X 2)))
+      
+      > (defun our-subst (new old tree)
+          (if (eql tree old)
+            new
+             (if (atom tree)
+               tree
+               (cons (our-subst new old (car tree))
+                 (our-subst new old (cdr tree))))))
+   9) *Understanding Rescursion(理解递归)*
+      (defun len (lst)
+        (if (null lst)
+          0
+          (+ (len (cdr lst)) 1)))
+      我们可以借由检查两件事情，来确信这个函数是正确的：
+      对长度为 0 的列表是有效的。
+      给定它对于长度为 n 的列表是有效的，它对长度是 n+1 的列表也是有效的。
+   10) *Set(集合)*
+       *#'union*
+       *#'intersection*
+       *#'set-difference*
+       (defun our-member-if (fn lst)
+         (and (consp lst)
+           (if (funcall fn (car lst))
+             lst
+             (our-member-if fn (cdr lst)))))
+   11) *Sequences(序列)*
+       *#'length*
+       > (length '(a b c))
+       (defun mirror? (s)
+         (let ((len (length s)))
+           (and (evenp len)
+             (let ((mid (/ len 2)))
+               (equal (subseq s 0 mid)
+                 (reverse (subseq s mid)))))))
+       *#'sort*
+       > (sort '(0 2 1 3 8) #'>)
+       (8 3 2 1 0)
+
+       (defun nthmost (n lst)
+         (nth (- n 1)
+           (sort (copy-list lst) #'>)))
+       
+       > (every #'oddp '(1 3 5))
+       T
+       > (some #'evenp '(1 2 3))
+       T
+       > (every #'> '(1 3 5) '(0 2 4))
+       T
+   12) *Stacks(栈)*
+       *#'push*
+       *#'pushnew*
+       *#'pop*
+   13) *Dotted Lists(点状列表)*
+       (defun proper-list? (x)
+         (or (null x)
+           (and (consp x)
+             (proper-list? (cdr x)))))
+       > (setf pair (cons 'a 'b))
+       (a . b) ;; [a|b]
+       > (setf pair (cons 'a '(b c)))
+       (a b c) ;; [a|*]->[b|*]->[c|*]->nil
+   14) *Assoc-lists(关联列表)*
+       > (setf trans '((+ . "add") (- . "subtract")))
+       ((+ . "add") (- . "subtract"))
+       > (assoc '+ trans) ;; (+ . "add")
+       > (assoc '* trans) ;; nil
+       
+       (defun our-assoc (key alist)
+         (and (consp alist)
+           (let ((pair (car list)))
+             (if (eql key (car pair))
+               pair
+               (our-assoc key (cdr alist))))))
+   15) *Shortest Path(最短路径)*
+       (node . neighbors)
+       (setf min '((a b c) (b c) (c d)))
+       a -\---> b --\
+           \---------\----> c ----> d
+       (breadth-first search)
+       
+       (defun shortest-path (start end net)
+         (bfs end (list (list start)) net))
+
+       (defun bfs (end queue net)
+         (if (null queue)
+           nil
+           (let ((path (car queue)))
+             (let ((node (car path)))
+               (if (eql node end)
+                   (reserve path)
+                   (bfs end (append (cdr queue) (new-paths path node net))
+                   net))))))
+       (defun new-paths (path node net)
+         (mapcar #'(lambda (n) (cons n path))
+           (cdr (assoc node net))))
+4. 特殊数据结构
+   1) *Array(数组)*
+      > (setf arr (make-array '(2 3) :initial-element nil))
+      #<Simple-Array T (2 3) BFC4FE>
+      > (aref arr 0 0)
+        NIL
+      > (setf (aref arr 0 0) 'b)
+      B
+      > (aref arr 0 0)
+      B
+   2) *Binary Search(二叉搜索)*
+      (defun bin-search (obj vec)
+        (let ((len (length vec)))
+          (and (not (zerop len))
+            (finder obj vec 0 (- len 1)))))
+      (defun finder (obj vec start end)
+        (let ((range (- end start)))
+          (if(zerop range)
+            (if (eql obj (aref vec start))
+              obj
+              nil
+            )
+            (let ())
+          )
+        )
+      )
+   3) *Strings and Characters(字符与字符串)*
+      > (aref "abc" 1)
+      #\b
+
+      ELISP> (equal "fred" "fred")
+      t
+      ELISP> (equal "fred" "Fred")
+      nil
+      ELISP> (string-equal "fred" "Fred")
+      nil
+   4) *Sequences(序列)*
+      (defun is_mirror (s)
+       (let ((len (length)))
+        (and (evenp len)
+          (do ((forward 0 (+ forward 1)) (back (- len 1) (- back 1)))
+            (not (eql (elt s forward)
+                      (elt s back))))
+             (> forward back)))))
+
+      ELISP> (position ?a "fantasia")
+      1 (#o1, #x1, ?\C-a)
+      ELISP> (position ?a "fantasia" :start 3 :end 5)
+      4 (#o4, #x4, ?\C-d)
+      ELISP> (position ?a "fantasia" :from-end t)
+      7 (#o7, #x7, ?\C-g)
+      ELISP> (position 'a '((c d) (a b)) :key #'car)
+      1 (#o1, #x1, ?\C-a)
+      ELISP> (position 'a '((c d) (a b)))
+      nil
+      ELISP> (position '(a b) '((a b) (c d)))
+      nil
+      ELISP> (position '(a b) '((a b) (c d)) :test #'equal)
+      0 (#o0, #x0, ?\C-@)
+      ELISP> (position 3 '(1 0 7 5) :test #'<)
+      2 (#o2, #x2, ?\C-b)
+      ELISP> (defun second-word (str))
+      second-word
+      ELISP> (defun second-word (str) )
+      second-word
+      ELISP> (defun second-word (str)
+         (let ((p1 (+ (position ?  str) 1)))
+           (subseq str p1 (position ?  str :start p1))))
+      second-word
+      ELISP> (second-word "From follows function")
+      "follows"
+      ELISP> ELISP> (position ?a "fantasia")
+      1 (#o1, #x1, ?\C-a)
+      ELISP> (position ?a "fantasia" :start 3 :end 5)
+      4 (#o4, #x4, ?\C-d)
+      ELISP> (position ?a "fantasia" :from-end t)
+      7 (#o7, #x7, ?\C-g)
+      ELISP> (position 'a '((c d) (a b)) :key #'car)
+      1 (#o1, #x1, ?\C-a)
+      ELISP> (position 'a '((c d) (a b)))
+      nil
+      ELISP> (position '(a b) '((a b) (c d)))
+      nil
+      ELISP> (position '(a b) '((a b) (c d)) :test #'equal)
+      0 (#o0, #x0, ?\C-@)
+      ELISP> (position 3 '(1 0 7 5) :test #'<)
+      2 (#o2, #x2, ?\C-b)
+      ELISP> (defun second-word (str))
+      second-word
+      ELISP> (defun second-word (str) )
+      second-word
+      ELISP> (defun second-word (str)
+         (let ((p1 (+ (position ?  str) 1)))
+           (subseq str p1 (position ?  str :start p1))))
+      second-word
+      ELISP> (second-word "From follows function")
+      "follows"
+      ELISP> 
+   5) *Parsing Dates*
+   6) *structures(结构)*
+      *(defstruct NAME SLOTS...)*
+      *:conc-name ;;存取缩写 <name>- <conc-name>-*
+      *:print-function ;;指定打印函数*
+      (defstruct (point_t (:conc-name point.)
+                  (:print-function print-point))
+                  (x 0)
+                  (y 0))
+
+      (defun print-point (p stream depth)
+      (format stream "#<~A, ~A>" (px p) (py p)))
+   7) *Binary Search Tree*
+   8) *Hash Table*
+      > (setf ht (make-hash-table))
+      > (setf (gethash 'color ht) 'red)
+      > (push "normal error."
+              (gethash #'our-member bugs))
+5. *Control flow(控制流)*
+   1) *Blocks(区块)*
+      *progn ;;依次求值，并返回最后一个表达式的值*
+      *block ;;带出口*
+      (block <name> &rest <body>)
+      (block head (message "here we go.") 
+        (return-from head 'idea) ;; (return 'idea)
+        (message "We'll never see this"))
+      *tagbody ;;配合go _废弃_*
+   2) *Context(语境)*
+      *(let <var-list> <body>...)*
+      ;; 一下错误示例 let 参数间无关联关系，不能相互引用.
+      (let ((x 2) (y (+ x 1))) (+ x y)) ;; 等同以下lambda
+      ((lambda (x y) (+ x y)) 2 (+ x 1)) ;; 第二个实参(+ x 1)无意义;
+      ;; let 变体
+      (let* ((x 1)
+             (y (+ x 1)))
+        (+ x y))
+      (let ((x 1)) (let ((y (+ x 1))) (+ x y)))
+      *destructuring-bind*
+      (destructuring-bind (w (x y) . z) '(a (b c) d e) (list w x y z))
+   3) *Condition(条件)*
+      *if*
+      (if (<condition>) (<then>) (<else>))
+      *when*
+      (when (<test>) (<true-logic>)...)
+      ;; 以下等价
+      (if (<condition>) (progn ...))
+      *unless*
+      (unless (<test>) (<false-logic>)...)
+      *cond*
+      (defun out-member (obj lst)
+        (if (atom lst)
+          nil
+          (if (eql (car lst) obj)
+            lst
+            (out-member obj (cdr-lst)))))
+      ;; 以下cond版本
+      (defun our-member (obj lst)
+        (cond ((atom lst) nil)
+              ((eql (car lst) obj) lst)
+              ( t (out-member obj (cdr lst)))))
+      *case*
+      (defun month-length (mon)
+        (case mon
+          ((jan mar may jul aug oct dec) 31)
+          ((apr jun sept nov) 30)
+          (feb (if (leap-year) 29 28))
+          (otherwise "unknown month")))
+   4) *Iteration(迭代)*
+      *do*
+      (do ((<var> <init> <update>)...)
+          ((<condition>) <ret-val>)
+          <body>...)
+      (do* ...)
+      *dolist*
+      (dolist (x <lst> <ret-val>) <body>...)
+      *dotimes*
+      (dotimes (<var> <cont> [<result>]) <body>...)
+      (dotimes (x 5 x) (format t "~A " x))
+      *mapc/car*
+      (mapc #'(lambda (x y) (format t "~A ~A" x y))
+        '(hip flip slip)
+        '(hop flop slop))
+   5) *Multiple Values(多值)*
+      *multiple-value-bind*
+      (multiple-value-bind (SYM...) FORM BODY)
+      (multiple-value-bind (x y z) (values 1 2 3) (list y z x))
+      *multiple-value-call*
+      (multiple-value-call #'+ (values 1 2 3))
+      *multiple-value-list*
+      (multiple-value-list (values 1 2 3))
+   6) *Aborts(中止)*
+      *catch/throw*
+      (defun super () (catch 'abort (sub) (message "never go here")))
+      (defun sub () (whrow 'abort 99))
+      *unwind-protect(防止被throw/error中断)*
+      (unwind-protect <BODYFORM> <UNWINDFORMS>...)
+      (catch 'abort
+        (unwind-protect (throw 'abort 99) (setf x 2)))
+6. *Function(函数)*
+   1) *Global Function*
+      *fboundp(函数存在谓词)*
+      (fboundp '+) ;; 判断 + 是否为函数 
+      *symbol-function(返回函数符号)*
+      (symbol-function '+)
+      (setf (symbol-function 'add2) 
+        #'(lambda (x) (+ x 2)))
+      ;; 以下等价
+      (defun add2 (x) (+ x 2))
+      *setf primo*
+      (defun primo (lst) (car lst))
+      (defun (setf primo) (var lst) 
+        (setf (car lst) val))
+      (let ((x (list 'a 'b 'c)))
+        (setf (primo x) 480) x)
+      *Document String*
+      (defun foo (x)
+        "Ipmlements an enhanced paradigm of diversity"
+        x)
+      (documentation 'foo 'function)
+
+   2) *Local Function*
+      *labels*
+      (labels BINDINGS &rest BODY)
+
+      (labels ((add 10 (x) (+ x 10))
+               (consa (x) (cons 'a x)))
+        (consa (add10 3)))
+
+   3) *Parameter Lists(参数列表)*
+      *&rest*
+      (defun out-funcall (fn &rest args)
+         (apply fn args))
+      *&optional*
+      (defun philosoph (thing &optional property)
+        (list 'required-aprams thing 'optional-params property))
+      ;; 指定缺省值
+      (defun philosoph (thing &optional (property 'xxx-fefault))
+        (list 'required-aprams thing 'optional-params property))
+      *&key*
+      ;; 更灵活的选择性参数
+      (defun keylist (a &key x y z)
+        (list a x y z))
+      (keylist 1 :y 2)
+   4) *Utilities*
+   5) *Closures(闭包)*
+      *common lisp 支持，Emacs List 不支持*
+      (defun combiner (x)
+        (typecase x
+          (number #'+)
+          (list #'append)
+          (t #'list)))
+      (defun combine (&rest args)
+        (apply (combiner (car args)) args))
+      
+      (defun make-adder (n)
+        #'(lambda (x) (+ x n)))
+      (setf add3 (make-adder 3))
+      (funcall add3 2)
+   6) *Function Builders(函数构造器)*
+      *compose*
+      (compose #'a #'b #'c)
+      #'(lambda (&rest args) (a (b (apply #'c args))))
+      *curry/rcurry*
+      (curry #'+ 3)
+   7) *Dynamic Scope*
+      Emacs list not support!
+      *decalare (special <name>)*
+   8) *Complilation*
+      *compiled-function-p*
+   9) *Using Recursion*
+      函数式程序设计。递归演算法有副作用的可能性较低。递归数据结构。 
+      Lisp 隐式地使用了指标，使得递归地定义数据结构变简单了。
+      最常见的是用在列表：一个列表的递归定义，列表为空表，或是一个 cons ，
+      其中 cdr 也是个列表。优雅性。Lisp 程序员非常关心它们的程序是否美丽，
+      而递归演算法通常比迭代演算法来得优雅。
+7. *Input/Output(I/O)*
+   1) *Stream*
+      *standard-input/output*
+      *read-from-string*
+8. *Symbol*
+   1) *Symbol Names*
+      *symbol-nameability*
+   2) *property List(plist)*
+      *(get SYMBOL PROPNAME) ;;获取指定熟悉*
+      *(symbol-plist SYMBOL) ;;获取符号属性表*
+       struct symbol_t{
+         char *name; // 符号名字
+         void *package; // 符号体地址
+         void *value;　// 符号值
+         void *function; //　符号函数
+         void *plist; // 符号属性
+       };
+   3) *Symbol Are Big*
+   4) *Creating Symbols*
+      *(intern "random-symbol") ;;指定符号包*
+      default: common-lisp-user 包
+   5) *Multiple Packges*
+      包功能类似C++名字空间；
+      (defpackage "MY-APPLICATION"
+            (:use "COMMON-LISP" "MY-UTILITIES")
+            (:nicknames "APP")
+            (:export "WIN" "LOSE" "DRAW"))
+
+      (in-package my-application)
+      defpackage 定义一个新的包叫做 my-application 它使用了其他两个包， 
+      common-lisp 与 my-utilities ，这代表着可以不需要用包修饰符（package
+      qualifiers）来存取这些包所导出的符号。许多包都使用了 common-lisp 包 
+      ── 因为你不会想给 Lisp 自带的操作符与变量再加上修饰符。
+      my-application 包本身只输出三个符号: WIN 、 LOSE 以及 DRAW 。由于调用 
+      defpackage 给了 my-application 一个匿称 app ，则别的包可以这样引用到这些符号，
+      比如 app:win 。
+        defpackage 伴随着一个 in-package ，确保当前包是 my-application 。
+      所有其它未修饰的符号会被扣押至 my-application ── 除非之后有别的 
+      in-package 出现。当一个文件被载入时，当前的包总是被重置成载入之前的值。
+   6) *Keywords*
+   7) *Symbols and Variables*
+      *symbol-value 仅作用于全局变量，局部变量不可用*
+9. *Data*
+   1) *Type*
+   2) *Comparison*
+   3) *Arithematic*
+   4) *Exponentiation(指数)*
+      *(expt 2 5)*
+      *(log 32 2)*
+      *(exp 2)*
+      *(log 7.389056)*
+   5) *TrigometicFunctions(三角函数)*
+      *sin/cos/tan*
+   6) *Representations(表示法)*
+10. *Macro(宏)*
+    1) *Eval(求值)*
+       (defun our-toplevel ()
+         (do () () (format t "~%>")
+           (print (eval (read)))))
+       *eval 实现跨越代码与列表的界限*
+       1. 效率低下，当下编译或直译不如编译过的代码快；
+       2. 没有语法环境，无法传递let(局部)变量；
+       *Lisp 概念模型*
+       (defun eval (expr env)
+       (cond ... (...)))
+       *coerce*
+       (coerce #'(lambda (x) x) 'function) ;; lambda --> function
+       *compile*
+       (compile nil #'(lambda (x) (+ x 2)))
+       由于 coerce 与 compile 可接受列表作为参数，一个程序可以在动态执行时 (on the fly)
+       构造新函数。但与调用 eval 比起来，这不是一个从根本解决的办法，
+       并且需抱有同样的疑虑来检视这两个函数。
+       函数 eval , coerce 与 compile 的麻烦不是它们跨越了代码与列表之间的界线，
+       而是它们在执行期做这件事。跨越界线的代价昂贵。
+    2) *Macros*
+       写出能写程序的程序的最普遍方法是通过定义宏;
+       *defmacro*
+       (defmacro NAME ARGLIST &optional DOCSTRING DECL &rest BODY)
+       (defmacro nil! (x)
+         (list 'setf x nil))
+       ;; 伪代码
+       (lambda (expr)
+         (apply #'(lambda (x) (list 'setf x nil))
+           (cdr expr)))
+       *macroexpand-1*
+       (macroexpand-1 FORM &optional ENVIRONMENT)
+       (macroexpand-1 '(nil! x))
+    3) *Backquote(反引号)*
+       反引号读取宏 (read-macro)使得从模版 (templates)建构列表变得有可能；
+       一个反引号单独使用时，等于普通的引号;
+       反引号的优点是，在一个反引号表达式里，你可以使用 , （逗号）与 ,
+       (,@)来重启求值。如果你在反引号表达式里，在某个东西前面加逗号，则它会被求值。
+       所以我们可以使用反引号与逗号来建构列表模版:
+       > (setf a 1 b 2)
+       2
+       > `(a is ,a and b is ,b)
+       (A IS 1 AND B IS 2)  
+       *(,@) 与逗号相似，但将（本来应该是列表的）参数扒开。将列表的元素插入模版来取代列表*
+       > (setf lst '(a b c))
+       (A B C)
+       > `(lst is ,lst)
+       (LST IS (A B C))
+       > `(its elements are ,@lst)
+       (ITS ELEMENTS ARE A B C)
+    4) *Quicksort*
+       (defmacro while (test &rest body)
+         `(do ()
+            ((not ,test))
+           ,@body))
+
+       (defun quicksort (vec l r)
+         (let ((i l)
+         (j r)
+         (p (svref vec (round (+ l r) 2))))    ; 1
+         (while (<= i j)                           ; 2
+           (while (< (svref vec i) p) (incf i))
+           (while (> (svref vec j) p) (decf j))
+           (when (<= i j)
+           (rotatef (svref vec i) (svref vec j))
+           (incf i)
+           (decf j)))
+         (if (>= (- j l) 1) (quicksort vec l j))    ; 3
+         (if (>= (- r i) 1) (quicksort vec i r)))
+         vec)
+    5) *Macro Design*
+       #+BEGIN_SRC emacs-lisp
+       (setq org-src-fontify-natively t)
+       ;; 原始设计
+       (defmacro ntimes (n &rest body)
+         `(do ((x 0 (+ x 1))) ((>= x ,n))
+            ,@body))
+
+       ;; 问题1: (variable capture)x可能为外部变量；
+       (let ((x 10))
+         (ntimes 5 (setf x (+ x 1)))
+         x)
+
+       ;; 展开宏后，结果是5，不是预期的15
+       (let ((x 10))
+         (do ((x 0 (+ x 1)))
+             ((>= x 5))
+           (setf x (+ x 1)))
+         x)
+
+       ;; 问题1解决方案: (gensym)
+       (defmacro ntimes (n &rest body)
+         (let ((g (gensym)))
+         `(do ((,g 0 (+ ,g 1))) ((>= ,g ,n))
+            ,@body)))
+
+       ;; 问题2: (multiple evaluation)
+       (let ((v 10))
+         (ntimes (setf v (- v 1))
+                 (princ ".")))
+       ;; 宏展开
+       (let ((v 10))
+         (do ((#:g1 0 (+ #:g1 1)))
+             ((>= #:g1 (setf v (- v 1))))
+           (princ ".")))
+
+       ;; 问题2解决方案：先对参数求值
+       (defmacro ntimes (n &rest body)
+         (let ((g (gensym))
+               (h (gensym)))
+           `(let ((,h ,h))
+              (do ((,g 0 (+ ,g 1)))
+                  ((>= ,g ,h))
+                ,@body))))
+       ;; 总结：所有宏变量，以及多重计算参数参数都必须用(gensym)"隔离"；
+       #+END_SRC
+    6) *Generalized Reference(通用化引用)*
+       #+BEGIN_SRC emacs-lisp
+       (defmacro cah (lst) `(car ,lst))
+
+       (let ((x (list 'a 'b 'c)))
+         (setf (cah x) 44)
+         x)
+
+       ;; wrong
+       (defmacro incf (x &optional (y 1))
+         `(setf ,x (+ ,x ,y)))
+
+       (setf (car (push 1 lst)) (+ (car (push 1 lst))))
+       (incf (car (push 1 lst)))
+
+       ;; define-modify-macro
+       (define-modify-macro our-incf (&optional (y 1)) +)
+       (define-modify-macro append1f (val)
+         (lambda (lst val) (append lst (list val))))
+       #+END_SRC
+    7) *Macro Utilies*
+       #+BEGIN_SRC emacs-lisp
+       ;; 建议VAR改为步进
+       (defmacro for (var start stop &body body)
+         (let ((gstop (gensym)))
+           `(do ((,var ,start (1+ ,var))
+                 (,gstop ,stop))
+                ((> ,var ,gstop))
+              ,@body)))
+
+       (defmacro in (obj &rest choices)
+         (let ((insym (gensym)))
+           `(let ((,insym ,obj))
+              (or ,@(mapcar #'(lambda (c) `(eql ,insym ,c))
+                            choices)))))
+
+       (defmacro random-choice (&rest exprs)
+         `(case (random ,(length exprs))
+            ,@(let ((key -1))
+                (mapcar #'(lambda (expr)
+                            `(,(incf key) ,expr))
+                        exprs))))
+
+       (defmacro avg (&rest args)
+         `(/ (+ ,@args) ,(length args)))
+
+       (defmacro with-gensyms (syms &body body)
+         `(let ,(mapcar #'(lambda (s)
+                            `(,s (gensym)))
+                        syms)
+            ,@body))
+
+       (defmacro aif (test then &optional else)
+         `(let ((it ,test))
+            (if it ,then ,else)))
+       #+END_SRC
+    8) *On Lisp*
+       Lisp 永远将进化放在程序员手里。这是它为什么存活的原因;
+11. *(CLOS)Common Lisp Object System*
+    *defmethod*
+    *defclass*
+12. *structure*
+13. *性能*
+
+
+** 函数表
+|-----------------+-----------------+---------------------------------------+----------------|
+| 名称            | 说明            | 示例                                  | 结果           |
+|-----------------+-----------------+---------------------------------------+----------------|
+| +/-/*/\         | 基本运算符      | (+ 2 3)                               | 5              |
+| quote/'         | 逃逸求值        | '(a b c)                              | (a b c)        |
+| function/#      | sharp-quote     | #'+                                   | #<C*-F* + *>/+ |
+| apply           | 接收函数实参    | (apply #'+ '(1 2 3))                  | 6              |
+| funcall         | 函数实参        | (funcall 'cons 'x 'y)                 | (x . y)        |
+| if              | 条件判断        | (if (listp '(a b c)) (+ 1 2) (+ 3 4)) | 3              |
+|                 |                 | (if (listp 27) (+ 1 2))               | nil            |
+|                 |                 | (if 27 1 2)                           | 1              |
+| do              | 迭代            | (do ((i begin (+ i 1))) ((> i end)    |                |
+|                 |                 | 'done) ('body))                       |                |
+| dolist          | 遍历列表元素    | (dolist (obj lst) (<body>))           |                |
+| progn           | 接收后续表达式  | (progn (<exp1>) (exp2) ...(expn))     | (expn)         |
+| and/or          | 逻辑操作        | (and t (+ 1 2))                       | 3              |
+| eql             | 测试实参相等    |                                       |                |
+| format          | 输出函数        | (format t "~A plus ~A equals ~A. ~%"  |                |
+|                 |                 | 2 3 (+ 2 3))                          | 5              |
+| read            | 输入函数        | (defun ask (string) (format "~A"      |                |
+|                 |                 | string) (read))                       |                |
+| let             | 引入局部变量    | (let ((x 1) (y 2)) (+ x y))           | 3              |
+| setf            | 变量赋值        | (setf *glob* 98)                      | 98             |
+| defparameter    | 引入全局变量    | (defparameter *global* 99)            |                |
+| (defvar)        |                 |                                       |                |
+| defconstant     | 全局常量        | (defconstant limit (+ *global* 1))    |                |
+| <fun>p          | 谓词函数        | (numberp 1)                           | t              |
+|                 | 判断全局变量    | (boundp '*global*)                    |                |
+| defun           | 定义函数        | (defun <fn-name> (<args>) (<body>))   |                |
+| defstruct       | 定义结构体      | (defstruct point x y)                 |                |
+| lambda          |                 | (lambda (<args>) (<body>))            |                |
+|-----------------+-----------------+---------------------------------------+----------------|
+| list            | 创建列表        | (list 'my (+ 2 1) "Sons")             | (my 3 "Sons")  |
+| cons            | construction    | (cons 'a '(b c d))                    | (a b c d)      |
+| car             | 列表第0项       | (car '(a b c))                        | a              |
+| cdr             | 第1~end项       | (cdr '(a b c))                        | (b c)          |
+| nth             | 第n项           | (nth 0 '(a b c))                      | a              |
+| nthcdr          | 地n个cdr        | (nthcdr 1 '(a b c))                   | (b c)          |
+| last            | 最后一项        | (last '(a b c))                       | c              |
+| remove          | 删除项          | (remove 'b '(a b c))                  | (a c)          |
+| eql             | 比较列表/对象   | (eql (cons 'a nil) (cons 'a nil))     | nil            |
+| copy-list       | 列表拷贝        | (copy-list x)                         | x              |
+| adjoin          | 条件cons        | (adjoin 'z '(a b c))                  | (z a b c)      |
+|-----------------+-----------------+---------------------------------------+----------------|
+| copy-tree       | 树拷贝          |                                       |                |
+| union           | 并集            |                                       |                |
+| intersection    | 交集            |                                       |                |
+| set-difference  | 补集            |                                       |                |
+| length          | 元素数          | (length '(a b c ))                    | 3              |
+| subseq          | 子序列          | (subseq '(a b c d) 2)                 | (c d)          |
+| reverse         | 倒序            | (reverse '(a b c))                    | (c b a)        |
+| every           | 所有测试        | (every #'oddp '(1 3 5))               | t              |
+| some            | 含有测试        | (some #evenp '(1 2 3))                | t              |
+| push            | 压栈            | (push obj lst)                        |                |
+| pushnew         | 单一值压栈      |                                       |                |
+| pop             | 出栈            | (pop lst)                             |                |
+| assoc           | 表映射          | (assoc '+ trans)                      | (+ . "add")    |
+| make-hash-table | 创建哈希表      | (setf ht (make-hash-table))           |                |
+| gethash         | 获取哈希值      | (gethash 'color ht)                   |                |
+| remhash         | 移除词条        | (remhash 'color ht)                   |                |
+| maphash         | 迭代            |                                       |                |
+|-----------------+-----------------+---------------------------------------+----------------|
+| listp           | 谓词(predicate) | (listp '(a b c))                      | t              |
+| not/null        | 非运算          | (not nil)                             | t              |
+|-----------------+-----------------+---------------------------------------+----------------|
+| 特殊数据结构    |                 |                                       |                |
+|-----------------+-----------------+---------------------------------------+----------------|
+| make-array      | 构造数组        | (setf arr (make-array '(2 3)          |                |
+|                 |                 | :initial-element nil))                |                |
+| aref            | 访问数组元素    | (aref arr 0 0)                        |                |
+| #<n>a           | literra array   | #2a((b nil nil) (nil nil nil))        |                |
+| vector          |                 | (setf vec (vector "a" 'b 3))          | ["a" b 3]      |
+| svref           | 存取向量        | (svref vec 0)                         | "a"            |
+| char-code       |                 |                                       |                |
+| elt             | ELement aT n    | (elt '(a b c) 1)                      | b              |
+|-----------------+-----------------+---------------------------------------+----------------|
+| 关键字          |                 |                                       |                |
+|-----------------+-----------------+---------------------------------------+----------------|
+| :key            | 应用至每个元素  |                                       | identity       |
+| :test           | 比较的函数      |                                       | eql            |
+| :from-end       | 真，反向工作    | (position-if ... :from-end t)         |                |
+| :start          | 起始位置        |                                       | o              |
+| :end            | 结束位置        |                                       | nil            |
+| position        | 返回元素位置    |                                       |                |
+|-----------------+-----------------+---------------------------------------+----------------|
+| 宏              |                 |                                       |                |
+|-----------------+-----------------+---------------------------------------+----------------|
+| eval            | 求值            | (eval '(+ 1 2 3))                     | 6              |
+| coerce          |                 |                                       |                |
+| compile         |                 |                                       |                |
+| defmacro        | 定义宏          | (defmacro nil! (x)                    |                |
+|                 |                 | (list 'setf x nil))                   |                |
+|                 |                 |                                       |                |
+* Lambda Calculus
+1. *句法*
+   output = (lambda)(argument)(input)
+   *Lambda calculus 只有三种表达式*
+   - 函数定义：在lambda calculus里一个函数就是一个表达式，
+     写成lambda x . <函数体>。意思是“一个函数，带一个参数X，返回计算函数体后得到的结果”。
+     这个时候我们说这个lambda表达式绑定了参数X。
+   - 标识符引用（identifier reference): 一个标识符引用就是一个名字。这个名字和包括这个引用的函数定义里的参数同名。
+   - 函数应用(function application): 这个更简单，把要应用的值放到函数定义的后面就行了。比如
+     (lambda x . plus x x) y
+   *BNF*
+   <expr> ::=  <constant>
+   | <variable>
+   | (<expr> <expr>)
+   | (λ <variable>.<expr>)
+   <constant>可以是诸如0、1这样的数字，或者预定义的函数: +、-、*等。
+   <variable>是x、y等这样的名字。
+   (<expr> <expr>)表示函数调用。左边的为要调用的函数，右边的为参数。
+   (λ <variable>.<expr>)被称为lambda抽象(lambda abstraction)，用以定义新的函数。
+2. *alpha/beta rule*
+   - *alpha-conversion*
+     重命名规则
+     lambda x . if (= x 0) then 1 else x^2
+     lambda y . if (= y 0) then 1 else y^2
+     *意义：实现递归*
+   - *beta-reduction*
+     简化规则
+     (llabda x . x + 1) 3
+     (3 + 1)
+     *意义：参数代入*
+   - *currying(柯里化)*
+     lambda x y . x * x + y * y
+     ;; currying(类似嵌套)
+     lambda x . (lambda y . x * x + y * y)
+     
+3. *语法糖(人机界面)*
+   - *let: 引入全局变量*
+     let squer = lambda x . x^2
+     (lambda squer . squer 4)(lambda x . x^2)
+     (4^2)
+   - *Church Numberals(丘奇数)*
+     1) 0 = lambda s z . z
+     2) 1 = lambda s z . s z
+     3) 2 = lambda s z . s (s z)
+     4) n = lambda s z . s s^n z
+     *通俗化*
+     z = 0;
+     s = ++;
+     
+     0 = lambda(++, 0){0;}
+     1 = lambda(++, 0){++0;}
+     2 = lambda(++, 0){++(++0);}
+     n = lambda(++, 0){++(...(<n_times>++0));}
+
+     *实现x + y*
+     let add = lambda s z x y . x s (y s z)
+     let add = lambda x y . (lambda s z . (x s (y s z)))
+
+     *演算2+3*
+     add (lambda s z. s (s z)) (lambda s z . s (s (s z)))
+     (lambda x y .(lambda s z. (x s y (s z)))) (lambda s2 z2 . s2 (s2 z2)) (lambda s3 z3 . s3 (s3 (s3 z3))) 
+     lambda s z . s (s (s (s (s z))))
+* 网络资料
+  《The Little Schemer》
+  《Structure and Interpretationof Computer Programs》(SICP)
+  
+《The Little Schemer》(TLS)：我觉得 Dan Friedman 的 The Little Schemer 是目前最好，最精华的编程入门教材。这本书很薄，很精辟。它的前身叫《The Little Lisper》。很多资深的程序语言专家都是从这本书学会了 Lisp。虽然它叫“The Little Schemer”，但它并不使用 Scheme 所有的功能，而是忽略了 Scheme 的一些毛病，直接进入最关键的主题：递归和它的基本原则。
+
+　　《Structure and Interpretationof Computer Programs》(SICP)：TheLittle Schemer 其实是比较难的读物，所以我建议把它作为下一步精通的读物。SICP 比较适合作为第一本教材。但是我需要提醒的是，你最多只需要看完前三章。因为从第四章开始，作者开始实现一个 Scheme 解释器，但是作者的实现并不是最好的方式。你可以从别的地方更好的学到这些东西。不过也许你可以看完 SICP 第一章之后就可以开始看 TLS。
+
+　　《A Gentle Introduction to Haskell》：对于 Haskell，我最开头看的是 A GentleIntroduction to Haskell，因为它特别短小。当时我已经会了 Scheme，所以不需要再学习基本的函数式语言的东西。我从这个文档学到的只不过是 Haskell 对于类型和模式匹配的概念。
+在学会高层的语言之后，可以进行“语义学”和“编译原理”的学习。
+* SICP(Structure and Interpretation of Computer Pragrams)
+1. *Building A Abstractions with Procedure(构造过程抽象)*
+   process + data = program;
+   computational process(计算过程):存在于计算机中的抽象实体;
+   program(程序): 过程演算的模式规则；
+   symbolic expressions: S(符号)-表达式
+   
+   *Programming in Lisp*
+   1) *The elements of Programming(程序元素)*
+      *语言三种机制*
+      . *primitive expressions(元表达式)* : 基本实体 + 123 
+      . *means of combination(组合方法)* : 实体组合 (+ 123 (* 123 123))
+      . *means of abstraction(抽象方法)* : 实体组合抽象为操作单元 
+          名字抽象(define var 123)
+          过程抽象(define (square x) (* x x))
+      *two kinds of elements(两种元素)*
+        最终是一体的
+      . *procedures* : (lambda)
+      . *data* : atom + abstraction(combinatsion)
+
+      1. *Expression(表达式) + evaluating(计算)*
+         primitive expression : 245
+         primitive procedure: + / *
+         form a compound expression(combinations): (+ 234 782)
+         (+ 1 2) --> prefix notation(前缀表示法)
+           \ \--> oprands(操作数 N)
+            \---> operator(操作 V)
+         (+ 1 2 3 4 5): accommodate an arbitrary number of arugments;(包容任意多参数)
+                        no ambiguity can araise(无歧义)
+         (+ (* 3 5) (- 10 6)): second advantage allow combination to be nested(嵌套)
+      2. *Naming and the Environment(命名与环境)*
+          *Naming: using names to refer to computational objects*
+          使用名称去引用计算对象；
+          name identifies a /variable/ whose /value/ is the object.
+          名称标识了一个<变量>，变量的<值>是一个<对象>;
+          #+BEGIN_SRC scheme
+          ;; cause the interpreter to associate the <value> 2 whith the <name> size
+          (define size 2)
+          ;; refer to the <value> by <name>
+          size
+          ;; return 2
+          #+END_SRC
+          *define is our languages's simplest means of* abstraction(定义是语言的最基本抽象)*
+      
+          *Environment: Some sort of memory that keeps track of the name-object pairs*
+          环境：对命名的实现方案;
+      3. *Evaluating Combinations(组合计算)*
+         1) Evalute the subexpressions of the combination(优先计算子表达式);
+         2) 运算符作用于操作数；
+         3) primitive atom;
+            primitive build-in operators;
+            enviroment:
+      4. *Compound Procedure(组合过程)*
+         *procedure definitions*: a match more powerful abstraction technique 
+         by which a compound operations can be given a name and then refered
+         to as a unit;
+         
+         *(define (<procedure> <args...>) (<body>))*
+         *(define <variable> <value>)*
+
+         (define (square x)        (*        x     x))
+          To      square something, multiply it by itself.
+         (define (sum-of-squares x y)
+           (+ (square x) (square y)))
+         ... more and more producer definitions.
+
+         1) 数与运算符是元数据与过程
+         2) 嵌套提供组合方式
+         3) 定义环境抽象
+      5. *The Substitution Mode for Procedure Application(解释过程)*
+         . 参数代入求值
+           *normal-order* 正则求值序：完全展开后代入(缺点重复计算)
+           *applicative-order* 应用求值序：先求参后代入(避免重复计算)
+      6. *Conditional Expression and Predicates(条件与谓词)*
+         *case analysis*
+         #+BEGIN_SRC scheme
+         (define (abs x)
+           (cond ((> x 0) x)
+                 ((= x 0) 0)
+                 ((< x 0) (- x))))
+         (define (abs-1 x) (cond ((< x 0) (- x)) (else x)))
+         ;(cond (<predicate1> <expressions1>)
+         ;      ...
+         ;      (<pn> <en>))
+         ; clauses(对偶)
+         #+END_SRC
+      7. 牛顿求平方根
+         函数与过程的矛盾：函数-说明性知识； 过程-行为性知识；
+      8. *Procedures as Black-Box Abstractions(过程黑箱抽象)*
+         sqrt = loop(gess -> check -> improve)
+         . 参数作用域：约束变量；(避免参数副作用)(词法作用域)
+         . 局部化子过程：(避免同名函数)
+           函数内嵌套定义函数:(块结构)
+           (define (sqrt x) ((define (good-enouth)) (define (...))...))
+   2) *Procedures and the Processes The Generate(过程与过程推演、度量)*
+      前面只描述了规则，但无模式经验。
+      这节描述：计算模式、效率；
+      
+      1. *Linear Recursion and Iteration(线性第归与迭代)*
+         *factorial(阶乘)*
+         #+BEGIN_SRC scheme
+         ;; factorial
+         ;; n! = n * (n -1) * (n - 2) * ... * 3 * 2 * 1
+
+         ;; Linear Recursion
+         ;; 第归计算过程：解释器记录第归数据
+         ;; n! = n * (n - 1)!
+         (define (factorial-r n)
+           (if (= n 1)
+               1
+               (* n (factorial-r (- n 1)))))
+
+         ;; Iteration
+         ;; 第归过程：直接或间接调用自身
+         ;; n! = (cnt = 1, product = 1)
+         ;;      do{
+         ;;        product *= cnt;
+         ;;      }while(++cnt <= n)
+         (define (factorial-i n)
+           (define (fac-iter product conter max-count)
+             (if (> conter max-count)
+                 product
+                 (fact-iter (* conter product)
+                            (+ conter 1)
+                            max-count)))
+           (fact-iter 1 1 n))
+
+         ;; 尾第归：常量空间迭代计算
+         #+END_SRC
+      2. *Tree Recursion(树形第归)*
+         #+BEGIN_SRC scheme
+         ;; Fibonacci
+         ;;           / 0  0
+         ;; Fib(n) = <  1  1
+         ;;           \ Fib(n-1) + Fib(n-2)
+
+         ;; (Tree Recursion)经典树形第归
+         ;; 过多冗余计算
+         ;; w = (1 + log(5))/2 = 1.6180
+         ;; w * w = w + 1
+
+         (define (fib-t n)
+           (cond ((= n 0) 0)
+                 ((= n 1) 1)
+                 (else (+ (fib (- n 1))
+                          (fib (- n 2))))))
+
+         ;; Iteration
+         (define (fib-i n)
+           (define (fib-iter a b count)
+             (if (= count 0)
+                 b
+                 (fib-iter (+ a b) a (- count 1))))
+           fib-iter 1 0 n)
+
+         ;; 换零钱方式统计
+         ;; 50 25 10 5 1
+         ;; 说明树第归低效但，但容易实现
+         ;; 希望编译器能完成对低效的优化，不需要人为设计；
+         (define (count-change amount)
+           (define (first-denomination kinds-of-cions)
+             (cond ((= kinds-of-cions 1) 1)
+                   ((= kinds-of-cions 2) 5)
+                   ((= kinds-of-cions 3) 10)
+                   ((= kinds-of-cions 4) 25)
+                   ((= kinds-of-cions 5) 50)))
+           (define (cc amount kinds-of-cions)
+             (cond ((= amount 0) 1)
+                   ((or (< amount 0) (= kinds-of-cions 0)) 0)
+                   (else (+ (cc amount
+                                (- kinds-of-cions 1))
+                            (cc (- amount
+                                   (first-denomination kinds-of-cions))
+                                kinds-of-cions)))))
+           (cc amount 5))
+         #+END_SRC
+      3. *Orders of Grows(增长的阶)*
+         度量效率、规模；
+         *order of growth* to obtain a gross measure of the resources required.
+             粗略估算：(theta n^2) => n^2 , 1000n^2, 3n^2 + 10 n + 17 ...
+         *n* measures the size of the problem;(问题规模)
+             函数参数、近似值 - 计算资源消耗特性值;
+         *R(n)* amount of resources the process requires for a problem of sizne n;
+                (资源消耗)
+                寄存器数目、机器操作数目等
+                R(n) = (theta (f(n)))
+                k1f(n) <= R(n) <= k2f(n); (int k1, k2;)
+                | function        | steps           | spaces    |
+                |-----------------+-----------------+-----------|
+                | (factorial-r n) | (theta n)       | (theta n) |
+                | (fracorial-i n) | (theta n)       | (theta 1) |
+                | (fib-t n)       | (theta (phi^n)) | (theta n) |
+      4. *Exponentiation(求幂)*
+         #+BEGIN_SRC scheme
+         ;; exponentiation
+         ;; b^n = b * b^(n - 1)
+         ;; b^0 = 1
+
+         ;; step = (theta n)
+         ;; space = (theta n)
+         (define (expt-r b n)
+           (if (= n 0)
+               1
+               (* b (expt b (- n 1)))))
+
+         ;; step = (theta n)
+         ;; space = (theta 1)
+         (define (expt-i b n)
+           (define (expt-iter b counter product)
+             (if (= counter 0)
+                 product
+                 (expt-iter b (- counter 1) (* b product))))
+           (expt-iter b n 1))
+
+         ;; step = (theta log(n))
+         (define (expt-fast b n)
+           (cond ((= n 0) 1)
+                 ((even? n) (square (fast-expt b (/ n 2))))
+                 (else (* b (fast-expt b (- n 1))))))
+         #+END_SRC
+      5. *Greatest Common Divisors(GCD 最大公约数)*
+         rational-number(有理数)
+         reduce a r-num to lowest terms, use GCD 16/28 = 4/7
+         #+BEGIN_SRC scheme
+         ;; 欧几里得算法(Euclid's Algorithm)
+         ;; r = remainder(a/b)
+         ;; GCD(a, b) = GCD(b, r)
+         ;; GCD(206, 40)
+         ;; GCD(40, 6)
+         ;; GCD(6, 4)
+         ;; GCD(2, 0) = 2
+         ;; step = (theta log(n))
+         (define (gcd a b)
+           (if (= b 0)
+               a
+               (gcd b (remainder a b))))
+         #+END_SRC
+      6. *Testing for Primality(素数检测)*
+         #+BEGIN_SRC scheme
+         ;; step = (theta (square n))
+         ;;
+         (define (prime? n)
+           (define (divides? a b)
+             (= (remainder b a) 0))
+           (define (find-divisor n test-divisor)
+             (cond ((> (square test-divisor) n) n)
+                   ((divides? test-divisor n) test-divisor)
+                   (else (find-divisor n (+ test-divisor 1)))))
+           (define (smallest-divisor n)
+             (find-divisor n 2))
+           (= n (smallest-divisor n)))
+         #+END_SRC
+   3) *Formulating Abstractions with Higher-Order Procedures(高阶过程抽象形式)*
+      *Higher-Order Procedures* Procedures that manipulate procedures;
+      *高阶过程* 操作过程的过程；
+      1. *Produres as Arugments(过程作为参数)*
+         #+BEGIN_SRC scheme
+         ;; sum integers
+         (define (sum-integers a b)
+           (if (a > b)
+               0
+               (+ a (sum-integers (+ a 1) b))))
+         ;; sum cubes
+         (define (sum-cubes a b)
+           (if (> a b)
+               0
+               (+ (cube a) (sum-cubes (+ a 1) b))))
+         ;; sum pi
+         (define (pi-sum a b)
+           (if (> a b)
+               0
+               (+ (/ 1.0 (* a (+ a 2))) (pi-sum (+ a 4) b))))
+
+         ;; template
+         ;; sigma notation
+         ;; (define (sigma a b f) (+ (f(a)) ... (f(b))))
+         (define (sum term a next b)
+           (if (> a b)
+               0
+               (+ (term a)
+                  (sum term (next a) next b))))
+
+         (define (inc n) (+ n 1))
+         (define (sum-cubs-t a b)
+           (sum cube a inc b))
+
+         (define (identity x) x)
+         (define (sum-integers-t a b)
+           (sum identity a inc b))
+
+         ;; 基于sum 求 a 和 b 间的定积分
+         ;; The *difinite integral(定积分)* of a function f
+         ;; between the limits a and b can be approximited numeriaclly
+         ;; using the formula for small values of dx.
+         ;; integral (f x b dx){ dx * (f(a + dx/2) + f(a + dx + dx/2) ...);}
+         (define (integral f a b dx)
+           (define (add-dx x)
+             (+ x dx))
+           (* (sum f (+ a (/ dx 2.0)) add-dx b)
+              dx))
+         #+END_SRC
+      2. *Constructing Procedures Using lambda(匿名函数)*
+         #+BEGIN_SRC scheme
+         ;; lambda 过程(匿名过程)
+         ;; (lambda (<formal-parametes>) <body>)
+         ;; 以下等价
+         ;; (define (plus4 x) (+ x 4))
+         ;; (define plus4 (lambda (x) (+ x 4)))
+
+         (define (pi-sum-lambda a b)
+           (sum (lambda (x) (/ 1.0 (* x (+ x 2))))
+                a
+                (lambda (x) (+ x 4))
+                b))
+         (define (integral-lambda f a b dx)
+           (* (sum f
+                   (+ a (/ dx 2.0))
+                   (lambda (x) (+ x dx))
+                   b)
+              dx))
+
+         ((lambda (x y z) (+ x y z)) 1 2 3)
+         ;; return 6
+
+         ;; f(x, y) = xa^2 + yb + ab
+         ;; 
+         (define (f x y)
+           ((lambda (a b)
+              (+ (* x (square a))
+                 (* y b)
+                 (* a b)))
+           (+ 1 (* x y))
+           (- 1 y)))
+
+         ;; let (上式的lambda外衣)
+         (define (f1 x y)
+           (let ((a (+ 1 (* x y)))
+                 (b (- 1 y)))
+             (+ (* x (square a))
+                (* y b)
+                (* a b))))
+         ;; let 作用域
+         ;; ((3 + (3 * 10)) + 5)
+         (define x 5)
+         (+ (let ((x 3))
+              (+ x (* x 10)))
+            x)
+         ;; (3 * (5 + 2))
+         (let ((x 3)
+               (y (+ x 2)))
+           (* x y))
+         #+END_SRC
+      3. *Procedures as General Methods(过程作为一般性方法)*
+         *Finding roots of equations by the half-interval method(折半求根)*
+         #+BEGIN_SRC scheme
+         ;; half-interval method
+         ;; f(x) = 0 (f is a continuous function)
+         ;; f(a) < 0 < f(b)
+         ;; step = (theta log(L/T))
+         (define (search-root f neg-point pos-point)
+           (let ((mid-point (average neg-point pos-point)))
+             (if (close-enouth? neg-point pos-point)
+                 mid-point
+                 (let ((test-value (f mid-point)))
+                   (cond ((positive? test-value)
+                          (search-root f neg-point mid-point))
+                         ((negative? test-value)
+                          (search-root f mid-point pos-point))
+                         (else mid-point))))))
+         (define (close-enouth? x y)
+           (< (abs (- x y)) 0.001))
+
+         ;; 容错
+         (define (half-interval-method f a b)
+           (let ((a-value (f a))
+                 (b-value (f b)))
+             (cond ((and (negative? a-value) (positive? b-value))
+                    (search-root f a b))
+                   ((and (negative? b-value) (positive? a-value))
+                    (search-root f b a))
+                   (else
+                    (error "Values are not of opposite sign" a b)))))
+
+         ;; 应用
+         ;; sin(x) = 0; [2 4]
+         (half-interval-method sin 2.0 4.0)
+         (half-interval-method (lambda (x) (- (* x x x) (* 2 x) 3)) 1.0 2.0)
+         #+END_SRC
+         *Finding fixed points of functions(求函数定点)*
+         #+BEGIN_SRC scheme
+         ;; fixed point of function
+         ;; f(x) = x;
+         (define tolerance 0.00001)
+
+         (define (fixed-point f first-guess)
+           (define (close-enough? v1 v2)
+             (< (abs (- v1 v2)) tolerance))
+           (define (try guess)
+             (let ((next (f guess)))
+               (if (close-enough? guess next)
+                   next
+                   (try next))))
+           (try first-guess))
+         #+END_SRC
+      4. *Procedure as Returned Values(返回过程)*
+         “rights and privileges” of first-class elements(一级元素) are:
+         • They may be named by variables. 用变量命名
+         • They may be passed as arguments to procedures. 作为参数
+         • They may be returned as the results of procedures. 最为返回值
+         • They may be included in data structures. 包含在数据结构中
+         #+BEGIN_SRC scheme
+         ;; 平均阻尼
+         (define (average-damp f)
+           (lambda (x) (average x (f x))))
+
+         ;; 平方根
+         (define (sqrt x)
+           (fixed-point (average-damp (lambda (y) (/ x y)))
+                        1.0))
+
+         ;; 立方根
+         (define (cube-root x)
+           (fixed-point (average-damp (lambda (y) (/ x (square y))))
+                        1.0))
+
+         ;; Newton's method
+         ;; f(x) = x - (g(x)/Dg(x));
+         ;; Dg(x) = (g(x + dx) - g(x))/dx
+         ;; derivative
+         (define dx 0.00001)
+         (define (deriv g)
+           (lambda (x) (/ (- (g (+ x dx)) (g x)) dx)))
+         (define (newton-transform g)
+           (lambda (x) (- x (/ (g x) ((deriv g) x)))))
+         (define (newtons-method g guess)
+           (fixed-point (newton-transform g) guess))
+         (define (sqrt x)
+           (newtons-method
+            (lambda (y) (- (square y) x)) 1.0))
+
+         ;; 抽象和第一级过程
+         (define (fixed-point-of-transform g transform guess)
+           (fixed-point (transform g) guess))
+
+         (define (sqrt x)
+           (fixed-point-of-transform
+            (lambda (y) (/ x y)) average-damp 1.0))
+
+         (define (sqrt x)
+           (fixed-point-of-transform
+            (lambda (y) (- (square y) x)) newton-transform 1.0))
+
+         #+END_SRC
+2. *Building Abstractions with Data(构造数据抽象)*
+   #+BEGIN_SRC scheme
+   ;; linear-combination
+   ;; f(x,y) = ax + by
+   (define (linear-combination a b x y)
+     (+ (* a x) (* b y)))
+   ;; 更广义的数据抽象’
+   (define (linear-combination a b x y)
+     (add (mul a x) (mul b y)))
+   #+END_SRC
+   闭包功能: 组合基本数据，也能组合符合数据；
+   符号表达式，进一步扩大语言的表述能力；
+   1) *Introduction to Data Abstraction(数据抽象介绍)*
+      *Arithmetic Operations for Rational Numbers*
+      #+BEGIN_SRC scheme
+      ;; (make-rat <n> <d>) returns the rational number
+      ;; (number <x>) returns the numerator of the rational number ⟨x⟩.
+      ;; (denom <x>) returns the denominator of the rational number ⟨x⟩.
+      ;; interface
+      (define (add-rat x y)
+        (make-rat (+ (* (numer x) (denom y))
+                     (* (numer y) (denom x)))
+                  (* (denom x) (denom y))))
+      (define (sub-rat x y)
+        (make-rat (- (* (numer x) (denom y))
+                     (* (numer y) (denom x)))
+                  (* (denom x) (denom y))))
+      (define (mul-rat x y)
+        (make-rat (* (numer x) (numer y))
+                  (* (denom x) (denom y))))
+      (define (div-rat x y)
+        (make-rat (* (numer x) (denom y))
+                  (* (denom x) (numer y))))
+
+      ;; implement
+      ;; pairs
+      (define make-rat cons)
+      (define numer car)
+      (define denom cdr)
+
+      (define (print-rat x)
+        (newline)
+        (display (numer x))
+        (display "/")
+        (display (denom x))
+        (newline))
+
+      ;; 约化
+      (define (make-rat n d)
+        (let ((g (gcd n d)))
+          (cons (/ n g) (/ d g))))
+      #+END_SRC
+      *Abstraction Barriers(抽象屏障)*
+      系统层次结构构成屏障，使得各层独立演化；
+      禁忌：越层访问；
+      ------ rational applications ------------------------
+      ------ rational operators (add/sub/...-rat) ---------
+      ------ rational abstract (make-rat number denom) ----
+      ------ rational implement (cons car cdr) ------------
+      *What Is Meant by Data?(数据意味着什么)*
+   2) *Hierarchical Data and Closure Property(层次数据/闭包)*
+      闭包特性：A元素包含A元素
+      1. *Representing Sequences*
+         #+BEGIN_SRC scheme
+         (list 1 2 3)
+         (list-ref (list 1 2 3) 0)
+         (map (lambda (x) (* x 10)) (list 1 2 3))
+         #+END_SRC
+      2. *Hierarchical Structures*
+         #+BEGIN_SRC scheme
+         ;; 树叶数
+         (define (count-leaves x)
+           (cond ((null? x) 0)
+                 ((not (pair? x)) 1)
+                 (else (+ (count-leaves (car x))
+                          (count-leaves (cdr x))))))
+         ;; 遍历操作
+         (define (scale-tree tree factor)
+           (cond ((null? tree) nil)
+                 ((not (pair? tree)) (* tree factor))
+                 (else (cons (scale-tree (car tree) factor)
+                             (scale-tree (cdr tree) factor)))))
+         #+END_SRC
+      3. *序作为一种约定界面*
+   3) *Symbolic Data*
+      1. *Quotation(')*
+         
+** scheme 内建符号表
+|----------+-----------------+------------------------------------------+------------|
+| 符号     | 功能            | 示例                                     | 结果       |
+|----------+-----------------+------------------------------------------+------------|
+| define   | 命名变量        | (define size 2)                          |            |
+|          | 定义函数        | (define (square x) (* x x))              |            |
+| let      | 局部变量        | (let ((x 2)) (+ x 1))                    | 3          |
+| cond     | 条件conditional | (cond ((> 1 0) x))                       |            |
+| else     |                 | (cond (<pred> <exp>) (else <exp>))       |            |
+|          |                 |                                          |            |
+| if       |                 | (if (<pred>) (<then>) (<else>))          |            |
+|          |                 |                                          |            |
+| and      | &&              | (and <e1> ... <en>)                      |            |
+| or       |                 | (or <e1> ... <en>)                       |            |
+| not      |                 | (not <e>)                                |            |
+| quota/'  |                 |                                          |            |
+|----------+-----------------+------------------------------------------+------------|
+| cons     | construct       |                                          |            |
+| car      | 头部            | Contents of Address part of Register     |            |
+| cdr      | 非头部          | Contents of Decrement part of Register   |            |
+| length   | 结构大小        | (length (list 1 2 3))                    | 3          |
+| null?    | 空结构谓词      | (null? (list 1 2 3))                     | #f         |
+|          |                 | (null? (list))                           | #t         |
+| pair?    |                 |                                          |            |
+| append   |                 | (append (list 1 2) (list 3 4))           | (1 2 3 4)  |
+|----------+-----------------+------------------------------------------+------------|
+| list     |                 | (list <a> <b> <c>)                       |            |
+|          |                 | (cons <a> (cons <b> (cons <c> nil)))     |            |
+| list-ref | 引用项          | (list-ref <list> <index>)                |            |
+|          |                 | (list-ref (list 1 2 3) 0)                | 1          |
+|----------+-----------------+------------------------------------------+------------|
+| map      |                 | (map <proc> <items>)                     |            |
+|          |                 | (map (lambda (x) (* x 10)) (list 1 3 5)) | (10 30 50) |
+|          |                 |                                          |            |
+      
+      
