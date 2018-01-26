@@ -1,10 +1,57 @@
-* task
+* projects
+** libzit(夸平台基础库)
+*** TODO [12%]
+    - [ ] [0%] base
+      + [ ] zlog <2018-01-20 Sat>
+    - [ ] [0%] container
+    - [ ] [0%] framework
+      + [ ] tasker
+    - [ ] [0%] memory
+    - [ ] [0%] thread
+    - [ ] [0%] utility
+      + [ ] json(C)
+      + [ ] xml(C)
+    - [ ] [0%] net
+      + [ ] socket
+      + [ ] epoll/iocp common inteface
+    - [X] [100%] hpp(C++ adapter)
+      + [X] zmq <2018-01-20 Sat>
+      + [X] json(C++)
+      + [-] xml
 
-* plan 
+*** design
+    - 功能
+      1. 支持Windows/POSIX
+      2. 输出动态库 *libzit.so/.dll* 和静态库 *libzit.a/.lib*
+      3. *zit/hpp* C++第三方库适配器，内联实现
+** router(软路由器)
+*** TODO [%]
+*** design
+    - 选型
+      C
+      epoll/iocp
+    - 功能
+      1. 支持路由器组网形成分布式系统；
+      2. 输出 *libznode.so/.dll* *zrouter/.exe*
+      3. 支持协议：TCP/UDP
+    - 高级功能
+      1. com
+    - 
 
-* schedule 
-1. <2017-07-17 Mon>
-   - test php_zmq;
-   - test php_json;
-2. <2017-08-15 Tue> linux/core_dump.sh
-3. <2017-12-29 Fri> ctp;net_router;
+** plutus(帕拉达)
+*** TODO [%]
+    - [ ] [%] 原型
+*** design
+    - 功能
+      1. 数据接入
+      2. 数据分析
+      3. 交易决策
+    - 设计
+
+* log
+- 2018
+  + Jan
+    <2018-01-20 Sat> plutus
+    reschedule ZInfoTech
+    <2018-01-22 Mon> libzit
+    
