@@ -1,0 +1,56 @@
+* Protothreads
+** 简介
+   http://dunkels.com/adam/pt/download.html
+   作者: Adam Dunkels
+   职务: SICS Swedish Institute of Computer Science 瑞士计算机科学研究所
+   BSD-style license, The only requirement is that credit is given.
+
+- Protothreads:
+  提供块上下文事件驱动
+  轻量级无堆栈线程
+- Main features 主特性
+  纯C实现，不依赖设备特殊代码
+  不使用longjmp(),易错代码
+  2字节内存消耗
+  可以不需要操作系统
+  提供阻塞等待不依赖与多线程和堆栈切换
+- Examples applications 应用场景
+  内存受限系统(如单片机) Memory constrained systems
+  事件驱动协议栈 Event-driven protocol stacks
+  嵌入式系统 Deeply embedded system
+  传感器网络 Sensor network system
+** 使用流程 Using Protothreads
+- 安装
+  simply copy the files *pt.h, lc.h, lc-switch.h* into the include files directo
+ry of the project. and *#include <pt.h>* in all files that should use pt.
+将 *pt.h/lc.h/lc-switch.h* 放到项目引入位置。并在代码中包含 *#include <pt.h>*
+- Local Variables 局部变量
+  pt 不保持堆栈环境，局部变量必须消息的对待，如没必要不要再pt中使用局部变量。
+- Scheduling 调度
+  当一个函数被调用，pt 一直运行到 blocks 或 exits 为止。
+- Implementation 实现
+  pt are implemented using *local continuations(lc)*.
+  *lc* represents the current status of execution at a particular place in the 
+  program, but does not provide any call history or local variables.
+  *lc* 表示了程序特定位置的状态，并不提供调用历史和局部变量。
+  *lc* 可以在特殊的函数中捕获。
+  *lc* 的实现方式：
+  - 芯片特殊汇编指令 machine specific assembler code
+  - 标准C构造 standard C constructs
+    utilizes the C switch() statement in a non-obvious way that is similar to 
+    Diff's device.
+  - 编译器扩展(GCC) conpiler extensions
+    GCC supports label pointers that can be used for this purpose.
+** pt.1.0 Module index
+- file index
+  *lc-addrlabels.h* Implementation of local continuations based on th labels as
+  values teature of gcc. 基于GCC的lc实现
+  *lc-switch.h* based on switch() statment 基于switch()的lc实现
+  *lc.h* local continuations
+  *pt-sem.h* Couting semaphores 计数信号量
+  *pt.h* pt 调用接口
+- Detailed Description 
+  pt.h include lc.h,
+  lc.h include lc-addrlabels.h/switch.h
+** 4. Module Documentation
+
