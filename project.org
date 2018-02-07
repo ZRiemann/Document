@@ -24,19 +24,115 @@
       1. 支持Windows/POSIX
       2. 输出动态库 *libzit.so/.dll* 和静态库 *libzit.a/.lib*
       3. *zit/hpp* C++第三方库适配器，内联实现
-** router(软路由器)
+** node(Node Topology Layer 节点拓扑层)
+*** 概述
+    高性能网络IO为基础，每个进程(父子进程组)组成一个节点。节点间的连接组成拓扑
+网络。所有节点本质是等价的，但附加的应用不同可以形成任意层次关系和拓扑结构。从
+而形成一个可高度配置分布式系统，各节点的应用完全独立且可以相互协作。
+
+**** 架构图
+
+*application layer*    live-broadcast storage ...
+                       ------ node_id --------
+*node topology layer*           node
+                       --- ip:port -- COMn ---
+*communicate layer*    TCP/IP         COM  ...
+
+层次结构，通信层 --> 节点拓扑层 --> 应用层
+*应用层程* 序可以不感知拓扑层的结构。应用层可以实现为各类插件。
+*节点拓扑层* 专注节点的拓扑网络以及其上数据的传输。
+*通信层* 基于TCP/IP网络以及串口等各类主流通信技术。
+***** 典型拓扑
+- *星形拓扑*
+  node1   node2   node3
+       \    |    /
+        \   |   /
+         \  |  /
+  node4 - node(router) -- node5
+          / | \
+         /  |  \
+        /   |   \
+  node6   node7  node8
+消息通过中间路由转发，优点是拓扑图简单，缺点多一路转发，单点崩溃问题。
+适用环境，很多服务进程在局域网内或同机内部的相互通信。
+
+- *网状拓扑*
+  node1 - node2
+   |   \ /  |
+   |    X   |
+   |   / \  |
+  node3 - node4
+各节点完全独立通信，优点消息直达，单点崩溃不会导致整个网络瘫痪。
+缺点拓扑复杂。
+
+- *混合网络*
+  node1   node2   node3
+       \    |    /
+        \   |   /
+         \  |  /          (domain)
+  node4 - node(router) -- node5 --- node11 - node12
+          / | \                        |   \ /  |
+         /  |  \                       |    X   |
+        /   |   \                      |   / \  |
+  node6   node7  node8               node13 - node14
+      (子网络1)                      (子网络2)
+
+一个 *混合网络* 由多个 *子网络* 组成，各子网络间可能不直接互通需要通过如域路由器转发；
+
 *** TODO [%]
 *** design
     - 选型
       C
-      epoll/iocp
+      epoll/iocp/state-threads(纯IO)
+      *默认端口：TCP/UDP 8420*
+      为什么不用C++? 
+        C更符合简单、粗暴、有效原则；语言特性相对(C++)简单。
+        C++泛型编程，语言知识储备要求高，各种抽象不易读。
     - 功能
       1. 支持路由器组网形成分布式系统；
-      2. 输出 *libznode.so/.dll* *zrouter/.exe*
+      2. 输出 *libznode.{so | a | dll | lib}*
       3. 支持协议：TCP/UDP
+      4. 节点发现 *zerr_t znode_descovery(znode_id)*
+      5. 路由缓存，路由记录；
     - 高级功能
-      1. com
-    - 
+      1. P2P 或公网打洞功能，避免路由中专；
+
+**** 模块划分
+- 原则(简单、粗暴、有效)
+     - 简单
+       用户接口简单、架构简单；
+       同等效果情况下尽目前能力做到，能简单不复杂；
+     - 粗暴
+       如果可以得到合理的效率提升，可以采用各种hacker方式处理。
+     - 有效
+       横向比较不低于同类产品性能；
+       纵向比较可递进式优化扩展；
+- protocol
+  + router
+    - ctl 路由控制
+    - cmd 拓扑命令
+    - route-path 路由路径
+      + next byte[len] 下一站路径
+      + prevs byte[len]... 已经过的路由
+      + remainder byte[len]... 后续路由
+  + data 用户数据
+- buffer 缓冲区模块
+  + 每个node两个buffer，一个用于输入，一个用于输出
+  + buffer *循环覆盖* ，每个线程一个 *无锁buffer池* ；
+  + 缓冲区大小， *默认8KB，效率因素暂不考虑用户可自定义* 。
+    假设用户发100M内存数据，对发送缓冲区不做限制，但内部
+    以8KB为单位发送，接受方自行决定接受方式(分次接收或统一回调)。
+- comunicate 通信模块
+  + 多线程并发(适用业务处理时间长<毫秒级>的场景)
+    - 异步回调
+      IO-thread ---- task-threads ---- callback(msg, ...)
+    - 异步主动发送
+      + request() 请求
+      + multicast() 多播
+      + unicast() 单播
+
+  + 多进程形式纯IO(state-threads)
+    state-threads(适用业务处理时间极短<微妙级>的场景，如中转路由)
 
 ** plutus(帕拉达)
 *** TODO [%]
@@ -54,4 +150,6 @@
     <2018-01-20 Sat> plutus
     reschedule ZInfoTech
     <2018-01-22 Mon> libzit
-    
+  + Feb
+    - <2018-02-07 Wed> node
+      重构分布式网络模型，取消router节点，统一为只有node节点。

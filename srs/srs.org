@@ -1,0 +1,22 @@
+#+TITLE SRS 源码分析
+* main
+  1. prepare
+  2. _srs_server->initialize()
+  3. run().run_master()
+     
+** ISrsLog *_srs_log
+** ISrsThreadContxt *_srs_context
+** SrsConfig *_srs_config
+** SrsServer *_srs_server
+*** initialize(NULL)
+*
+* SrsRequest
+* SrsResponse
+* SrsRtmpServer
+* SrsRefer
+* SrsBandwidth
+* SrsSecurity
+* SrsKbps
+* SrsRtmpConn
+
+    
