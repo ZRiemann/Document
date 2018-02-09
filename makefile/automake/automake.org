@@ -1,0 +1,139 @@
+#+TITLE automake
+* 1. Introduction简介
+* 2. An Introtion to the Autotools自动化工具介绍
+** 1. Introducing The GNU Build System
+   *GNU Build System* 有统一的配置脚本(configure script)和最小接口。
+   Makefile也遵循一些约定。构建过程：
+   $ ./configure
+   $ make
+   $ make install
+** 2. Use Cases for the GNU Build System
+*** 1. Basic Installation
+    #+BEGIN_SRC sh
+    tar zxf amhello-1.0.tar.gz
+    cd amhello-1.0
+    ./configure
+    make
+    # make check cause the package's tests to be run.
+    # not mandatory(不是强制的)建议安装前检查
+    # 允许安装前的测试用例
+    make check
+    sudo make install
+    # may run tests on the installed files.
+    # 运行安装后的测试用例，确认安装是否能正确运行
+    make installcheck
+    # 清除生成文件，不需要重新.configure
+    make clean
+    # 清除配置和makefile，需要重新.configure && make
+    make distclean
+    #+END_SRC
+    - *包安装 #make install*
+    That means copying the programs, libraries, header files, scripts, and other
+    data files from the source directory to their final destination on the system.
+    这意味着将程序、库、头文件、脚本和其他数据文件从源目录复制到系统上的最终目的地。
+    /usr/local/bin/hello 执行文件位置
+    /usr/local/lib/      库文件位置
+    /usr/local/include/  头文件位置
+    /usr/local/shared/doc/amhello 用户文件位置
+*** 2. Standard Makefile Targets 标准目标
+    - *make all* same as make
+    - *make install*
+    - *make install-strip* 剥离调试符号
+    - *make uninstall* 卸载
+    - *make clean* 清除make all生成的文件
+    - *make distclean* 清除.configure生成的文件
+    - *make check* 运行源码目录测试
+    - *make installcheck* 运行安装目录测试
+    - *make dist* 创建源码发布包
+      Recreate package-version.tar.gz from all the source files.
+*** 3. Standard Directory Variables 目录变量
+    |--------------------+-------------------------------|
+    | Directory variable | Default value                 |
+    |--------------------+-------------------------------|
+    | prefix             | /usr/local                    |
+    | exec_prefix        | ${prefix}                     |
+    | bindir             | ${exec_prefix}/bin            |
+    | libdir             | ${exec_prefix}/lib            |
+    | ...                |                               |
+    | includedir         | ${prefix}/inclue              |
+    | datarootdir        | ${prefix}/share               |
+    | datadir            | ${datarootdir}                |
+    | mandir             | ${datarootdir}/man            |
+    | infodir            | ${datarootdir}/info           |
+    | docdir             | ${datarootdir}/doc/${PACKAGE} |
+    | ...                |                               |
+    |--------------------+-------------------------------|
+    - *更改安装目录* ./configure *--prefix ~/usr*
+    - *获取帮助* ./configure *--help*
+*** 4. Standard Configuration Variables 标准配置变量
+    |-------------------+--------------------------|
+    | Configuration Var | Description              |
+    |-------------------+--------------------------|
+    | CC                | C compiler command       |
+    | CFLAGS            | C compiler flags         |
+    | CXX               | C++ compiler command     |
+    | CXXFLAGS          | C++ compiler flags       |
+    | LDFLAGS           | linker flags             |
+    | CPPFLAGS          | C/C++ preprocessor flags |
+    | ...               |                          |
+    |-------------------+--------------------------|
+    - *更改配置*
+      ./configure --prefix ~/usr 
+      *CC=gcc-3 CPPFLAGS=-I$HOME/usr/include LDFLAGS=-L$HOME/usr/lib*
+*** 5. Overriding Default Configuration Setting with config.site
+    多个安装包共用一套公共配置时使用config.site来管理。
+    *prefix/share/config.site*
+    *~/usr/share/config.site*
+    #+BEGIN_SRC sh
+    # 公共配置
+    # ~/usr/share/config.site
+    test -z "$CC" && CC=gcc-3
+    test -z "$CPPFLAGS" && CPPFLAGS=-I$HOME/usr/include
+    test -z "LDFLAGS" && LDFLAGS=-L$HOME/usr/lib
+    # ./configure --prefix ~/usr
+    # configure: loading site script /home/adl/usr/share/config.site
+    # ...
+    #+END_SRC
+*** 6. Parallel build Tree (a.k.a. VPATH Builds)
+    The GNU Build System distinguishes two trees: the source tree, and the build
+    tree. GNU构建系统区分了两种树：源树和生成树。
+    - *源代码树* root包含configure的目录。 它包含所有的源文件（分布式的），
+      可以使用子目录。
+    - *构建树* root运行configure配置的目录中，并填充所有从源构建的对象文件，
+      程序，库和其他派生文件（因此不会分发）。 构建树通常与源树具有相同的子
+      目录布局; 其子目录由构建系统自动创建。
+    如果在自己的目录中执行configure，则将源代码和构建树组合在一起：
+    派生文件与源代码构建在相同的目录中。 
+    - *如何不混合源码树和构建树，构建树配置到 ./build/*
+      #+BEGIN_SRC sh
+
+      #+END_SRC
+** 3. How Autotools Help
+** 4. A Small Hello World
+* 3. General ideas通用方式
+* 4. Some example packages示例
+* 5. Creating a Makefile.in
+* 6. Scanning configure.ac, using aclocal
+* 7. Directorires
+* 8. Building Programs and libraries
+* 9. Other Derived Objects
+* 10. Other GNU Tools
+* 11. Building documentation
+* 12. What Gets Installed
+* 13. What Gets Cleaned
+* 14. What Goes in a Distribution
+* 15. Support for test suites
+* 16. Rebuilding Makefiles
+* 17. Changing Automake's Behavior
+* 18. Miscellaneous Rules
+* 19. Include
+* 20. Conditionals
+* 21. Silencing make
+* 22. The effect of --gnu and --gnits
+* 23. When Automake Is't Enough
+* 24. Distributing Makefile.inS
+* 25. Automake API Versioning
+* 26. Upgrading a Package to a Newer Automake Version
+* 27. Frequently Asked Questions about Automake
+* Appendix A Coping This Manual
+* Appendix B Indices

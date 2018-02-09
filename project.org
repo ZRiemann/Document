@@ -108,6 +108,7 @@
        横向比较不低于同类产品性能；
        纵向比较可递进式优化扩展；
 - protocol
+  多级缓冲区,考虑writev()接口
   + router
     - ctl 路由控制
     - cmd 拓扑命令
@@ -134,7 +135,7 @@
   + 多进程形式纯IO(state-threads)
     state-threads(适用业务处理时间极短<微妙级>的场景，如中转路由)
 
-** plutus(帕拉达)
+** plutus(普拉达)
 *** TODO [%]
     - [ ] [%] 原型
 *** design
@@ -144,6 +145,21 @@
       3. 交易决策
     - 设计
 
+* thrid party
+- GSL/FFTW(科学库)
+- unix-v6(10kl Unix)
+  http://minnie.tuhs.org/cgi-bin/utree.pl?file=V6
+- libev (高性能事件循环)
+- 压缩库
+  bzip2/zlib/doboz/
+- SQLite
+- cJSON
+- TinyVM 虚拟机
+- HTTP Parser
+- 网络库
+  libcurl/state threads/libev
+  http://dist.schmorp.de/libev/
+  http://state-threads.sourceforge.net/
 * log
 - 2018
   + Jan
