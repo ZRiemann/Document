@@ -1,14 +1,16 @@
 #+TITLE automake
-* 1. Introduction简介
-* 2. An Introtion to the Autotools自动化工具介绍
-** 1. Introducing The GNU Build System
+* automake
+  https://www.gnu.org/software/automake/manual/html_node/index.html#SEC_Contents
+** 1. Introduction简介
+** 2. An Introtion to the Autotools自动化工具介绍
+*** 1. Introducing The GNU Build System
    *GNU Build System* 有统一的配置脚本(configure script)和最小接口。
    Makefile也遵循一些约定。构建过程：
    $ ./configure
    $ make
    $ make install
-** 2. Use Cases for the GNU Build System
-*** 1. Basic Installation
+*** 2. Use Cases for the GNU Build System
+**** 1. Basic Installation
     #+BEGIN_SRC sh
     tar zxf amhello-1.0.tar.gz
     cd amhello-1.0
@@ -35,7 +37,7 @@
     /usr/local/lib/      库文件位置
     /usr/local/include/  头文件位置
     /usr/local/shared/doc/amhello 用户文件位置
-*** 2. Standard Makefile Targets 标准目标
+**** 2. Standard Makefile Targets 标准目标
     - *make all* same as make
     - *make install*
     - *make install-strip* 剥离调试符号
@@ -46,7 +48,7 @@
     - *make installcheck* 运行安装目录测试
     - *make dist* 创建源码发布包
       Recreate package-version.tar.gz from all the source files.
-*** 3. Standard Directory Variables 目录变量
+**** 3. Standard Directory Variables 目录变量
     |--------------------+-------------------------------|
     | Directory variable | Default value                 |
     |--------------------+-------------------------------|
@@ -65,7 +67,7 @@
     |--------------------+-------------------------------|
     - *更改安装目录* ./configure *--prefix ~/usr*
     - *获取帮助* ./configure *--help*
-*** 4. Standard Configuration Variables 标准配置变量
+**** 4. Standard Configuration Variables 标准配置变量
     |-------------------+--------------------------|
     | Configuration Var | Description              |
     |-------------------+--------------------------|
@@ -80,7 +82,7 @@
     - *更改配置*
       ./configure --prefix ~/usr 
       *CC=gcc-3 CPPFLAGS=-I$HOME/usr/include LDFLAGS=-L$HOME/usr/lib*
-*** 5. Overriding Default Configuration Setting with config.site
+**** 5. Overriding Default Configuration Setting with config.site
     多个安装包共用一套公共配置时使用config.site来管理。
     *prefix/share/config.site*
     *~/usr/share/config.site*
@@ -94,7 +96,7 @@
     # configure: loading site script /home/adl/usr/share/config.site
     # ...
     #+END_SRC
-*** 6. Parallel build Tree (a.k.a. VPATH Builds)
+**** 6. Parallel build Tree (a.k.a. VPATH Builds)
     The GNU Build System distinguishes two trees: the source tree, and the build
     tree. GNU构建系统区分了两种树：源树和生成树。
     - *源代码树* root包含configure的目录。 它包含所有的源文件（分布式的），
@@ -106,34 +108,306 @@
     派生文件与源代码构建在相同的目录中。 
     - *如何不混合源码树和构建树，构建树配置到 ./build/*
       #+BEGIN_SRC sh
+      # 分离build树
+      # 可以编译不同版本，debug/release
+      mkdir debug && cd debug
+      ../configure CFLAGS='-g -O0'
 
+      # release 版本
+      make release && cd release
+      ../configure CFLAGS='-O3 -fomit-frame-pointer'
+
+      # 支持网络文件系统/只读文件的代码编译
+      # /nfs/src/amhello-1.0
+      # [localhost] /home/name/tmp/amh
+      makedir /tmp/amh && cd /tmp/amh
+      /nfs/src/amhello-1.0/configure
+      make
+      # ...
       #+END_SRC
-** 3. How Autotools Help
-** 4. A Small Hello World
-* 3. General ideas通用方式
-* 4. Some example packages示例
-* 5. Creating a Makefile.in
-* 6. Scanning configure.ac, using aclocal
-* 7. Directorires
-* 8. Building Programs and libraries
-* 9. Other Derived Objects
-* 10. Other GNU Tools
-* 11. Building documentation
-* 12. What Gets Installed
-* 13. What Gets Cleaned
-* 14. What Goes in a Distribution
-* 15. Support for test suites
-* 16. Rebuilding Makefiles
-* 17. Changing Automake's Behavior
-* 18. Miscellaneous Rules
-* 19. Include
-* 20. Conditionals
-* 21. Silencing make
-* 22. The effect of --gnu and --gnits
-* 23. When Automake Is't Enough
-* 24. Distributing Makefile.inS
-* 25. Automake API Versioning
-* 26. Upgrading a Package to a Newer Automake Version
-* 27. Frequently Asked Questions about Automake
-* Appendix A Coping This Manual
-* Appendix B Indices
+    - *Parallel Builds/VPATH Builds* 指构建树独立到不同文件夹下。
+**** 7. Two-Part Installation
+    架构相关(install-exec)和不相关数据(install-data)分离安装
+    *make install <==> make install-exec install-data*
+    相对于GBS(GNU Build System)架构相关不相关仅看安装到install-exec/data的区别
+    #+BEGIN_SRC sh
+    # [host1] 全部安装
+    make
+    make intall
+
+    # [host2] 共享[host1]的共享数据
+    make
+    make install-exec
+    #+END_SRC
+**** 8. Cross-Compilation
+    To cross-compile is to build on one platform a binary that will run on 
+    another platform. 
+    交叉编译是建立在一个平台上的二进制文件，它将在另一个平台上运行。
+    - *build platform* 构建平台 如：ubuntu
+      *./configure --build=$BUILD*
+    - *host platform* 目标平台 如：arm；在构建平台上交叉编译出目标平台的文件
+      *./configure --host=$HOST --target=$TARGET*
+    #+BEGIN_SRC sh
+    ./configure --build i686-pc-linux-gnu --host i586-mingw32msvc
+    make
+    cd src
+    file hello.exe
+    #hello.exe: MS Windows PE 32-bit Intel 80386 console executable not relocatable
+    #+END_SRC
+**** 9. Renaming Programs at Install Time
+    安装一个GNU tar 到 gtar，以便区分已装的tar
+    |-----------------------------------+-----------------|
+    | CfgVar                            | Description     |
+    |-----------------------------------+-----------------|
+    | --program-prefix=$PREFIX          | 名字前缀        |
+    | --program-suffix=$SUFFIX          | 名字后缀        |
+    | --program-transform-name=$PROGRAM | Run sed program |
+    |-----------------------------------+-----------------|
+    #+BEGIN_SRC sh
+    ./configure --program-prefix test-
+    #/usr/local/bin/test-hello
+    #+END_SRC
+**** 10. Building Binary Packages Using DESTDIR
+    GBS不会取代包管理器(package manager)
+    #+BEGIN_SRC sh
+    ./configure --prefix /usr
+    make
+    make DESTDIR=$HOME/inst install
+    cd ~/inst
+    find . -type f -print > ../files.lst
+    tar zcvf ~/amhello-1.0-i686.tar.gz `cat ../files.lst`
+    ./usr/bin/hello
+    ./usr/share/doc/amhello/README
+    #+END_SRC
+**** 11. Preparing Distributions
+    *make dist*
+    *make distcheck*
+**** 12. Atomic Dependency Tracking
+    依赖跟踪，不影响编译
+    *--disable-dependency-tracking*
+    *--enable-dependency-tracking*
+**** 13. Nested Packages
+    包嵌套
+    软件A 用到 库B，需要嵌套B的GBS;
+    configure --help=recursive
+*** 3. How Autotools Help
+   使用Autotools工具构建configure，不要自己编写；
+   - 功能完善
+   - 编写困难
+   - GNU标准更改适配
+   + 用简单的指令创建一个可移植，完整，自包含的GNU构建系统的工具。
+*** 4. A Small Hello World
+**** 1. Creating amhello-1.0.tar.gz
+    从0创建一个amhello-1.0.tar.gz
+    1. src/main.c
+    2. README
+    3. Makefile.am && src/Makefile.am
+       ~/amhello % cat src/Makefile.am
+       bin_PROGRAMS = hello
+       hello_SOURCES = main.c
+       ~/amhello % cat Makefile.am
+       SUBDIRS = src
+       dist_doc_DATA = README
+    4. configure.ac
+       ~/amhello % cat configure.ac
+       AC_INIT([amhello], [1.0], [bug-automake@gnu.org])
+       AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+       AC_PROG_CC
+       AC_CONFIG_HEADERS([config.h])
+       AC_CONFIG_FILES([
+       Makefile
+       src/Makefile
+       ])
+       AC_OUTPUT
+    5. *autoreconf --install*
+       you can see that autoreconf created four other files: configure, 
+       config.h.in, Makefile.in, and src/Makefile.in.
+       
+**** 2. amhello's configure.ac Setup Explained
+    编写configure.ac
+    #+BEGIN_SRC sh
+    # configure.ac
+    # (autoconf) ==> [configure]
+    # (automake) ==> [Makefile.in]
+    # AC_* : AutoConf macros
+    # AM_* : AutoMake macros
+    # 使用(autoscan)辅助生成configure.ac
+
+    # 初始化 (autoconf)
+    AC_INIT([amhello], [1.0], [bug-automake@gnu.org])
+
+    # 初始化 (automake)
+    # -Wall -Werror 指automake指令的警告，不是代码的警告
+    # foreign 指非gnu软件包，不遵循GNU标准
+    AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+
+    # 指定找C编译器，并使用找到的C编译器定义CC
+    AC_PROG_CC
+
+    # 指定代码宏定义名称config.h
+    AC_CONFIG_HEADERS([config.h])
+
+    # 指定Makefile路径
+    AC_CONFIG_FILES([
+     Makefile
+     src/Makefile
+                   ])
+
+    # 文件结尾，产生AC_CONFIG_HEADERS/FILES脚本
+    AC_OUTPUT
+    #+END_SRC
+**** 3. amhello's Makefile.am Setup Explained
+     #+BEGIN_SRC sh
+     # src/Makefile.am
+     # Makefile.am与普通的Makefile具有相同的语法。
+     # 可以包含变量定义和规则定义，automake将不解释直接传到
+
+     # 生成一个可执行程序hello，并安装到 ${bindir}
+     # *_PROGRAMS :指定目标类型为程序，并跟程序名称
+     # bin : 通知automake目标程序安装到${bindir}
+     bin_PROGRAMS = hello
+
+     # 为hello程序指定源文件
+     # hello : bin_PROGRAMS 定义的名字(如：hello)
+     # <program_name>_SOURCE : 组成hello的源文件
+     # side-effect : 副作用指定了make dist生成tar.gz的源文件
+     hello_SOURCES = main.c
+
+     # *_SCRIPTS/*_DATA/*_LIBRARIES
+
+     ########################################################
+     # Makefile.am
+     # top-level Makefile.am
+
+     # SUBDIRS是一个特殊变量，它列出了在处理当前目录之前应该递归到的所有目录。
+     SUBDIRS = src
+
+     # dist_doc_DATA : 指定安装到${docdir} 的文件
+     # dist_ : 指定需要把文件放到make dist打包列表中
+     dist_doc_DATA = README
+     #+END_SRC
+** 3. General ideas常规方式
+*** 1. General Operation
+    常规操作
+    Makefile.am --(automake)--> Makefile.in
+    基本是原样复制，可以支持如git-dist等非标准目标
+    支持 += 操作
+    不要在 : 间使用空格，不要使用复杂的宏
+    #+BEGIN_SRC sh
+    ## Process this file with automake to produce Makefile.in
+    # 变量定义
+    xs = a.c b.c
+    foo_SOURCES = c.c $(xs)
+    # 等价于
+    # foo_SOURCES = c.c a.c b.c
+    #+END_SRC
+
+*** 2. Strictness严格的
+    - *foreign* 宽松规则
+    - *gnu* 严格执行GNU软件包标准
+    - *gnits* 更严格的Gnits标准
+*** 3. The Uniform Nameing Scheme
+    统一命名规划
+    ${PACKAGE} pkgdatadir, pkgincludedir, pkglibdir, and pkglibexecdir
+
+    'EXTRA_' 该变量用于列出可能构建或可能不构建的对象，
+             具体取决于配置决定的内容。
+     #+BEGIN_SRC sh
+     # 延迟构建
+     EXTRA_PROGRAMS = mt rmt
+     # 必须构建
+     bin_PROGRAMS = cpio pax
+     # 必须构建
+     sbin_PROGRAMS = $(MORE_PROGRAMS)
+
+     ####################################################
+     # 自定义安装目录
+     # 将file.xml安装到${datadir}/xml/file.xml
+     xmldir = $(datadir)/xml
+     xml_DATA = file.xml
+
+     #####################################################
+     # Forbidden directory combinations, automake will error out on this.
+     pkglib_PROGRAMS = foo
+     doc_LIBRARIES = libquux.a
+
+     # but it will succeed with this:
+     # Work around forbidden directory combinations.  Do not use this
+     # without a very good reason!
+     my_execbindir = $(pkglibdir)
+     my_doclibdir = $(docdir)
+     my_execbin_PROGRAMS = foo
+     my_doclib_LIBRARIES = libquux.a
+
+     # noninst_ : 对象构建但不安装
+     # check_ : 知道make check运行后被构建，也不安装
+     # 合法的主类型 ：PROGRAMS’, ‘LIBRARIES’, ‘LTLIBRARIES’, ‘LISP’, ‘PYTHON’,
+     #                ‘JAVA’, ‘SCRIPTS’, ‘DATA’, ‘HEADERS’, ‘MANS’, and ‘TEXINFOS’.
+     #+END_SRC
+*** 4. Staying below the command line length limit
+    至少4096字节，才有手动拆封文件的方式。
+    #+BEGIN_SRC sh
+    data_DATA = file1 ... fileN fileN+1 ... file2N
+    # may also be written as
+    # 拆分
+    data_DATA = file1 ... fileN
+    data2dir = $(datadir)
+    data2_DATA = fileN+1 ... file2N
+    #+END_SRC
+*** 5. How Derived variables are named
+    所有非标准字符都被变成下划线。
+    sniff-glue : sniff_glue_SOURCES
+    libmumble++.a : libmumble___a_SOURCES
+
+** 4. Some example packages示例
+** 5. Creating a Makefile.in
+** 6. Scanning configure.ac, using aclocal
+** 7. Directorires
+** 8. Building Programs and libraries
+** 9. Other Derived Objects
+** 10. Other GNU Tools
+** 11. Building documentation
+** 12. What Gets Installed
+** 13. What Gets Cleaned
+** 14. What Goes in a Distribution
+** 15. Support for test suites
+** 16. Rebuilding Makefiles
+** 17. Changing Automake's Behavior
+** 18. Miscellaneous Rules
+** 19. Include
+** 20. Conditionals
+** 21. Silencing make
+** 22. The effect of --gnu and --gnits
+** 23. When Automake Is't Enough
+** 24. Distributing Makefile.inS
+** 25. Automake API Versioning
+** 26. Upgrading a Package to a Newer Automake Version
+** 27. Frequently Asked Questions about Automake
+** Appendix A Coping This Manual
+** Appendix B Indices
+* Autoconf
+  https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/index.html#Top
+** Autoconf
+** 1. Introduction
+** 2. The GNU Guild System
+** 3. Making configure Scripts
+** 4. Initialization and Output Files
+** 5. Existing Tests
+** 6. Writing Tests
+** 7. Results of Tests
+** 8. Programming in M4
+** 9. Programming in M4sh
+** 10. Writing Autoconf Macros
+** 11. Portable Shell Programming
+** 12. Portable Make Programming
+** 13. Protable C and C++ Programming
+** 14. Manual Configuration
+** 15. Site Configuration
+** 16. Running configure Scripts
+** 17. config.status Invocation
+** 18. Obsolete Constructs
+** 19. Generating Test Suites with Autotest
+** 20. Frequent Autoconf Questions, with answers
+** 21. History of Autoconf
+** Appendix A GNU Free Documentation License
+** Appendix B Indices
