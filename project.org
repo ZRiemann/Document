@@ -1,30 +1,49 @@
 * projects
-** libzit(夸平台基础库)
-*** TODO [12%]
-    - [ ] [0%] base
-      + [ ] zlog <2018-01-20 Sat>
-    - [ ] [0%] container
-    - [ ] [0%] framework
-      + [ ] tasker
-    - [ ] [0%] memory
-    - [ ] [0%] thread
-    - [ ] [0%] utility
-      + [ ] json(C)
-      + [ ] xml(C)
-    - [ ] [0%] net
-      + [ ] socket
-      + [ ] epoll/iocp common inteface
-    - [X] [100%] hpp(C++ adapter)
-      + [X] zmq <2018-01-20 Sat>
-      + [X] json(C++)
-      + [-] xml
-
+** zsi(system interface 系统接口层)
+   +--------------------------------+
+   |            application         |
+   +--------------------------------+
+   |              zsi               |
+   +--------------------------------+
+   | Linux(CentOS/Ubuntu) | Windows |
+   +--------------------------------+
+*** TODO [%]
+    - [ ] base
+      + [ ] atomic
+      + [ ] type/platform
+      + [ ] error
+      + [ ] time
+    - [ ] thread
+      + [ ] thread
+      + [ ] mutex
+      + [ ] spin
+      + [ ] semaphore
+      + [ ] rwlock
+      + [ ] condition
+    - [ ] stl
+      + [ ] list
+      + [ ] queue
+      + [ ] rbtree
+    - [ ] mem
+    - [ ] util
 *** design
-    - 功能
-      1. 支持Windows/POSIX
-      2. 输出动态库 *libzit.so/.dll* 和静态库 *libzit.a/.lib*
-      3. *zit/hpp* C++第三方库适配器，内联实现
-** node(Node Topology Layer 节点拓扑层)
+**** 功能
+     - 夸平台接口
+     - 容器接口
+     - 日志管理
+**** 设计
+     - 输出
+       libzsi.so/zsi.dll
+     - 项目管理
+       Linux: auto make
+       Windows: visual studio
+**** 原则
+     - 高效接口采用内联或宏
+       如：锁操作、原子操作
+     - 共享数据，非效率优先接口采用动态库
+       共享数据：错误码转可读字符串接口
+       非效率优先：创建线程
+** znt(node topological 节点拓扑层)
 *** 概述
     高性能网络IO为基础，每个进程(父子进程组)组成一个节点。节点间的连接组成拓扑
 网络。所有节点本质是等价的，但附加的应用不同可以形成任意层次关系和拓扑结构。从
@@ -134,6 +153,42 @@
 
   + 多进程形式纯IO(state-threads)
     state-threads(适用业务处理时间极短<微妙级>的场景，如中转路由)
+** zmind(思想层)
+   +--------------------------------+
+   |            zplugins            |
+   +--------------------------------+
+   |            zmind               |
+   +--------------------------------+
+   |            zsi                 |
+   +--------------------------------+
+   | Linux(CentOS/Ubuntu) | Windows |
+   +--------------------------------+
+** libzit(夸平台基础库)
+   后期被zsi替代
+*** TODO [12%]
+    - [ ] [0%] base
+      + [ ] zlog <2018-01-20 Sat>
+    - [ ] [0%] container
+    - [ ] [0%] framework
+      + [ ] tasker
+    - [ ] [0%] memory
+    - [ ] [0%] thread
+    - [ ] [0%] utility
+      + [ ] json(C)
+      + [ ] xml(C)
+    - [ ] [0%] net
+      + [ ] socket
+      + [ ] epoll/iocp common inteface
+    - [X] [100%] hpp(C++ adapter)
+      + [X] zmq <2018-01-20 Sat>
+      + [X] json(C++)
+      + [-] xml
+
+*** design
+    - 功能
+      1. 支持Windows/POSIX
+      2. 输出动态库 *libzit.so/.dll* 和静态库 *libzit.a/.lib*
+      3. *zit/hpp* C++第三方库适配器，内联实现
 
 ** plutus(普拉达)
 *** TODO [%]
@@ -144,7 +199,6 @@
       2. 数据分析
       3. 交易决策
     - 设计
-
 * thrid party
 - GSL/FFTW(科学库)
 - unix-v6(10kl Unix)
