@@ -354,11 +354,23 @@
     data2dir = $(datadir)
     data2_DATA = fileN+1 ... file2N
     #+END_SRC
-*** 5. How Derived variables are named
+*** 5. How Derived variables are-named
     所有非标准字符都被变成下划线。
     sniff-glue : sniff_glue_SOURCES
     libmumble++.a : libmumble___a_SOURCES
-
+*** 6. Variables reservid for the user
+    - *CFLAGS*
+    - *AM_**
+*** 7. Programs automake might require
+    | programs     | description             |
+    |--------------+-------------------------|
+    | ar-lib       | Microsoft lib archive   |
+    | compile      |                         |
+    | config.guess |                         |
+    | config.sub   | 获取主机和目标架构      |
+    | decomp       | 依赖跟踪相关            |
+    | install-sh   | 某些情况下install的替代 |
+    |              |                         |
 ** 4. Some example packages示例
 ** 5. Creating a Makefile.in
 ** 6. Scanning configure.ac, using aclocal
@@ -385,7 +397,7 @@
 ** 27. Frequently Asked Questions about Automake
 ** Appendix A Coping This Manual
 ** Appendix B Indices
-* Autoconf
+* autoconf
   https://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/index.html#Top
 ** Autoconf
 ** 1. Introduction
