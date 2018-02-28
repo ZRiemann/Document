@@ -1,0 +1,279 @@
+* RTMP(Real Time Message Protocol)
+  http://mingyangshang.github.io/2016/03/06/RTMP%E5%8D%8F%E8%AE%AE/
+  http://mingyangshang.github.io/2016/03/06/RTMP协议/
+  - Multiplexing
+  - Packetizing
+  - RTMP Connection
+    + control messages: SetChunkSize/SetACKWindowSize
+    + create stream: 创建一个stream连接
+    + rtmp message: rtmp格式化消息
+      发送端把message划分为带有Message ID的Chunk。
+      - chunk: 单独的message 或 message 的部分
+        chunk-length + chunk-id => Message
+** 握手 handler shake
+   
+   rtmp-client                          rtmp-server
+   C0-C1        ----------------------> 
+                <---------------------- S0-S1-S2
+   C2           ----------------------->
+   messages     <-----------------------> messages'
+** RTMP Chunk Stream
+   RTMP Chunk 流的逻辑抽象，传输RTMP信息。
+*** Message(消息)
+    满足RTMP消息格式，被分割成Chunk发送的消息。
+    |---------------------+------------|
+    | Timestamp(4B)                    |
+    |---------------------+------------|
+    | Len(3B)             | TypeId(1B) |
+    |---------------------+------------|
+    | MessageStreamID(4B)              |(little end)
+    |---------------------+------------|
+**** Chunking(Message block)
+     - 避免不同优先级的消息(视频、音频、RTMP-Ctl)阻塞。
+     - 通过压缩ChunkHeader字段来减少信息传输
+     - default-size: 128Byte, *rtmp-ctl:SetChunkSize*
+       size++: - CPU占有率; + 发送时间
+       size--: + ChunkHeader占用率
+       *建议可动态调整*
+**** Chunk Format(块格式)
+     - Basic Header(基本头): 1/2/3Byte
+       
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+       ---------------|
+       fmt|csid(3~63) |                                 
+       ---------------+---------------|
+       fmt|     0     |csid-64(64~319)|
+       ---------------+--------------------------------
+       fmt|     1     |csid(64~65599)                 |
+       ------------------------------------------------
+
+       + ChunkStreamID(csid 流通道ID)
+         用户ID: 3~65599 
+         保留ID: 0: 2Byte csid=64~319
+                 1: 3Byte csid=64~65599
+                 2: ctl/cmd 
+       + chunk-type(fmt块类型): 
+         2bit: 决定MessageHeader格式
+**** MessageHeader
+     - fmt=0
+           0               1               2               3
+           0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+           -----------------------------------------------+---------------+
+           timestamp                                      |msg-len        |
+           -------------------------------+---------------+---------------+
+           msg-len-cont                   |msg-type-id    |msg-stream-id  |
+           -------------------------------+---------------+---------------+
+           msg-stream-id-cont                             |
+           -----------------------------------------------+
+       在回退播放时采用
+       + timestamp(3Byte)
+         0~0xFFFFFF
+         > 0xFFFFFF Extend Timestamp
+       + msg-len(3Byte)
+         总据长度
+       + msg-type-id(1Byte) 类型id
+         8: 音频
+         9: 视频
+       + msg-stream-id(4Byte) 流id
+         表示该chunk所在的流的ID，和Basic Header的CSID一样，它采用小端存储的方式。
+     - fmt=1
+           0               1               2               3
+           0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+           -----------------------------------------------+---------------+
+           timestamp delta                                |msg-len        |
+           -------------------------------+---------------+---------------+
+           msg-len-cont                   |msg-type-id    |
+           -------------------------------+---------------+
+       表示此chunk和上一次发的chunk所在的流相同，如果在发送端只和对端有一个流链
+       接的时候可以尽量去采取这种格式。
+       *timestamp delta 表示时间差*
+     - fmt=2
+           0               1               2               3
+           0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+           -----------------------------------------------+
+           timestamp delta                                |
+           -------------------------------+---------------+
+       表示此chunk和上一次发送的chunk所在的流、消息的长度和消息的类型都相同。
+     - fmt=3
+       0 byte.它表示这个chunk的Message Header和上一个是完全相同的，自然就不用再
+       传输一遍了。
+       + fmt0+fmt3
+         当它跟在Type＝0的chunk后面时，表示和前一个chunk的时间戳都是相同的。什么
+         时候连时间戳都相同呢？就是一个Message拆分成了多个chunk，这个chunk和上一
+         个chunk同属于一个Message。
+       + fmt1+fmt3/fmt2+fmt3
+         而当它跟在Type＝1或者Type＝2的chunk后面时，表示和前一个chunk的时间戳的差
+         是相同的。比如第一个chunk的Type＝0，timestamp＝100，第二个chunk的Type＝2，
+         timestamp delta＝20，表示时间戳为100+20=120，第三个chunk的Type＝3，表示
+         timestamp delta＝20，时间戳为120+20=140
+**** Extend Timestamp(扩展时间戳)
+**** Chunk Data(块数据)
+     0~ChunkSize
+**** chunk表
+     |--------+---------------+-------------+------+-----|
+     |        | msg-stream-id | msg-type-id | time | len |
+     |--------+---------------+-------------+------+-----|
+     | Msg #1 |         12345 |    (audio)8 | 1000 |  32 |
+     | Msg #2 |         12345 |           8 | 1020 |  32 |
+     | Msg #3 |         12345 |           8 | 1040 |  32 |
+     | Msg #4 |         12345 |           8 | 1040 |  32 |
+     |--------+---------------+-------------+------+-----|
+
+     |---------+------+----+-------+----------+-----------|
+     |         | csid | ct |    hd | data-len | total-len |
+     |---------+------+----+-------+----------+-----------|
+     | chunk#1 |    3 |  0 |  1000 |       32 |        44 |
+     |         |      |    |    32 |          |           |
+     |         |      |    |     8 |          |           |
+     |         |      |    | 12345 |          |           |
+     |---------+------+----+-------+----------+-----------|
+     | chunk#2 |    3 |  2 |    20 |       32 |        36 |
+     | chunk#3 |    3 |  3 |       |       32 |        33 |
+     | chunk#4 |    3 |  3 |       |          |           |
+     |---------+------+----+-------+----------+-----------|
+
+     sample message to be-broken to chunks
+     示例一个视频消息分块默认128
+     |-------+---------------+-------------+------+-----|
+     |       | msg-stream-id | meg-type-id | time | len |
+     |-------+---------------+-------------+------+-----|
+     | Msg#1 |         12346 | (video)9    | 1000 | 307 |
+     |-------+---------------+-------------+------+-----|
+     
+     |---------+------+----+-------+----------+-----------|
+     |         | csid | ct |    hd | date-len | chunk-len |
+     |---------+------+----+-------+----------+-----------|
+     | chunk#1 |    4 |  0 |  1000 |      128 |       140 |
+     |         |      |    |   307 |          |           |
+     |         |      |    |     9 |          |           |
+     |         |      |    | 12346 |          |           |
+     |---------+------+----+-------+----------+-----------|
+     | chunk#2 |    4 |  3 |       |      128 |       129 |
+     | chunk#2 |    4 |  3 |       |       51 |        52 |
+     |---------+------+----+-------+----------+-----------|
+
+** Protocol Control Message
+   MessageStreamID(msid)
+   - msid=0 控制流信息
+     csid=2
+     mtid=1,2,3,5,6
+     + mtid=1 SetChunkSize(设置块大小)
+       默认大小128, 128~16777215;
+
+       0               1               2               3
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+       ---------------------------------------------------------------+
+       0| chunk size (31 bits)                                        |
+       ---------------------------------------------------------------+
+       payload for the 'set chunk size' protocol message
+
+       #+BEGIN_SRC c
+       typedef uint32_t chunk_size_t;
+       #define check_chunk_size(s) (s & 0x80000000)
+       #+END_SRC
+     + mtid=2 AbortMessage(丢弃消息)
+       当一个Message被切分为多个chunk，接受端只接收到了部分chunk时，
+       发送该控制消息表示发送端不再传输同Message的chunk，
+       接受端接收到这个消息后要丢弃这些不完整的chunk。
+       
+       0               1               2               3
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+       ---------------------------------------------------------------+
+       0| chunk stream id (32 bits)                                   |
+       ---------------------------------------------------------------+
+       payload for the 'Abort Message' protocol message
+     + mtid=3 ACK Window Size
+       当收到对端的消息大小等于窗口大小（Window Size）时接受端要回馈一个ACK给发
+       送端告知对方可以继续发送数据。窗口大小就是指收到接受端返回的ACK前最多可
+       以发送的字节数量，返回的ACK中会带有从发送上一个ACK后接收到的字节数。
+
+       0               1               2               3
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+       ---------------------------------------------------------------+
+       sequence number (32 bits)                                      |
+       ---------------------------------------------------------------+
+       payload for the 'Acknowledgement' protocol message
+     + mtid=5 WindowAcknowledgement Size
+       发送端在接收到接受端返回的两个ACK间最多可以发送的字节数。
+
+       0               1               2               3
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+       ---------------------------------------------------------------+
+       acknowledgement window size (32 bits)                          |
+       ---------------------------------------------------------------+
+       payload for the 'Window Acknoledgement Size' protocol message
+     + mtid=6 SetPeerBindwidth
+       限制对端的输出带宽。接受端接收到该消息后会通过设置消息中的Window ACK Size
+       来限制已发送但未接受到反馈的消息的大小来限制发送端的发送带宽。如果消息中的
+       Window ACK Size与上一次发送给发送端的size不同的话要回馈一个
+       Window Acknowledgement Size的控制消息。
+
+       0               1               2               3
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+       ---------------------------------------------------------------+
+       Acknowledgement window size (32 bits)                          |
+       ---------------+-----------------------------------------------+
+       limit type     |
+       ---------------+
+       payload for the 'Set Peer Bindwidth' protocol message
+       Hard(Limit Type＝0):接受端应该将Window Ack Size设置为消息中的值
+       Soft(Limit Type=1):接受端可以讲Window Ack Size设为消息中的值，也可以保存
+                    原来的值（前提是原来的Size小与该控制消息中的Window Ack Size）
+       Dynamic(Limit Type=2):如果上次的Set Peer Bandwidth消息中的Limit Type为0，
+                     本次也按Hard处理，否则忽略本消息，不去设置Window Ack Size。
+** 不同类型的RTMP Message
+   | msg type       |              mtid | desc                        |
+   |----------------+-------------------+-----------------------------|
+   | cmd msg        | 17(amf3)/20(amf0) | 命令消息 connect/publish    |
+   | data msg       | 15(amf3)/18(amf0) | 数据消息 视频名/分辨率      |
+   | shared object  | 16(amf3)/19(amf0) | flash类型对象，多客户多实例 |
+   | audio          |                 8 | 音频                        |
+   | vedio          |                 9 | 视频                        |
+   | aggregate      |                22 | 聚合，多rtmp子消息集合      |
+   | user ctl event |                 4 | 用户控制消息 stream-begin   |
+   |----------------+-------------------+-----------------------------|
+   - cmd
+     transaction id 标识本次命令。
+     接收端返回(带transaction-id) ： _result, _error, method name
+     + net-connection 连接
+       | 字段                           | 类型   | 说明                     |
+       |--------------------------------+--------+--------------------------|
+       | cmd-name                       | string | connect                  |
+       | transaction-id(事务ID)         | number | 恒为1                    |
+       | cmd-obj(参数对象)              | object | key-value set            |
+       | optional-args(额外参数)        | object | 用户自定义               |
+       |--------------------------------+--------+--------------------------|
+       | procedure-name(进程名)         | string | 要调用的进程名称         |
+       | transaction id                 | number | 0-对端不响应 1-对端响应  |
+       | cmd-obj                        | object |                          |
+       | optional-args                  | object |                          |
+       | 响应格式                       |        |                          |
+       | cmd-name                       |        | 命令的名称               |
+       | ...                            |        |                          |
+       |--------------------------------+--------+--------------------------|
+       | create stream                  |        | 创建消息通道             |
+       | cmd-name                       |        | createStream             |
+       | transaction-id                 |        |                          |
+       | ...                            |        |                          |
+       |--------------------------------+--------+--------------------------|
+       | NetStream commands(流连接命令) |        | onStatus                 |
+       |--------------------------------+--------+--------------------------|
+       | Play                           |        | play/0/null/             |
+       |                                |        | stream-name/begin/       |
+       |--------------------------------+--------+--------------------------|
+       | Play2                          |        | play2/0/null/afm-flash   |
+       |--------------------------------+--------+--------------------------|
+       | delete-stream                  |        | deleteStream/0/null/csid |
+       |--------------------------------+--------+--------------------------|
+       | receiveAudio(接收音频)         |        | recvAudio/0/null/...     |
+       |--------------------------------+--------+--------------------------|
+       | receiveVedio                   |        |                          |
+       | publish(推流)                  |        |                          |
+       | seek(定位流)                   |        |                          |
+       | pause(暂停)                    |        |                          |
+       |--------------------------------+--------+--------------------------|
+
+
+
+       
+     + net-stream 流信息传输通道
