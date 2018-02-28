@@ -5,7 +5,7 @@
 ** 1.Definitions定义
 *** 1.Internet Applications互联网应用程序
     IA is either a server or client network application 
-IA是一个服务也是一个客户端网络应用
+    IA是一个服务也是一个客户端网络应用
     that accepts connections form clients 接收客户端连接
     and may or may not connect to servers 连接或不连接到其他服务
     IA is a data-driven application IA是数据驱动应用程序
