@@ -1,0 +1,511 @@
+* shell 入门 
+  http://blog.csdn.net/Z_YTTT/article/details/53020830
+** 第一行&执行
+   脚本文本的第一行，顶格：给出shebang，解释器程序文件的路径，
+   用于指明解释运行当前脚本代码的解释器；
+    #!/bin/bash
+    #!/bin/tcsh
+    #!/usr/bin/python3
+    #!/usr/bin/perl
+
+   $ chmod +x  /PATH/TO/SCRIPT_FILE
+   $ /PATH/TO/SCRIPT_FILE
+
+   #+BEGIN_SRC sh
+   #!/bin/bash
+
+   # This is my first shell script.
+   echo "hello world!"
+   #+END_SRC
+** 变量
+*** 定义变量(<var>=<value>)
+    - *变量名和等号之间不能有空格*
+    - *首个字符必须为字母(a-z，A-Z)*
+    - 中间不能有空格，可以使用下划线 '_'
+    - 不能使用标点符号
+    - 不能使用bash里的关键字
+
+    myUrl="http://zhaoyongtao.blog.51cto.com/"
+    myNum=100
+*** 使用变量(${<var>})
+    #+BEGIN_SRC sh
+    # 可以不加{}，但不能处理分割边界问题
+    your_name="kim"
+    echo $youre_name
+
+    # 加{}，可以处理边问题
+    fruit="apple"
+    echo "I like ${fruit}s"
+    # 不能得到预想结果, 无fruits变量定义
+    echo "I like $fruits"
+    #+END_SRC
+*** 重新定义变量
+    #+BEGIN_SRC sh
+    myUrl="http://zhaoyongtao.blog.51cto.com"
+    echo ${myUrl}
+
+    myUrl="http://blog.51cto.com"
+    echo ${myUrl}
+    #+END_SRC
+*** 只读变量(readonly <var>)
+    #+BEGIN_SRC sh
+    #!/bin/bash
+
+    myUrl="http://zhaoyongtao.blog.51cto.com/"
+    readonly myUrl
+    myUrl="http://blog.51cto.com/"
+    # 提示错误：/bin/sh: NAME: This variable is read only.
+    #+END_SRC
+*** 删除变量(unset <var>)
+    #+BEGIN_SRC sh
+    var="variable"
+    echo "var: ${var}"
+
+    unset var
+    echo "var: ${var}"
+    #+END_SRC
+*** 变量类型
+    - local
+      局部变量在脚本或命令中定义，仅在当前shell实例中有效，
+      其他shell启动的程序不能访问局部变量。
+    - env
+      必要的时候shell脚本也可以定义环境变量。
+    - shell
+      shell变量是由shell程序设置的特殊变量。
+    - *特殊变量*
+      |----------+-----------------------------------|
+      | 特殊变量 | 含义                              |
+      |----------+-----------------------------------|
+      | $$       | 当前进程pid                       |
+      | $#       | 脚本/函数参数个数                 |
+      | $0       | 脚本名                            |
+      | $<n>     | 脚步/函数的第<n>个参数            |
+      | $*       | 所有参数  "$*" 整体 "$1 $2 ..."   |
+      | $@       | 所有参数，"$@" 分开 "$1" "$2" ... |
+      | $?       | 上一命了的推出状态/函数返回值     |
+      |----------+-----------------------------------|
+
+*** 命令行参数($<n> $@ $*)
+    #+BEGIN_SRC sh
+    #!/bin/bash
+    echo "\$*=" $*
+    echo "\"\$*\"=" "$*"
+
+    echo "\$@=" $@
+    echo "\"\$@\"=" "$@"
+
+    echo "print each param from \$*"
+    for var in $*
+    do
+    echo "$var"
+    done
+
+    echo "print each param from \$@"
+    for var in $@
+    do
+    echo "$var"
+    done
+
+    echo "print each param from \"\$*\""
+    for var in "$*"
+    do
+    echo "$var"
+    done
+
+
+    echo "print each param from \"\$@\""
+    for var in "$@"
+    do
+    echo "$var"
+    done
+    #+END_SRC
+    执行结果
+    $ bash ./test.sh "a" "b" "c" "d"
+    $*= a b c d
+    "$*"= a b c d
+    $@= a b c d
+    "$@"= a b c d
+    print each param from $*
+    a
+    b
+    c
+    d
+    print each param from $@
+    a
+    b
+    c
+    d
+    print each param from "$*"
+    a b c d
+    print each param from "$@"
+    a
+    b
+    c
+    d
+*** 推出状态($?)
+    大部分命令执行成功会返回 0，失败返回 1
+    # bash ./test.sh aaa bbb
+    # echo $?
+    0
+*** 转义字符(echo -e)
+    转义字符	含义
+    \\	反斜杠
+    \a	警报，响铃
+    \b	退格（删除键）
+    \f	换页(FF)，将当前位置移到下页开头
+    \n	换行
+    \r	回车
+    \t	水平制表符（tab键） 
+    \v	垂直制表符
+    #+BEGIN_SRC sh
+    #!/bin/bash
+    a=10
+
+    # -e 对 \n进行转义
+    echo -e "Value of a is $a \n"
+    # => Value of a is 10
+
+    echo "Value of a is $a \n"
+    # => Value of a is 10\n 
+    #+END_SRC
+*** 命令替换(`<command>`)
+    #+BEGIN_SRC sh
+    DATE=`date`
+    echo "Date is ${DATE}"
+
+    USERS=`who | wc -l`
+    echo "Logged in user are ${USERS}"
+
+    UP=`date;uptime`
+    echo "Uptime is ${UP}"
+    #+END_SRC
+*** 变量替换(${<var>:[-|=|?|+]})
+    变量替换可以根据变量的状态
+    （是否为空、是否定义等）来改变它的值。
+
+    形式	            说明
+    *${var}*	        变量本来的值
+    *${var:-word}*	    如果变量 var 为空或已被删除(unset)，那么返回 word，但不改变 var 的值。
+    *${var:=word}*	    如果变量 var 为空或已被删除(unset)，那么返回 word，并将 var 的值设置为 word。
+    *${var:?message}*	如果变量 var 为空或已被删除(unset)，那么将消息 message
+                        送到标准错误输出，可以用来检测变量 var 是否可以被正常赋值。
+                        若此替换出现在Shell脚本中，那么脚本将停止运行。
+    *${var:+word}*	    如果变量 var 被定义，那么返回 word，但不改变 var 的值。
+
+    *${#param}*         param 长度
+    *${param%word}*     从param尾部开始删除与word匹配的最小部分
+    *${param%%word}*    最长部分
+    *${param#word}*     开始 最小
+    *${param##word}*    开始 最长
+    
+    #+BEGIN_SRC sh
+    unset foo
+    echo ${foo:-bar}
+    # => bar
+    foo=fud
+    echo ${foo:-bar}
+    # => fud
+
+    foo=/usr/bin/X11/startx
+    echo ${foo#*/}
+    # => usr/bin/X11/startx
+    echo ${foo##*/}
+    # => startx
+
+    bar=/usr/local/etc/local/networks
+    echo ${bar%local*}
+    # => /usr/local/etc/
+    echo ${bar%%local*}
+    # => /usr/
+    #+END_SRC
+
+    #+BEGIN_SRC sh
+    #!/bin/bash
+
+    echo ${var:-"Variable is not set"}
+    echo "1 - Value of var is ${var}"
+
+    echo ${var:="Variable is not set"}
+    echo "2 - Value of var is ${var}"
+
+    unset var
+    echo ${var:+"This is default value"}
+    echo "3 - Value of var is $var"
+
+    var="Prefix"
+    echo ${var:+"This is default value"}
+    echo "4 - Value of var is $var"
+
+    echo ${var:?"Print this message"}
+    echo "5 - Value of var is ${var}"
+    #+END_SRC
+** 运算符
+*** 算术运算符(+,-,*,/,%,**)
+    #+BEGIN_SRC sh
+    #!/bin/bash
+    
+    #低效，需要启动信shell
+    #val=`expr 2 + 2`
+    #高效
+    val=$((2 + 2))
+    echo ${val}
+
+    val=$(expr 2 + 2)
+    echo ${val}
+
+    a=10
+    b=20
+    val=`expr $a + $b`
+    echo "a + b : $val"
+
+    val=`expr $a - $b`
+    echo "a - b : $val"
+
+    val=`expr $a \* $b`
+    echo "a * b : $val"
+
+    val=`expr $b / $a`
+    echo "b / a : $val"
+
+    val=`expr $b % $a`
+    echo "b % a : $val"
+
+    if [ $a == $b ]
+    then
+       echo "a is equal to b"
+    fi
+
+    if [ $a != $b ]
+    then
+       echo "a is not equal to b"
+    fi
+    #+END_SRC
+*** 算术运算格式(let <var>=<exp>)
+    (1) let  VAR=算术表达式 
+    (2) VAR=$[算术表达式]
+    (3) VAR=$((算术表达式))
+    (4) VAR=$(expr $ARG1 $OP $ARG2)
+*** 关系运算符
+    关系运算符只支持数字，不支持字符串，除非字符串的值是数字。
+    运算符	说明	举例
+    -eq	检测两个数是否相等，相等返回 true。	[ $a -eq $b ] 返回 true。
+    -ne	检测两个数是否相等，不相等返回 true。	[ $a -ne $b ] 返回 true。
+    -gt	检测左边的数是否大于右边的，如果是，则返回 true。	[ $a -gt $b ] 返回 false。
+    -lt	检测左边的数是否小于右边的，如果是，则返回 true。	[ $a -lt $b ] 返回 true。
+    -ge	检测左边的数是否大等于右边的，如果是，则返回 true。	[ $a -ge $b ] 返回 false。
+    -le	检测左边的数是否小于等于右边的，如果是，则返回 true。	[ $a -le $b ] 返回 true。
+*** bool运算
+    运算符	说明	举例
+    !	非运算，表达式为 true 则返回 false，否则返回 true。	[ ! false ] 返回 true。
+    -o	或运算，有一个表达式为 true 则返回 true。	[ $a -lt 20 -o $b -gt 100 ] 返回 true。
+    -a	与运算，两个表达式都为 true 才返回 true。	[ $a -lt 20 -a $b -gt 100 ] 返回 false。
+    #+BEGIN_SRC sh
+    #!/bin/sh
+
+    a=10
+    b=20
+
+    if [ $a -lt 100 -a $b -gt 15 ]
+    then
+       echo "$a -lt 100 -a $b -gt 15 : returns true"
+    else
+       echo "$a -lt 100 -a $b -gt 15 : returns false"
+    fi
+    #+END_SRC
+*** string运算
+    运算符	说明	举例
+    =	检测两个字符串是否相等，相等返回 true。	[ $a = $b ] 返回 false。
+    !=	检测两个字符串是否相等，不相等返回 true。	[ $a != $b ] 返回 true。
+    -z	检测字符串长度是否为0，为0返回 true。	[ -z $a ] 返回 false。
+    -n	检测字符串长度是否为0，不为0返回 true。	[ -z $a ] 返回 true。
+    str	检测字符串是否为空，不为空返回 true。	[ $a ] 返回 true。
+*** 文件测试
+    操作符	说明	举例
+    -b file	检测文件是否是块设备文件，如果是，则返回 true。	[ -b $file ] 返回 false。
+    -c file	检测文件是否是字符设备文件，如果是，则返回 true。	[ -b $file ] 返回 false。
+    -d file	检测文件是否是目录，如果是，则返回 true。	[ -d $file ] 返回 false。
+    *-f* file	检测文件是否是普通文件（既不是目录，也不是设备文件），如果是，则返回 true。	
+            [ -f $file ] 返回 true。
+    -g file	检测文件是否设置了 SGID 位，如果是，则返回 true。	[ -g $file ] 返回 false。
+    -k file	检测文件是否设置了粘着位(Sticky Bit)，如果是，则返回 true。	[ -k $file ] 返回 false。
+    -p file	检测文件是否是具名管道，如果是，则返回 true。	[ -p $file ] 返回 false。
+    -u file	检测文件是否设置了 SUID 位，如果是，则返回 true。	[ -u $file ] 返回 false。
+    -r file	检测文件是否可读，如果是，则返回 true。	[ -r $file ] 返回 true。
+    -w file	检测文件是否可写，如果是，则返回 true。	[ -w $file ] 返回 true。
+    -x file	检测文件是否可执行，如果是，则返回 true。	[ -x $file ] 返回 true。
+    *-s* file	检测文件是否为空（文件大小是否大于0），不为空返回 true。	[ -s $file ] 返回 true。
+    *-e* file	检测文件（包括目录）是否存在，如果是，则返回 true。	[ -e $file ] 返回 true。
+*** 单引号
+    str='this is a string'
+    单引号字符串的限制：
+    单引号里的任何字符都会原样输出，单引号字符串中的变量是无效的；
+    单引号字串中不能出现单引号（对单引号使用转义符后也不行）。
+*** 双引号
+    your_name='qinjx'str="Hello, I know your are \"$your_name\"! \n"
+    双引号的优点：
+    *双引号里可以有变量*
+    *双引号里可以出现转义字符*
+** 字符串操作
+    #+BEGIN_SRC sh
+    #拼接
+    your_name="qinjx"
+    greeting="hello, "$your_name" !"
+    greeting_1="hello, ${your_name} !"
+    echo $greeting $greeting_1
+
+    # 获取长度
+    string="abcd"
+    echo ${#string}
+    # => 4
+
+    # 提取子串
+    string="alibaba is a great company"
+    echo ${string:1:4}
+    # => liba
+
+    # 查找子串
+    echo `expr index "$string" is`
+    #+END_SRC
+** 数组
+    #+BEGIN_SRC sh
+    # () + 空格 包含
+    array1=(v1 v2 v3)
+
+    # 单独分量
+    array2[0]=v1
+    array2[1]=v2
+    array3[3]=v3
+
+    # 读取
+    echo ${array1[0]}
+    # => v2
+
+    # 读取所有
+    echo ${array1[*]}
+    echo ${array2[@]}
+
+    # 数组长度
+    echo ${#array2[*]}
+    #+END_SRC
+** if-elif-else-fi
+   #+BEGIN_SRC sh
+   # 3种格式
+   # if ... fi
+   # if ... else ... fi
+   # if ... elif ... else ... fi
+
+   # if [ <expression> ]; then
+   # <statements>
+   # fi
+   # 注意：expression 和方括号([ ])之间必须有空格，否则会有语法错误。
+
+   a=10
+   b=20
+
+   if [ $a == $b ]; then
+       echo "a is equal to b"
+   else
+       echo "a is not equal to b"
+   fi
+   #+END_SRC
+** case-esac
+   #+BEGIN_SRC sh
+   option="${1}"
+   case ${option} in
+   -f) FILE="${2}"
+   echo "File name is $FILE"
+   ;;
+   -d) DIR="${2}"
+   echo "Dir name is $DIR"
+   ;;
+   ,*)
+   echo "`basename ${0}`:usage: [-f file] | [-d directory]"
+   exit 1 # Command to come out of the program with status 1
+   ;;
+   esac
+   #+END_SRC
+** 循环
+*** for <var> in <list>\n do\n <body>\n done\n
+    #+BEGIN_SRC sh
+    # for <var> in <list>
+    # do
+    # <body>
+    # done
+
+    for loop in 1 2 3
+    do
+        echo "item: $loop"
+    done
+
+    # 输出参数
+    for arg in $*
+    do
+        echo "arg: $arg"
+    done
+
+    # 输出字符串
+    for str in 'this is a string' "second str"
+    do
+        echo "item: ${str}"
+    done
+    #+END_SRC
+*** while [ <expresion> ]; do\n <body>\n done\n
+    #+BEGIN_SRC sh
+    COUNTER=0
+    while [ $COUNTER -lt 5 ]; do
+        # COUNTER=`expr $COUNTER + 1`
+        COUNTER=$(expr $COUNTER + 1)
+        echo $COUNTER
+    done
+
+    # 读取键盘输入
+    echo 'type <CTRL-D> to terminate'
+    echo -n 'enter your most liked film: '
+    while read FILM
+    do
+        echo "Yeah! great film the $FILM"
+    done
+    #+END_SRC
+*** until [ <expresion> ]; do\n <body>\n done\n
+    #+BEGIN_SRC sh
+    a=0
+    until [ ! $a -lt 10 ]
+    do
+        echo $a
+        a=`expr $a + 1`
+    done
+    #+END_SRC
+*** break/continue
+** 函数(<fun_name>(){<body>})
+   #+BEGIN_SRC sh
+   funWithParam(){
+       echo "The value of the first parameter is $1 !"
+       echo "The value of the second parameter is $2 !"
+       echo "The value of the tenth parameter is $10 !" # 当n>=10时，需要使用${n}
+       echo "The value of the tenth parameter is ${10} !"
+       echo "The value of the eleventh parameter is ${11} !"
+       echo "The amount of the parameters is $# !"  # 参数个数
+       echo "The string of the parameters is $* !"  # 传递给函数的所有参数
+   }
+   funWithParam 1 2 3 4 5 6 7 8 9 34 73
+   #+END_SRC
+** 调用外部脚本(exec/source/./<direct-call>)
+* 经典案例
+** here文档
+*** 输出多行文本
+   cat 输出多行到文件，不使用echo
+   #+BEGIN_SRC sh
+   FILE="aaa.txt"
+   # cat 更加简洁，自然
+   cat << END >> ${FILE}
+   cat 1
+   cat 2
+   cat 3
+   END
+
+   # echo 多行代码冗余
+   echo "echo 1" >> ${FILE}
+   echo "echo 2" >> ${FILE}
+   echo "echo 3" >> ${FILE}
+   #+END_SRC
+*** 与ed交互编辑文本
