@@ -167,4 +167,10 @@ typedef zbyte_t zrtmp_mtid_t; /** message type id type */
  * 20,17 
  */
 
+/**
+ * AMF0
+ *
+ * 
+ * number double 
+ */
 #endif

@@ -1,0 +1,350 @@
+[zriemann7@localhost trunk]$ objs/simple_rtmp_server 1935
+[06 17:30:44.001][0][trace][int main(int, char**)]
+ listen_port=1935
+[06 17:30:44.002][1][trace][virtual int SrsServer::listen(int)]
+ server started, listen at port=1935, fd=4
+[06 17:30:44.002][2][trace][virtual void SrsServer::listen_cycle()]
+ listen cycle start.
+[06 17:31:09.127][3][trace][virtual int SrsClient::get_peer_ip()]
+ get peer ip success. ip=192.168.16.130, fd=5
+[06 17:31:09.138][3][trace][virtual int SrsRtmp::handshake()]
+ handshake success.
+[06 17:31:09.170][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 144
+	timestamp: 0
+	stream_id: 0
+}
+
+decode connect app pkt:
+	command: connect
+	ransaction: 1.00
+		app:	live
+		type:	nonprivate
+		flashVer:	FMLE/3.0 (compatible; Lavf55.19.104)
+		tcUrl:	rtmp://192.168.16.130:1935/live
+		:	EOF
+[06 17:31:09.170][3][trace][virtual int SrsClient::do_cycle()]
+ rtmp connect app success. tcUrl=rtmp://192.168.16.130:1935/live, pageUrl=, swfUrl=, schema=rtmp, vhost=192.168.16.130, port=1935, app=live
+[06 17:31:09.170][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<ack_size>{
+	type: 5
+	payload_len: 4
+	timestamp: 0
+	stream_id: 0
+}
+
+encode WindowAckSizePacket:
+	recv_size: 2500000
+[06 17:31:09.170][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<bindwidth>{
+	type: 6
+	payload_len: 5
+	timestamp: 0
+	stream_id: 0
+}
+
+encode SetPeerBandWidth:
+	bandwidth: 2500000
+	type: 2
+[06 17:31:09.170][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 351
+	timestamp: 0
+	stream_id: 0
+}
+
+encode connect app response pkt:
+	command: _result
+	transaction_id: 1.00
+		fmsVer: 	FMS/3,5,3,888
+		capabilities: 	127.00
+		mode: 	1.00
+		level: 	status
+		code: 	NetConnection.Connect.Success
+		description: 	Connection succeeded
+		objectEncoding: 	0.00
+		data: 	ARRAY	version: 	3,5,3,888
+	server: 	srs(simple rtmp server)
+	srs_url: 	https://github.com/winlinvip/simple-rtmp-server
+	srs_version: 	0.1
+[06 17:31:09.170][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 21
+	timestamp: 0
+	stream_id: 0
+}
+
+encode OnBWDone
+	command: onBWDone
+	transaction_id: 0.00
+	NULL
+[06 17:31:09.263][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 39
+	timestamp: 0
+	stream_id: 0
+}
+
+decode FMLEStartPacket:	command: releaseStream
+	transaction_id: 2.00
+	NULL
+	stream_name: livestream
+[06 17:31:09.263][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 21
+	timestamp: 0
+	stream_id: 0
+}
+
+encode FMLEStartResPacket:
+	command: _result
+	transaction_id: 2.00
+	NULL
+	UNDEF
+[06 17:31:09.263][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<set_chunk_size>{
+	type: 1
+	payload_len: 4
+	timestamp: 0
+	stream_id: 0
+}
+
+encode ChunkSize:
+	chunk_size: 4096
+[06 17:31:09.263][3][trace][virtual int SrsProtocol::on_send_message(ISrsMessage*)]
+ set output chunk size to 4096
+[06 17:31:09.263][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 35
+	timestamp: 0
+	stream_id: 0
+}
+
+decode FMLEStartPacket:	command: FCPublish
+	transaction_id: 3.00
+	NULL
+	stream_name: livestream
+[06 17:31:09.263][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 21
+	timestamp: 0
+	stream_id: 0
+}
+
+encode FMLEStartResPacket:
+	command: _result
+	transaction_id: 3.00
+	NULL
+	UNDEF
+[06 17:31:09.264][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 25
+	timestamp: 0
+	stream_id: 0
+}
+
+decode create stream pkt:
+	command: createStream
+	transaction_id: 4.00
+	NULL
+[06 17:31:09.264][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 29
+	timestamp: 0
+	stream_id: 0
+}
+
+encode CreateStreamResponse:
+	command: _result
+	transaction_id: 4.00
+	NULL
+	stream_id: 1.00[06 17:31:09.264][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 21
+	timestamp: 0
+	stream_id: 0
+}
+
+[06 17:31:09.264][3][trace][virtual int SrsCommonMessage::decode_packet()]
+ drop the AMF0/AMF3 command message, command_name=_checkbw
+[06 17:31:09.264][3][trace][int srs_rtmp_expect_message(SrsProtocol*, SrsCommonMessage**, T**) [with T = SrsPublishPacket]]
+ drop message(type=20, size=21, time=0, sid=0).
+[06 17:31:09.357][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<set_chunk_size>{
+	type: 1
+	payload_len: 4
+	timestamp: 0
+	stream_id: 0
+}
+
+decode SetChunkSize:
+	chunk_size: 4096
+[06 17:31:09.357][3][trace][virtual int SrsProtocol::on_recv_message(SrsCommonMessage*)]
+ set input chunk size to 4096
+[06 17:31:09.357][3][trace][int srs_rtmp_expect_message(SrsProtocol*, SrsCommonMessage**, T**) [with T = SrsPublishPacket]]
+ drop message(type=1, size=4, time=0, sid=0).
+[06 17:31:09.357][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 40
+	timestamp: 0
+	stream_id: 1
+}
+
+	command: publish
+	transaction_id: 6.00
+	NULL
+	stream_name: livestream
+	stream_type: live
+[06 17:31:09.357][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 102
+	timestamp: 0
+	stream_id: 1
+}
+
+encode OnStatusCallPacket:
+	command: onFCPublish
+	transaction_id: 0.00
+	NULL
+		code: 	NetStream.Publish.Start
+		description: 	Started publishing stream.
+[06 17:31:09.357][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 136
+	timestamp: 0
+	stream_id: 1
+}
+
+encode OnStatusCallPacket:
+	command: onStatus
+	transaction_id: 0.00
+	NULL
+		level: 	status
+		code: 	NetStream.Publish.Start
+		description: 	Started publishing stream.
+		clientid: 	ASAICiss
+[06 17:31:09.451][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_data>{
+	type: 18
+	payload_len: 388
+	timestamp: 0
+	stream_id: 1
+}
+
+decode OnMetaData pkt:
+	name: @setDataFrame
+	name: onMetaData
+	ARRAY
+	duration: 	0.00
+	width: 	768.00
+	height: 	320.00
+	videodatarate: 	207.26
+	framerate: 	1000.00
+	videocodecid: 	7.00
+	audiodatarate: 	29.33
+	audiosamplerate: 	44100.00
+	audiosamplesize: 	16.00
+	stereo: 	true
+	audiocodecid: 	10.00
+	major_brand: 	isom
+	minor_version: 	512
+	compatible_brands: 	isomiso2avc1mp41
+	encoder: 	Lavf55.19.104
+	filesize: 	0.00
+	: 	EOF
+encode OnMetaData pkt:
+	name: onMetaData
+		duration: 	0.00
+		width: 	768.00
+		height: 	320.00
+		videodatarate: 	207.26
+		framerate: 	1000.00
+		videocodecid: 	7.00
+		audiodatarate: 	29.33
+		audiosamplerate: 	44100.00
+		audiosamplesize: 	16.00
+		stereo: 	true
+		audiocodecid: 	10.00
+		major_brand: 	isom
+		minor_version: 	512
+		compatible_brands: 	isomiso2avc1mp41
+		encoder: 	Lavf55.19.104
+		filesize: 	0.00
+		server: 	srs(simple rtmp server)0.1
+[06 17:31:09.451][3][trace][virtual int SrsSource::on_meta_data(SrsCommonMessage*, SrsOnMetaDataPacket*)]
+ dispatch metadata success.
+[06 17:31:09.451][3][trace][virtual int SrsClient::streaming_publish(SrsSource*)]
+ process onMetaData message success.
+maxv: 46
+maxv: 5137
+maxv: 17293
+maxv: 20459
+maxv: 21342
+maxv: 21908
+maxv: 23961
+maxv: 26413
+[06 17:31:21.247][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:512 base:90 lt:286 gt:226 gtp:0.44, averate_size:90>
+[06 17:31:29.771][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:512 max:26413 gtp:0.26 average_size:1199>
+[06 17:31:33.167][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:1024 base:90 lt:603 gt:421 gtp:0.41, averate_size:89>
+[06 17:31:45.052][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:1536 base:90 lt:922 gt:614 gtp:0.40, averate_size:89>
+[06 17:31:50.261][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:1024 max:26413 gtp:0.30 average_size:1153>
+[06 17:31:56.921][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:2048 base:90 lt:1247 gt:801 gtp:0.39, averate_size:89>
+[06 17:32:08.809][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:2560 base:90 lt:1564 gt:996 gtp:0.39, averate_size:89>
+[06 17:32:10.733][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:1536 max:26413 gtp:0.29 average_size:1111>
+[06 17:32:20.699][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:3072 base:90 lt:1883 gt:1189 gtp:0.39, averate_size:89>
+[06 17:32:31.217][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:2048 max:26413 gtp:0.27 average_size:1048>
+[06 17:32:32.601][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:3584 base:90 lt:2215 gt:1369 gtp:0.38, averate_size:89>
+[06 17:32:44.467][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:4096 base:90 lt:2534 gt:1562 gtp:0.38, averate_size:89>
+[06 17:32:51.701][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:2560 max:26413 gtp:0.28 average_size:1060>
+[06 17:32:56.358][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:4608 base:90 lt:2871 gt:1737 gtp:0.38, averate_size:89>
+[06 17:33:08.255][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:5120 base:90 lt:3180 gt:1940 gtp:0.38, averate_size:89>
+[06 17:33:12.180][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:3072 max:26413 gtp:0.29 average_size:1061>
+[06 17:33:20.167][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:5632 base:90 lt:3484 gt:2148 gtp:0.38, averate_size:89>
+[06 17:33:32.054][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:6144 base:90 lt:3817 gt:2327 gtp:0.38, averate_size:89>
+[06 17:33:32.650][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:3584 max:26413 gtp:0.30 average_size:1090>
+[06 17:33:43.920][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:6656 base:90 lt:4142 gt:2514 gtp:0.38, averate_size:89>
+[06 17:33:53.133][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:4096 max:26413 gtp:0.30 average_size:1092>
+[06 17:33:55.809][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:7168 base:90 lt:4471 gt:2697 gtp:0.38, averate_size:89>
+[06 17:34:07.695][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:7680 base:90 lt:4814 gt:2866 gtp:0.37, averate_size:89>
+[06 17:34:13.620][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:4608 max:26413 gtp:0.30 average_size:1082>
+[06 17:34:19.605][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:8192 base:90 lt:5106 gt:3086 gtp:0.38, averate_size:89>
+[06 17:34:31.489][3][DBG][void SrsMessageHeader::ztrace(bool)]	audio<all:8704 base:90 lt:5429 gt:3275 gtp:0.38, averate_size:89>
+[06 17:34:34.099][3][DBG][void SrsMessageHeader::ztrace(bool)]vedio<all:5120 max:26413 gtp:0.31 average_size:1093>
+[06 17:34:40.038][3][DBG][void SrsMessageHeader::ztrace(bool)]recv MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 37
+	timestamp: 0
+	stream_id: 0
+}
+
+decode FMLEStartPacket:	command: FCUnpublish
+	transaction_id: 7.00
+	NULL
+	stream_name: livestream
+[06 17:34:40.038][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 105
+	timestamp: 0
+	stream_id: 1
+}
+
+encode OnStatusCallPacket:
+	command: onFCUnpublish
+	transaction_id: 0.00
+	NULL
+		code: 	NetStream.Unpublish.Success
+		description: 	Stop publishing stream.
+[06 17:34:40.038][3][DBG][void SrsMessageHeader::ztrace(bool)]send MsgHeader<amf0_command>{
+	type: 20
+	payload_len: 21
+	timestamp: 0
+	stream_id: 1
+}
+
+encode FMLEStartResPacket:
+	command: _result
+	transaction_id: 7.00
+	NULL
+	UNDEF
+[06 17:34:40.038][3][error][virtual int SrsProtocol::send_message(ISrsMessage*)]
+ send with writev failed. ret=209 errno=32(Broken pipe)
+[06 17:34:40.038][3][error][virtual int SrsRtmp::fmle_unpublish(int, double)]
+ send FCUnpublish response message failed. ret=209 errno=32(Broken pipe)
+[06 17:34:40.038][3][trace][virtual void SrsConnection::cycle()]
+ client disconnect peer. ret=204
