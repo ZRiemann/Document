@@ -1,0 +1,203 @@
+#!/bin/sh
+
+#===============================================================================
+# MIT License
+# Copyright (C) 2018 Z.Riemann
+#
+#-------------------------------------------------------------------------------
+# auto configure source code tree rule:
+# 
+#-------------------------------------------------------------------------------
+# options
+function print_usage(){
+cat << !USAGE_END!
+Options:
+  -h, --help                       print the usage message
+  --license                        print the MIT License
+Auto make rules:
+  --show-path-rule                 <reserved> print sample auto make tree rule
+  --show-code-rule                 print embedded codes rule
+  --with-code-rule                 auto generate Makefile by auto-code-rule
+  --with-path-rule
+Adapter no rules:
+  --libs-path=[path1:path2:...]    <reserved>
+                                   librarys path
+                                   auto build path name: lib<name>
+                                   auto exclude path: test[s]
+  --excl-libs-path=[libpath/exclpath:] <reserved>
+                                   exclude path in librarys path
+Outputs:
+  ./bin                            binary files directory
+    |- obj_debug                   debug version objects
+    |- debug                       debug version libs or apps
+    |- obj_release                 release version objects
+    |- release                     release version libs or apps
+    |- obj_arm ...                 base arm linux
+    ...
+  execute programs as follow:
+  $ bin/release/<app-name> [--options]
+!USAGE_END!
+}
+# print_usage
+
+# auto configure source code tree rule
+function print_path_rule(){
+cat << !CFG_RULE_END!
+1. library top path: lib<lib-name>
+2. application top path: app<app-name>
+!CFG_RULE_END!
+}
+# print_path_rule
+
+# auto configure embedded scripts code rule
+function print_code_rule(){
+cat << !CODE_RULE_END!
+1. library codes
+   output: lib<name1>.so<.1.0.0> lib<name2>.so<.1.0.0>
+   /**
+    * @zmake.lib <lib-name1>:<lib-name2>:...
+    * @zmake.ignote
+    */
+
+    @zmake.lib    ; module of lib-name*
+    @zmake.ignore ; do not compile this file
+
+2. application codes
+   output: <app-name1> <app-name2> ...
+   /**
+    * @zmake.app.module <app-name1>:<app-name2>:...
+    * @zmake.app.main <app-name>
+    * @zmake.app.dependent <lib1>:<lib2>
+    */
+
+    @zmake.app.module    ; module of app-name*
+    @zmake.app.main      ; app-name main entry file
+    @zmake.app.dependent ; list dependentlibrarys,
+                         ; followed by @zmake.app.main
+!CODE_RULE_END!
+}
+# print_code_rule
+
+# pint the configure file license
+function print_license(){
+cat << !LICENSE_END!
+MIT License
+
+Copyright (c) 2018 Z.Riemann
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+!LICENSE_END!
+}
+# print_license
+
+# linux shell color control
+# cl_: color_
+# r: red; g: green; y: yellow;
+# c: close color control
+# echo -e "${cl_r}echo red color${cl_off}"
+cl_r="\\033[31m"
+cl_g="\\033[32m"
+cl_y="\\033[33m"
+cl_b="\\033[34m"
+cl_c="\\033[0m"
+
+# options
+# 0-code-rule; 1-path-rule 3-no-rule
+rule_code="rule-code"
+rule_path="rule-path"
+rule_null="rule-null"
+rule_mode=$rule_code
+
+# get_options
+
+#===============================================================================
+# Generate Makefile
+
+# backup the exist dir or files, <name> => <name>.backup
+function backup(){
+    echo -e "${cl_b}Start backup $*${cl_c}"
+    echo -e "${cl_r}backup files task delay...${cl_c}"
+}
+# backup Makefile makefile bin
+
+# just remove Makefile makefile bin
+echo -e "${cl_y}WARNNING: Makefile makefile bin will be deleted...${cl_c}"
+rm -fr Makefile makefile makefile_obj makefile_all src/auto_version.h bin
+
+# prepare environment before configure
+if [ -f build/preconfigure ]; then
+    echo "${cl_b}Prepare environment before configure${cl_c}"
+    . build/preconfigure
+fi
+
+# scan source codes
+file_count=0
+dependent_file=""
+obj=""
+obj_dir="bin/obj_debug"
+makefile_obj="makefile_obj"
+makefile_all="makefile_all"
+
+printf "all :" >> $makefile_all
+
+if [ "$rule_mode" = "$rule_code" ]; then
+    for path_name in $(find . -type f -a \( -name \*.c -o -name \*.C -o \
+                            -name \*.cc -o -name \*.cpp -o -name \*.CPP \
+                            -o -name \*.c++ -o -name \*.cp -o -name \*.cxx \)); do
+        file_count=$((file_count + 1))
+        # remove ./ prefix
+        path_name=${path_name#*./}
+        # parse file name
+        file_name=${path_name##*/}
+        # make obj dir
+        obj_path=$obj_dir/${path_name%/*}
+        mkdir -p ${obj_path}
+        # find code rule ...
+        # find header file dependents
+        obj=$obj_dir/${path_name%.*}.o
+
+        # append obj to all
+        if [ 0 -eq $(($file_count % 3)) ]; then
+            echo " $obj \\" >> $makefile_all
+        else
+            printf " $obj" >> $makefile_all
+        fi
+
+        echo -e "${cl_g}${file_count}\t${path_name}\t${obj}\t${file_name}\t${obj_path}${cl_c}"
+        echo >> $makefile_obj
+        echo "$obj : ${path_name}$dependent_file" >> $makefile_obj
+        printf "\tgcc -I. -c -o $obj $path_name\n" >> $makefile_obj
+    done
+fi
+
+# merge makefile_all and makefile_obj to Makefile
+cat << !AUTO_VER! > src/auto_version.h
+#define VER_AUTO 1
+const int major_version=1;
+const int minor_version=0;
+const int revision_version=0;
+const char *version= "1.0.0";
+const char *build_date = "2018-03-21";
+const char *git_rev = "git-ver-temp";
+!AUTO_VER!
+
+mv $makefile_all Makefile
+echo >> Makefile
+cat $makefile_obj >> Makefile
+rm -f makefile_*
