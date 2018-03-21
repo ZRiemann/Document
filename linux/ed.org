@@ -94,7 +94,6 @@
    $ ed test.txt
    P
    *0a ; 插入到第0行
-
    
 ** Invoking Ed 调用ed
    ed [OPTIONS] [FILE]
