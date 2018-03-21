@@ -1,3 +1,4 @@
+
 * shell 入门 
   http://blog.csdn.net/Z_YTTT/article/details/53020830
 ** 第一行&执行
@@ -509,6 +510,7 @@
    echo "echo 3" >> ${FILE}
    #+END_SRC
 *** 与ed交互编辑文本
+
 ** 脚本echo内容颜色
    #+BEGIN_SRC sh
    echo -e "\033[字背景颜色；文字颜色m字符串\033[0m"
@@ -546,3 +548,421 @@
    # \033[?25l 隐藏光标
    # \033[?25h 显示光标
    #+END_SRC
+
+* shell 编程
+** 什么是shell
+   - 用户与linux系统间接口程序
+   - 功能强大
+     + & 重定向
+     + | 管道输出
+     + $(...) 获取子进程输出
+** 管道和重定向
+   - > 覆盖重定向
+     set -/+o noclobber 阻止/允许重定向
+     2> ;重定向错误输出
+     ;标准输出到killout.txt，错误输出到killer.txt
+     $ kill -HUP 1234 >killout.txt 2>killerr.txt
+     ; 标准和错误输出都输出到killouterr.txt
+     $ kill -l 1234 >killouterr.txt 2>&1
+     $ kill -l 1234 >/dev/null 2>&1
+   - >> 追加重定向
+   - < 重定向标准输入
+   - | ;管道
+     $ ps | sort | more
+     $ ps -xo comm | sort | uniq | grep -v sh | more ;所有允许进程的名字
+     
+** 创建脚步
+   #+BEGIN_SRC sh
+   #!bin/sh
+
+   for FILE in *; do
+       if grep -q POSIX $FILE; then
+           echo $FILE
+       fi
+   done
+
+   exit 0
+   #+END_SRC
+** 变量
+   VAR=123 #定义变量
+   ${VAR}  #引用变量
+   "${VAR}" => 123
+   '${VAR}' => ${VAR}
+   #+BEGIN_SRC sh
+   VAR="Hi there"
+
+   echo '${VAR}' now equals ${VAR}
+
+   exit 0
+   #+END_SRC
+** 条件
+*** test / [ <cond> ]
+**** 字符串比较
+     str1 = str2
+     str1 != str2
+     -n string 非空串真
+     -z string 空串真
+**** 算术比较
+     exp1 -eq/-ne/-gt/-ge/-lt/le exp2
+     !exp
+**** 文件测试
+     -d/e/f/g/r/s/u/w/x file 
+     #+BEGIN_SRC sh
+     if [ -f /bin/bash ]; then
+         echo "file /bin/bash exists"
+     fi
+     #+END_SRC
+** for <var> in <values>; do ... done
+   for file in $(ls f*.sh); do ... done
+** case
+   #+BEGIN_SRC sh
+   #!/bin/sh
+
+   echo "Is it norning? Please answer yes or no"
+   read timeofday
+
+   case "$timeofday" in
+       yes) echo "Good Morning";;
+       no) echo "Good Afternoon";;
+       ,*) echo "Sorry, answer not recognized";;
+   esac
+
+   # 合并模式
+   case "$timeofday" in
+       yes | y | Yes | YES) echo "Good Morning";;
+       n* | N*) echo "Good Afternoon";;
+       ,*) echo "Sorry, answer not recognized";;
+   esac
+
+   case "$timeofday" in
+       [yY] | [yY][eE][sS])
+           echo "Good Morning"
+           echo "The second command"
+           ;;
+       [nN]*)
+           echo "Good Afternoon"
+           ;;
+       ,*)
+           echo "Sorry, answer not recognized"
+           exit 1
+           ;;
+   esac
+
+
+   exit 0
+   #+END_SRC
+** 命令列表 && ||
+   #+BEGIN_SRC sh
+   #!bin/sh
+
+   touch file_one
+   rm -f file_two
+
+   if [ -f file_one ] && echo "hello" && [ -f file_two ] && echo " there"; then
+       echo "in if"
+   else
+       echo "in else"
+   fi
+
+   rm -f file_one
+
+   if [ -f file_one ] || echo "hello" || echo " there"; then
+       echo "in if"
+   else
+       echo "in else"
+   fi
+
+   # 技巧
+   [ -f file_one ] && echo "file_one exists" || echo "file_one not exists"
+
+   # 语句块技巧
+   get_confirm && {
+       grep -v "$cdcatnum" $tracks_file > $temp_file
+       cat $temp_file > $tracks_file
+       echo
+       add_record_tracks
+   }
+   exit 0
+   #+END_SRC
+** 函数
+   #+BEGIN_SRC sh
+   # func_name() { ... }
+   # $* $@ $# $1 $2 ... 被替换成函数参数
+   foo(){
+       echo "function foo is excuting"
+   }
+
+   echo 'script starting'
+   foo
+   echo 'script ended'
+
+   # 局部变量
+   sample_text="global var"
+   bar(){
+       local sample_text="local var"
+       echo "bar is run"
+       echo "$sample_text"
+   #    return 0
+   }
+
+   bar
+
+   # yes_or_no()
+
+   yes_or_no(){
+       echo "is your name $* ?"
+       while true; do
+           echo -n "Enter yes or no: "
+           read x
+           case "${x}" in
+               y | yes) return 0;;
+               n | no) return 1;;
+               ,*) echo "answer yes or no"
+           esac
+       done
+   }
+
+   echo "original parameters are $*"
+   if yes_or_no "$1"; then
+       echo "Hi $1, nice name"
+   else
+       echo "Never mind"
+   fi
+
+   exit 0
+   #+END_SRC
+** 命令
+    - *break;*
+    - *:* 空命令，内置命令比true快
+      #等价 while true; do
+      while : ;do
+      ...
+      done
+
+      : ${var:=value} #条件设置
+    - *continue;*
+    - *.* 在当前shell中执行，不起子shell
+      . ./shell_script ;相当于include
+
+      设置不同的环境变量
+      #+BEGIN_SRC sh
+      #!/bin/sh
+      # classic_set.sh
+      version=classic
+      PATH+=/usr/local/old_bin
+      PS1="classic>"
+
+      #======================
+      #!/bin/sh
+      # lastest
+      PATH+=/usr/local/new_bin
+      PS1="latest>"
+
+      # 设置老版本环境
+      # . ./classic_set
+      #  设置新版本环境
+      # . ./latest_set
+      #+END_SRC
+    - *echo*
+      echo -n "string to output"   ; 去掉换行符
+      echo -e "string to output\c" ; 去掉换行符
+    - *eval* 对参数求值
+      foo=10
+      x=foo
+      y='$'$x
+      echo $y
+      eval z='$'$x
+      echo $z
+    - *exec* 
+      # 替换当前shell
+      exec wall "Thanks for all the fish"
+      # 修改但钱文件描述符
+      exec 3< afile
+    - *exit <0~125>* 脚步返回值
+      [ -f .profile ] && exit 0 || exit 1
+    - *export* 变量导出
+      set -a / set -allexport ;导出所有变量
+      # exp2.sh
+      #!/bin/sh
+      echo "${foo}"
+      echo "${bar}"
+      # exp1.sh
+      #!/bin/sh
+      foo="the first"
+      exprot bar="the second"
+      # 单独开子进程
+      exp2.sh
+      # 不单独开子进程
+      #. ./exp2.sh
+    - *expr /`expr ...`/ $(expr ...)/ $((...))* 表达式求值
+      expr1 |/&/=/>/>=/</<=/!=/+/-/*///% expr2
+    - *printf*
+      \"/a/b/c/f/n/r/t/v/ooo/xHH
+      $ printf "%s\n" hello
+    - *return* 函数返回
+    - *set* 
+      # 获取参数列表值
+      set $(date)
+      echo The month is $2
+      # 跟踪显示执行的命令
+      set -x
+    - *unset* 删除变量
+    - *shift* 左移一位
+      while [ "$1" != """]; do
+          echo "$1"
+          shift
+      done
+    - *trap <command/-/''> <signal>* 接收信号
+      trap ;列出当前信号和行动清单
+      
+      trap 'rm -f /tmp/my_tmp_file_$$' INT
+      echo "creating file /tmp/my_tmp_file$$"
+      date > /tmp/my_tmp_file_$$
+      echo "pres interrupt (CTRL-C) to interupt ..."
+      while [ -f /tmp/my_tmp_file_$$ ]; do
+          echo "File exists"
+          sleep 1
+      done
+      echo the file no longer exists
+      
+      trap INT
+    - *find* 文件搜索
+      | options          | description                        |
+      |------------------+------------------------------------|
+      | -depth           | 在查看目录本身之前先搜索目录的内容 |
+      | -follow          | 跟随符号连接                       |
+      | -maxdepths N     | 最多搜索N层目录                    |
+      | -mount           | 不搜索挂在目录                     |
+      |------------------+------------------------------------|
+      | testing          | ok:do faile:next-file              |
+      |------------------+------------------------------------|
+      | -atime N         | N天前被访问                        |
+      | -mtime N         | N天前被修改                        |
+      | -name parrern    | 文件名                             |
+      | -newer otherfile | 文件比otherfile文件要新            |
+      | -type c/d/f      | 字符/目录/普通文件                 |
+      | -user username   | 拥有者为username                   |
+      |------------------+------------------------------------|
+      | logic operate    | <test1> -o \(<test2> -a <test3>\)  |
+      |------------------+------------------------------------|
+      | !/-not           | 取反                               |
+      | -a/-and          | and                                |
+      | -o/-or           | or                                 |
+      |------------------+------------------------------------|
+      | operator         | {}表示当前文件                       |
+      |------------------+------------------------------------|
+      | -exec <cmd>      | 执行一条命令                       |
+      | -ok  <cmd>       | 提升用户确认后执行命令             |
+      | -print           | 打印文件名                         |
+      | -ls              | ls-dils                            |
+      |                  |                                    |
+      find [paths] [options] [tests] [actions]
+      find / -name test -print ; 搜索test文件，包括挂载盘
+      find / -mount -name test -print ; 搜索test文件，不包括包括挂载盘
+      find / \( -newer aaa.c -o -name "_*" \) -print
+      find . -type f -exec ls -l {} \;
+    - *grep* Gernral Regular Expression Parser
+      正则表达式解析器
+      grep [options] PATTERN [FILES]
+      | options | description                  |
+      |---------+------------------------------|
+      | -c      | 输出匹配行的数目，不是行内容 |
+      | -E      | 启用扩展模式                 |
+      | -h      | 取消普通前缀                 |
+      | -i      | 忽略大小写                   |
+      | -l      | 只输出文件名                 |
+      | -v      | 取反匹配模式                 |
+      |         |                              | 
+      
+      grep "#include" srs_app_http_api.cpp    ; #include <...> ...
+      grep -c "#include" srs_app_http_api.cpp ;22 #include行数量
+      grep -cv "#include" srs_app_http_api.cpp ; 1450 非#include行数量
+      
+      | 正则表达式 | description        | sample                        |
+      | ^          | 一行的开头         | grep e^ aaa.txt ; 以e开头     |
+      | $          | 一行的结尾         | grep e$ aaa.txt ; 以e结尾     |
+      | .          | 任意单个字符       | grep Th.[ [:space:]] ;Th?单词 |
+      | [...]      | 包含字符范围       |                               |
+      | [^...]     | 字符范围取反       |                               |
+      | [:alnum:]  | 字母+数字          |                               |
+      | [:alpha:]  | 字母               |                               |
+      | [:ascii:]  | ASCII              |                               |
+      | [:black:]  | 空格或制表符       |                               |
+      | [:cntrl:]  | 控制符             |                               |
+      | [:digit:]  | 数字               |                               |
+      | [:graph:]  | 非控制非空格字符   |                               |
+      | [:lower:]  | 小写字母           |                               |
+      | [:print:]  | 可打印字符         |                               |
+      | [:punct:]  | 标点符号           |                               |
+      | [:space:]  | 空白符包括垂直制表 |                               |
+      | [:upper:]  | 大写字母           |                               |
+      | [:xdigit:] | 16进制数字         |                               |
+      |------------+--------------------+-------------------------------|
+      | -E         |                    |                               |
+      |------------+--------------------+-------------------------------|
+      | ?          | 最多匹配一次       |                               |
+      | *          | 必须匹配0+次       |                               |
+      | +          | 必须匹配1+次       |                               |
+      | {n}        | 必须匹配n次        |                               |
+      | {n,}       | 必须匹配n+次       |                               |
+      | {n,m}      | 匹配n~m次          |                               |
+
+      grep e$ word2.txt ; 以e结尾的行
+      grep a[ [:blank:] ] words2.txt ; 以a结尾的单纯
+      grep Th.[ [:space:] ] words2.txt ;
+      grep -E [a-z]\{10\} words2.txt ; 10字符串的小写字母单词
+*** 命令执行
+**** $(cmd)
+    $(cmd) / `cmd`
+    $(who)
+    xargs
+    set
+    
+**** expr/$(()) 算术扩展 
+     expr 调用新shell，慢
+     x=0
+     while [ "$x" -ne 10 ]; do
+         echio $x
+         x=$(($x + 1))
+     done
+**** ${} 参数扩展
+     i=aaa
+     b=${i}_tmp
+     zpath="/usr/local/etc/local/networks"
+     | 扩展              | desc                   | sample                   | result              |
+     |-------------------+------------------------+--------------------------+---------------------|
+     | ${param:-default} | param空则设置为default | ${var:-xxx}              | xxx                 |
+     | ${#param}         | 给出param长度          | ${#zpath}                | 29                  |
+     | ${param%word}     | 删除尾部最小配部分     | echo "${zpath%/local*}"  | /usr/local/etc      |
+     | ${param%%word}    | 删除尾部最大配部分     | echo "${zpath%%/local*}" | /usr                |
+     | ${param#word}     | 删除头部最小配部分     | echo "${zpath#*/local}"  | /etc/local/networks |
+     | ${param##word}    | 删除头部最大配部分     | echo "${zpath##*/local}" | /networks           |
+     |                   |                        |                          |                     |
+
+     for image in *.gif; do
+         cjpeg $image > ${image%%gif}jpg  ; aaa.gif => aaa.jpg
+     done
+** here 文档
+   支持输出大量文本，避免echo
+   #!/bin/sh
+   cat <<!FUNKY! > here.txt
+   hello
+   this is a here
+   document
+   !FUNKY!
+** 脚步调试
+   |----------------+------------------+----------------------------|
+   | 命令行选项     | set 选项         | description                |
+   |----------------+------------------+----------------------------|
+   | sh -n <script> | set -o noexecute | 只检查不执行               |
+   |                | set -n           |                            |
+   | sh -v <script> | set -o verbose   | 执行命令前回显             |
+   |                | set -v           |                            |
+   | sh -x <script> | set -o xtrace    | 执行命令后回显             |
+   |                | set -x           | 开启                         |
+   |                | set +x           | 关闭                         |
+   | sh -u <script> | set -o nounset   | 如果使用了未定义变量就出错 |
+   |                | set -u           |                            |
+   |----------------+------------------+----------------------------|
+
+

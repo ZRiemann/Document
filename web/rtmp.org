@@ -222,6 +222,14 @@
        Dynamic(Limit Type=2):如果上次的Set Peer Bandwidth消息中的Limit Type为0，
                      本次也按Hard处理，否则忽略本消息，不去设置Window Ack Size。
 ** 不同类型的RTMP Message
+    * 1    set-chunk-size   4       new chunk size
+    * 2    abort-message    4       csid
+    * 3    acknowledegement 4       total bytes received
+    * 4    user-ctl-msg     2+      event-type-2B + event-data
+    * 5    ack-win-size     4       window size
+    * 6    bandwidth        5       window size + limit type
+    *                               0-hard 1-soft 2-dynamic
+
    | msg type       |              mtid | desc                        |
    |----------------+-------------------+-----------------------------|
    | cmd msg        | 17(amf3)/20(amf0) | 命令消息 connect/publish    |
@@ -277,3 +285,25 @@
 
        
      + net-stream 流信息传输通道
+* AMF0
+  紧凑的对象格式传输
+** 概览
+   | type-name | marker(Byte) | c-type          |
+   |-----------+--------------+-----------------|
+   | Number    |            0 | int64_t/double  |
+   | Boolean   |            1 | byte_t          |
+   | String    |            2 | uint16_t(len)   |
+   |           |              | utf8_t*(data)   |
+   | Object    |            3 | string(key)     |
+   |           |              | any_amf0(value) |
+   | Null      |            5 |                 |
+   |           |              |                 |
+   | Undefined |            6 |                 |
+   | EcmaArray |            8 | int32_t(size)   |
+   |           |              | utf8_t*(key)    |
+   |           |              | any_amf0(value) |
+   | ObjectEnd |            9 | 0x000009        |
+   | Invalid   |         0x3f |                 |
+** 暂定AMF0 <==> json/c-struct 进行解析
+   - 非效率优先，略有效率损失
+   - jsong 解析器成熟

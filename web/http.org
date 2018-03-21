@@ -1,0 +1,210 @@
+* 概述
+  约定消息格式和响应方式；
+  断点下载、多线程下载、防止盗链；
+  <GET/POST...> <URL> <HTTP1.1>\r\n
+  <domain_name>:<domain_value>\r\n
+  ...
+  <req_head_domain_name>:<req_head_domain_value>\r\n
+  ...
+  <body_head_domain_name>:<body_head_domain_value>\r\n
+  ...
+  \r\n
+  <body>
+* 请求方法
+  |---------+------------------------------------------|
+  | OPTIONS | 获取支持的请求方法，*测试服务器性能      |
+  | HEAD    | 获取响应头，不带消息体。测试是否可访问   |
+  | GET     | 请求特定资源，无副作用                   |
+  |         | GET <URL>?name=test1&id=123456           |
+  |         | req-data-len < 1024                      |
+  |         | Request.QueryString                      |
+  | POST    | 提交数据(表单或文件)到指定资源           |
+  |         | <Body Request-Data>                      |
+  |         | req-data-len unlimit                     |
+  |         | Request.Form                             |
+  | PUT     | 上传内容到指定位置                       |
+  | DELETE  | 请求删除Request-URL标识的资源            |
+  | TRACE   | 回射请求，测试或诊断                     |
+  | CONNECT | HTTP1.1 预留给连接改管道方式的代理服务器 |
+  | PATCH   | 将局部修改应用于某一资源，RFC5789        |
+  |         |                                          |
+* 请求头部
+    |---------------------+----------------------------------------|
+    | name                | description                            |
+    |---------------------+----------------------------------------|
+    | 常用头域            |                                        |
+    |---------------------+----------------------------------------|
+    | Cache-Control       | 缓存控制                               |
+    |                     | no-cache/no-store/max-age/max-stale    |
+    |                     | min-fresh/only-if-cached               |
+    |                     | public/private/no-cache/no-store/      |
+    |                     | no-transform/must-revalidate/          |
+    |                     | proxy-revalidate/max-age/s-maxage      |
+    | Connection          | 默认Keep-Alive, close                  |
+    | Date                | 消息产生的日期时间                     |
+    | Pragma              | no-cache 必须返回刷新后的文档          |
+    | Trailer             |                                        |
+    | Transfer-Encoding   | 报文编码格式                           |
+    | Upgrade             | 想要的新版本或协议                     |
+    | Via                 | 显示经过的代理、网关                   |
+    | Warning             |                                        |
+    | P3P                 | P3P:CP=CURa ADMa DEVa...               |
+    | Set-Cookie          | Set-Cookie:sc=4c31523a;path=/;...      |
+    |---------------------+----------------------------------------|
+    | 请求头域            |                                        |
+    |---------------------+----------------------------------------|
+    | Accept              | 接受的媒体类型                         |
+    |                     | Accept:text/html                       |
+    |                     | Accept:*/* ;接受任何类型               |
+    | Accept-Encoding     | 接受的编码格式,压缩gzip,deflate        |
+    |                     | Accept-Encoding:gzip,deflate           |
+    | Accept-Language     | Accept-Language:en-us                  |
+    |                     | Accept-Language:gb2312                 |
+    | Accept-Charset      | 接受的字符集                           |
+    | User-Agent          | 告知服务器，客户端操作系统浏览器信息   |
+    |                     | User-Agend:Mozilla/4.0 ...;.NET4.0E    |
+    | Authorization       | 授权                                   |
+    | Expect              | 要求的服务器行为                       |
+    | From                | 客户端E-mail                           |
+    | Host                | 请求端主机和端口号                     |
+    |                     | Host:http://github/com                 |
+    | Cookie              | cookie 值发送被server                  |
+    | if-Match            | ETag决定是否处理请求                   |
+    | if-Modified-Since   | 200 有更新返回新的                     |
+    |                     | 304 无更新使用本地缓存                 |
+    | if-None-Match       | ETag                                   |
+    | if-Range            | 206/200+内容实体                       |
+    | if-Unmodified-Since |                                        |
+    | Max-Forwards        | TRACE、OPTIONS限制代理、网关数量       |
+    | Proxy-Authorization | 代理授权                               |
+    | Range               | Range:bytes=0-500 请求1~501字节数量    |
+    |                     | Range:bytes=100-  101~eof              |
+    |                     | Range:bytes=-500  last 500 bytes       |
+    |                     | return 206/200(断点下载/多线程下载)    |
+    | Referer             | 指定请求来源，可防盗链                 |
+    |                     | Referer:http://t.g.cn/?hl=zh-cn&tab=wT |
+    | TE                  | 客户端接受的传输编码                   |
+    | UA-Pixels/CPU/OS/   | 非标准请求                             |
+    |---------------------+----------------------------------------|
+    | 实体头域            |                                        |
+    |---------------------+----------------------------------------|
+    | Allow               | GET\HEAD\PUT                           |
+    | Content-Encoding    | 内容采用的编码格式                     |
+    | Content-Language    | 实体语言                               |
+    | Content-Length      | 实体字节数                             |
+    | Content-Location    | 实体资源位置                           |
+    | Content-MD5         | 实体校验                               |
+    | Content-Range       |                                        |
+    | Content-Type        | 实体媒体类型                           |
+    |                     | Content-Type:application/x-www-form-   |
+    |                     | Content-Type:text/html;charset=utf-8   |
+    | Expires             | 实体过期时间                           |
+    | Last-Modified       | 最后修改时间                           |
+    |---------------------+----------------------------------------|
+
+* 响应协议
+  <HTTP1.1> <state-code> <reson>\r\n
+  <general-header>:<value>\r\n
+  ...
+  <response-header>:<value>\r\n
+  ...
+  <content-header>:value>\r\n
+  \r\n
+  <body>
+  
+  |               类型 | 描述                          |
+  |--------------------+-------------------------------|
+  |             状态码 |                               |
+  |--------------------+-------------------------------|
+  |                1xx | 报告(请求被接收，继续处理)    |
+  |                2xx | 成功(接受并处理完毕)          |
+  |                3xx | 重发                          |
+  |                4xx | 客户端出错                    |
+  |                5xx | 服务端出错                    |
+  |--------------------+-------------------------------|
+  |                100 | Continue 继续                 |
+  |                101 | Switching Protocols 切换协议  |
+  |                200 | OK                            |
+  |                201 | Created                       |
+  |                202 | Accepted                      |
+  |                203 | Non-Authoritative infomation  |
+  |                204 | No Content                    |
+  |                205 | Reset Content                 |
+  |                206 | Partial Content               |
+  |                300 | Multiple Choices              |
+  |                301 | Moved Permanently             |
+  |                302 | Found                         |
+  |                303 | See Other                     |
+  |                304 | Not Modified                  |
+  |                305 | Use Proxy                     |
+  |                307 | Temporary Redirect            |
+  |                400 | Bad Request                   |
+  |                401 | Unauthorized                  |
+  |                402 | PaymentRequired               |
+  |                403 | Forbidden                     |
+  |                404 | Not Found                     |
+  |                405 | Method Not Allowed            |
+  |                406 | Not Acceptable                |
+  |                407 | Proxy Athrentication Required |
+  |                408 | Request Timeout               |
+  |                409 | Confilict 冲突                |
+  |                410 | Gone 不存在                   |
+  |                411 | Length Required               |
+  |                412 | Precondition Failed           |
+  |                413 | Request Entity Too Large      |
+  |                414 | Request-URL Too Long          |
+  |                415 | Unsupported Media Type        |
+  |                416 | Request Range Not Satisfiable |
+  |                417 | Expectation Failed            |
+  |                500 | Internal Server Error         |
+  |                501 | Not Implemented               |
+  |                502 | Bad Gateway                   |
+  |                503 | Service Unavailable           |
+  |                504 | Gateway Timeout               |
+  |                505 | HTTP Version Not Suppoted     |
+  |--------------------+-------------------------------|
+  |             响应头 |                               |
+  |      Accept-Ranges |                               |
+  |                Age |                               |
+  |               ETag | 实体标签                      |
+  |           Location | 重定向URL                     |
+  | Proxy-Authenticate |                               |
+  |        Retry-After | 指定时间后重试                |
+  |             Server | 软件信息                      |
+  |                    | Server:Microsoft-IIS/7.5      |
+  |               Vary | 缓存响应或从原始服务器请求    |
+  |   WWW-Authenticate | 授权方案                      |
+  |                    | WWW-...:Basic realm="B A T"    |
+  |   X-AspNet-Version | X-AspNet-Version:4.0.30319    |
+  |       X-Powered-By | X-Powered-By:ASP.NET          |
+  |                    |                               |
+
+  application— (比如: application/vnd.ms-excel.)
+  audio (比如: audio/mpeg.)
+  image (比如: image/png.)
+  message (比如,:message/http.)
+  model(比如:model/vrml.)
+  multipart (比如:multipart/form-data.)
+  text(比如:text/html.)
+  video(比如:video/quicktime.)
+** 解决无状态问题
+*** Cookies
+    req1--->
+    <---rep1+SetCookie
+    req2+Cookie--->
+*** Session
+    req--->
+    rep+Set-Cookie:jseid=xxx--->
+    req+Cookie:jseid=xxx--->
+    <---rep
+*** 表达变量 
+*** QueryString
+** telnet http 测试 
+** URL详解 Uniform Resource Locator
+   schema://host[:port#]/path/.../[;url-params][?query-string][#anchor]
+   scheme: http/https/ftp/rtmp ...
+   host: www.baidu.com 192.168.10.23
+   port: 80 1935
+** http代理
+   
+   
