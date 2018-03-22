@@ -6,7 +6,7 @@
 #
 #-------------------------------------------------------------------------------
 # auto configure source code tree rule:
-# 
+#
 #-------------------------------------------------------------------------------
 # options
 function print_usage(){
@@ -108,13 +108,14 @@ SOFTWARE.
 
 # linux shell color control
 # cl_: color_
-# r: red; g: green; y: yellow;
+# r: red; g: green; y: yellow; p: purple
 # c: close color control
 # echo -e "${cl_r}echo red color${cl_off}"
 cl_r="\\033[31m"
 cl_g="\\033[32m"
 cl_y="\\033[33m"
 cl_b="\\033[34m"
+cl_p="\\033[35m"
 cl_c="\\033[0m"
 
 # options
@@ -146,21 +147,94 @@ if [ -f build/preconfigure ]; then
     . build/preconfigure
 fi
 
+# preconfigure
+CC=gcc
+CFLAG=-I.
+
 # scan source codes
-file_count=0
+target_count=0
 dependent_file=""
 obj=""
 obj_dir="bin/obj_debug"
+# [lib|app] : <objs> <depedents>
 makefile_obj="makefile_obj"
+# all : <libs> <apps>
 makefile_all="makefile_all"
+# is lib or app
+is_lib=0
+# zmake tag prefix
+zmake="@zmake."
+# zmake tag list
+zmake_tag=""
+# zmake type: cc/lib/app
+zmake_type=""
+# zmake value;
+zmake_value=""
+# current cc
+zmake_cc=$CC
+zmake_cflag=$CFLAG
+# buffered all targets
+zmake_target=""
 
 printf "all :" >> $makefile_all
+
+function parse_zmake_target(){
+    # parse target1:target2:...
+    # append target to all
+    while :; do
+        zmake_tgt=${zmake_value%%:*}
+        zmake_value=${zmake_value#*:}
+
+        [[ "$zmake_target" =~ "$zmake_tgt" ]] || {
+            target_count=$((target_count + 1))
+            # append obj to all, limit 5 objs per line
+            if [ 0 -eq $(($target_count % 5)) ]; then
+                zmake_target+=" $zmake_tgt \\"
+            else
+                zmake_target+=" $zmake_tgt"
+            fi
+        }
+
+        # target
+        obj=$obj_dir/${path_name%.*}.o
+
+        echo -e "${target_count}\t${path_name}\t${obj}\t${file_name}\t${obj_path}"
+        echo >> $makefile_obj
+        echo "$obj : ${path_name}$dependent_file" >> $makefile_obj
+        printf "\t${zmake_cc} ${zmake_cflag} -c -o $obj $path_name\n" >> $makefile_obj
+
+        [ "$zmake_tgt" = "$zmake_value" ] && break
+    done
+}
+
+function parse_zmake_type(){
+    # all : targets
+    while :; do
+        zmake_tag=${zmake_tag#*.}
+        zmake_type=${zmake_tag%% *}
+
+        [ "$zmake_tag" = "$zmake_type" ] && break
+
+        zmake_tag=${zmake_tag#* }
+        zmake_value=${zmake_tag%%;*}
+        echo "${zmake_type} : ${zmake_value}"
+
+        case "$zmake_type" in
+            cc) zmake_cc=${zmake_value};;
+            lib) parse_zmake_target;;
+            app) parse_zmake_target;;
+            *) echo -e "${cl_r}UNRECOGNIZED TYPE: ${zmake_type}${cl_c}";;
+        esac
+    done
+
+    # reset cc, maybe replaced by @zamke.cc g++
+    zmake_cc=CC
+}
 
 if [ "$rule_mode" = "$rule_code" ]; then
     for path_name in $(find . -type f -a \( -name \*.c -o -name \*.C -o \
                             -name \*.cc -o -name \*.cpp -o -name \*.CPP \
                             -o -name \*.c++ -o -name \*.cp -o -name \*.cxx \)); do
-        file_count=$((file_count + 1))
         # remove ./ prefix
         path_name=${path_name#*./}
         # parse file name
@@ -168,21 +242,16 @@ if [ "$rule_mode" = "$rule_code" ]; then
         # make obj dir
         obj_path=$obj_dir/${path_name%/*}
         mkdir -p ${obj_path}
-        # find code rule ...
-        # find header file dependents
-        obj=$obj_dir/${path_name%.*}.o
 
-        # append obj to all
-        if [ 0 -eq $(($file_count % 3)) ]; then
-            echo " $obj \\" >> $makefile_all
+        # parse code rule ...
+        zmake_tag=$(grep $zmake $path_name)
+
+        if [ -n "$zmake_tag" ]; then
+            parse_zmake_type
         else
-            printf " $obj" >> $makefile_all
+            echo -e "${cl_y}not find flag<$zmake> in $path_name${cl_c}"
+            continue
         fi
-
-        echo -e "${cl_g}${file_count}\t${path_name}\t${obj}\t${file_name}\t${obj_path}${cl_c}"
-        echo >> $makefile_obj
-        echo "$obj : ${path_name}$dependent_file" >> $makefile_obj
-        printf "\tgcc -I. -c -o $obj $path_name\n" >> $makefile_obj
     done
 fi
 

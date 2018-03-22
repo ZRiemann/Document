@@ -925,6 +925,12 @@
          echio $x
          x=$(($x + 1))
      done
+
+     字符串查找
+     str="aaa bbb ccc ddd"
+     echo `expr index "$str" "bb"` => 5
+     [ [ "$str" =~ "bb" ]] && echo "find ok"
+
 **** ${} 参数扩展
      i=aaa
      b=${i}_tmp
