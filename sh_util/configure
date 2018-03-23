@@ -139,7 +139,7 @@ function backup(){
 
 # just remove Makefile makefile bin
 echo -e "${cl_y}WARNNING: Makefile makefile bin will be deleted...${cl_c}"
-rm -fr Makefile makefile makefile_obj makefile_all src/auto_version.h bin
+rm -fr Makefile makefile makefile_* makefile_all src/auto_version.h bin
 
 # prepare environment before configure
 if [ -f build/preconfigure ]; then
@@ -150,11 +150,24 @@ fi
 # preconfigure
 CC=gcc
 CFLAG=-I.
+LIB_SONAME=1.0.0
+BUILDS=release
+BIN_ROOT=bin
+
+cat << !AUTO_VER! > src/auto_version.h
+#define VER_AUTO 1
+const int major_version=1;
+const int minor_version=0;
+const int revision_version=0;
+const char *version= "$LIB_SONAME";
+const char *build_date = "2018-03-21";
+const char *git_rev = "git-ver-temp";
+!AUTO_VER!
 
 # scan source codes
 target_count=0
 dependent_file=""
-obj=""
+obj_name=""
 obj_dir="bin/obj_debug"
 # [lib|app] : <objs> <depedents>
 makefile_obj="makefile_obj"
@@ -176,15 +189,25 @@ zmake_cflag=$CFLAG
 # buffered all targets
 zmake_target=""
 
+# generate micro definitions
+
+echo "CC=${CC}" >> $makefile_all
+echo "CFLAG=${CFLAG}" >> $makefile_all
+echo "LIB_SONAME=${LIB_SONAME}" >> $makefile_all
+echo "BUILDS=${BUILDS}" >> $makefile_all
+echo >> $makefile_all
 printf "all :" >> $makefile_all
 
 function parse_zmake_target(){
     # parse target1:target2:...
     # append target to all
     while :; do
+        # zmake_tgt = target1
         zmake_tgt=${zmake_value%%:*}
+        # zmake_value = target2:...
         zmake_value=${zmake_value#*:}
 
+        # test new target
         [[ "$zmake_target" =~ "$zmake_tgt" ]] || {
             target_count=$((target_count + 1))
             # append obj to all, limit 5 objs per line
@@ -195,14 +218,17 @@ function parse_zmake_target(){
             fi
         }
 
-        # target
-        obj=$obj_dir/${path_name%.*}.o
+        # target : source.o
+        [ -f "makefile_${zmake_tgt}" ] || {
+            # tag app or lib, for what type to build
+            echo "# ${zmake_type}" > makefile_${zmake_tgt}
+            # target :
+            printf "lib${zmake_tgt}.so :" >> makefile_${zmake_tgt}
+        }
+        # target : ... obj.o
+        printf " ${obj_name}" >> makefile_${zmake_tgt}
 
-        echo -e "${target_count}\t${path_name}\t${obj}\t${file_name}\t${obj_path}"
-        echo >> $makefile_obj
-        echo "$obj : ${path_name}$dependent_file" >> $makefile_obj
-        printf "\t${zmake_cc} ${zmake_cflag} -c -o $obj $path_name\n" >> $makefile_obj
-
+        # test end of item: zmake_tgt == zmake_value == last target
         [ "$zmake_tgt" = "$zmake_value" ] && break
     done
 }
@@ -220,15 +246,27 @@ function parse_zmake_type(){
         echo "${zmake_type} : ${zmake_value}"
 
         case "$zmake_type" in
-            cc) zmake_cc=${zmake_value};;
-            lib) parse_zmake_target;;
-            app) parse_zmake_target;;
+            cc)
+                zmake_cc=${zmake_value};;
+            lib | app)
+                # source.o : source.c depedents.h
+                obj_name=$obj_dir/${path_name%.*}.o
+
+                echo -e "${target_count}\t${path_name}\t${obj}\t${file_name}\t${obj_path}"
+                echo >> $makefile_obj
+                echo "$obj_name : ${path_name}$dependent_file" >> $makefile_obj
+                printf "\t\$(CC) \$(CFLAG) -c -o $obj_name $path_name\n" >> $makefile_obj
+
+                # all : target ...
+                # target : obj_name ...
+                parse_zmake_target
+                ;;
             *) echo -e "${cl_r}UNRECOGNIZED TYPE: ${zmake_type}${cl_c}";;
         esac
     done
 
     # reset cc, maybe replaced by @zamke.cc g++
-    zmake_cc=CC
+    zmake_cc=$CC
 }
 
 if [ "$rule_mode" = "$rule_code" ]; then
@@ -255,18 +293,38 @@ if [ "$rule_mode" = "$rule_code" ]; then
     done
 fi
 
-# merge makefile_all and makefile_obj to Makefile
-cat << !AUTO_VER! > src/auto_version.h
-#define VER_AUTO 1
-const int major_version=1;
-const int minor_version=0;
-const int revision_version=0;
-const char *version= "1.0.0";
-const char *build_date = "2018-03-21";
-const char *git_rev = "git-ver-temp";
-!AUTO_VER!
+# merge makefile_all makefile_<targets> and makefile_obj to Makefile
 
+# makefile_all => Makefile
 mv $makefile_all Makefile
+# all : => all : target1 target2 ...
+echo $zmake_target >> Makefile
 echo >> Makefile
+
+# target1 : obj1 obj2 ...
+while :; do
+    # test zmake_target is empty
+    [ -z "$zmake_target" ] && break
+    # get last target <space>target1<space>target2 => target2
+    zmake_tgt=${zmake_target##* }
+    # remove last target <space>t1<space>t2 => <space>t1
+    zmake_target=${zmake_target% *}
+    # generate build rule
+    echo >> makefile_${zmake_tgt}
+    if [ 1 -eq $(grep -c "# lib" makefile_${zmake_tgt}) ]; then
+        # build library
+        printf "\t\$(CC) -shared -Wl,-soname,\$(LIB_SONAME) -o \$@ \$^" >> makefile_${zmake_tgt}
+    else
+        #build application
+        printf "\t@echo build application ${zmake_tgt}..." >> makefile_${zmake_tgt}
+    fi
+    # append makefile_<target> to Makefile
+    cat makefile_${zmake_tgt} >> Makefile
+    echo >> Makefile
+done
+
+# obj1 : src1 src2 ... depedents ...
 cat $makefile_obj >> Makefile
+
+# remove templary file
 rm -f makefile_*
