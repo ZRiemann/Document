@@ -84,6 +84,7 @@ cat << !LICENSE_END!
 MIT License
 
 Copyright (c) 2018 Z.Riemann
+https://github.com/ZRiemann/zmake.git
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -154,18 +155,9 @@ LIB_SONAME=1.0.0
 BUILDS=release
 BIN_ROOT=bin
 
-cat << !AUTO_VER! > src/auto_version.h
-#define VER_AUTO 1
-const int major_version=1;
-const int minor_version=0;
-const int revision_version=0;
-const char *version= "$LIB_SONAME";
-const char *build_date = "2018-03-21";
-const char *git_rev = "git-ver-temp";
-!AUTO_VER!
 
 # scan source codes
-target_count=0
+#target_count=0
 dependent_file=""
 obj_name=""
 obj_dir="bin/obj_debug"
@@ -188,15 +180,75 @@ zmake_cc=$CC
 zmake_cflag=$CFLAG
 # buffered all targets
 zmake_target=""
+# obj sub directorys
+zmake_subdir=""
+# install directorys
+zmake_install_bin="/usr/local/bin"
+zmake_install_lib="/usr/local/lib"
+zmake_install_inc="/usr/local/include"
+
+# version configure
+# major.minor.revision
+zversion="1.0.0"
+zver_major=${zversion%%.*}
+zver_minor=${zversion#*.}
+zver_minor=${zver_minor%.*}
+zver_revision=${zversion##*.}
+echo "ver: ${zver_major}.${zver_minor}.${zver_revision}"
+# base => alpha => beta => RC => relaease
+zalbt="alpha"
+# build date
+zdate=$(date '+20%y%m%d')
+echo $zdate
+# git version
+zgit_rev=$(which git)
+if [ -z ${zgit_rev##*/git} ]; then
+    zgit_rev=$(git rev-parse HEAD)
+else
+    zgit_rev="nil"
+fi
+echo $zgit_rev
+
+# generate auto_version.h
+cat << !AUTO_VER! > auto_version.h
+#define VER_AUTO 1
+const int major_version=${zver_major};
+const int minor_version=${zver_minor};
+const int revision_version=${zver_revision};
+const char *version= "${zversion}.${zalbt}";
+const char *build_date = "${zdate}";
+const char *git_rev = "${zgit_rev}";
+!AUTO_VER!
 
 # generate micro definitions
+cat << !MAKE_ALL! > $makefile_all
+ifeq (\$(BUILDS), debug)
+	OPTM=-g
+else ifeq (\$(BUILDS), release)
+	OPTM=-O3
+else
+	BUILDS=release
+	OPTM=-O3
+endif
+!MAKE_ALL!
 
+echo >> $makefile_all
 echo "CC=${CC}" >> $makefile_all
 echo "CFLAG=${CFLAG}" >> $makefile_all
 echo "LIB_SONAME=${LIB_SONAME}" >> $makefile_all
-echo "BUILDS=${BUILDS}" >> $makefile_all
+echo "BIN_ROOT=${BIN_ROOT}" >> $makefile_all
+echo "INST_BIN=${zmake_install_bin}" >> $makefile_all
+echo "INST_LIB=${zmake_install_lib}" >> $makefile_all
+echo "INST_INC=${zmake_install_inc}" >> $makefile_all
 echo >> $makefile_all
-printf "all :" >> $makefile_all
+printf "all : prepare " >> $makefile_all
+
+# prepare header files
+header_file=$(find . -type f -a \( -name \*.h -o -name \*.hpp \))
+#for dep_match in ${header_file}; do
+#    echo "match: $dep_match "
+#done
+#echo "header files: ${header_file}"
 
 function parse_zmake_target(){
     # parse target1:target2:...
@@ -207,27 +259,26 @@ function parse_zmake_target(){
         # zmake_value = target2:...
         zmake_value=${zmake_value#*:}
 
+        zmake_tgt_name=${zmake_tgt}
+        if [ "lib" = "$zmake_type" ]; then
+            # zsi => libzsi.so
+            zmake_tgt_name=lib${zmake_tgt}.so
+        fi
         # test new target
-        [[ "$zmake_target" =~ "$zmake_tgt" ]] || {
-            target_count=$((target_count + 1))
-            # append obj to all, limit 5 objs per line
-            if [ 0 -eq $(($target_count % 5)) ]; then
-                zmake_target+=" $zmake_tgt \\"
-            else
-                zmake_target+=" $zmake_tgt"
-            fi
+        [[ "$zmake_target" =~ "$zmake_tgt_name" ]] || {
+            #target_count=$((target_count + 1))
+            zmake_target+=" $zmake_tgt_name"
         }
 
         # target : source.o
-        [ -f "makefile_${zmake_tgt}" ] || {
+        [ -f "makefile_${zmake_tgt_name}" ] || {
             # tag app or lib, for what type to build
-            echo "# ${zmake_type}" > makefile_${zmake_tgt}
+            echo "# ${zmake_type}" > makefile_${zmake_tgt_name}
             # target :
-            printf "lib${zmake_tgt}.so :" >> makefile_${zmake_tgt}
+            printf "\$(BIN_ROOT)/\$(BUILDS)/${zmake_tgt_name} :" >> makefile_${zmake_tgt_name}
         }
         # target : ... obj.o
-        printf " ${obj_name}" >> makefile_${zmake_tgt}
-
+        printf " ${obj_name}" >> makefile_${zmake_tgt_name}
         # test end of item: zmake_tgt == zmake_value == last target
         [ "$zmake_tgt" = "$zmake_value" ] && break
     done
@@ -235,6 +286,7 @@ function parse_zmake_target(){
 
 function parse_zmake_type(){
     # all : targets
+    echo -e "${cl_p}parse $path_name ${cl_c}"
     while :; do
         zmake_tag=${zmake_tag#*.}
         zmake_type=${zmake_tag%% *}
@@ -250,13 +302,36 @@ function parse_zmake_type(){
                 zmake_cc=${zmake_value};;
             lib | app)
                 # source.o : source.c depedents.h
-                obj_name=$obj_dir/${path_name%.*}.o
+                obj_name="\$(BIN_ROOT)/obj_\$(BUILDS)/${path_name%.*}.o"
 
-                echo -e "${target_count}\t${path_name}\t${obj}\t${file_name}\t${obj_path}"
+                # test new subdir
+                obj_path=${obj_name%/*}
+                [[ "$zmake_subdir" =~ "$obj_path" ]] || {
+                    # append new sub ddir
+                    zmake_subdir+=$obj_path
+                }
+
+                # find out dependents header files
+                dependent_file=""
+                for dep_header in $(grep "#include " $path_name); do
+                    [ "#include" = "${dep_header}" ] && continue
+                    # remove < , > or "
+                    dep_header=${dep_header#*<}
+                    dep_header=${dep_header%>*}
+                    dep_header=${dep_header#*\"}
+                    dep_header=${dep_header%\"*}
+                    for dep_match in ${header_file}; do
+                        [[ "${dep_match}" =~ "$dep_header" ]] && dependent_file+=" ${dep_match}"
+                    done
+                done
+
                 echo >> $makefile_obj
                 echo "$obj_name : ${path_name}$dependent_file" >> $makefile_obj
-                printf "\t\$(CC) \$(CFLAG) -c -o $obj_name $path_name\n" >> $makefile_obj
-
+                if [ "app" = "zmake_type" ]; then
+                    printf "\t\$(CC) \$(OPTM) \$(CFLAG) -c -o $obj_name $path_name\n" >> $makefile_obj
+                else
+                    printf "\t\$(CC) \$(OPTM) \$(CFLAG) -fPIC -c -o $obj_name $path_name\n" >> $makefile_obj
+                fi
                 # all : target ...
                 # target : obj_name ...
                 parse_zmake_target
@@ -275,11 +350,6 @@ if [ "$rule_mode" = "$rule_code" ]; then
                             -o -name \*.c++ -o -name \*.cp -o -name \*.cxx \)); do
         # remove ./ prefix
         path_name=${path_name#*./}
-        # parse file name
-        file_name=${path_name##*/}
-        # make obj dir
-        obj_path=$obj_dir/${path_name%/*}
-        mkdir -p ${obj_path}
 
         # parse code rule ...
         zmake_tag=$(grep $zmake $path_name)
@@ -287,19 +357,36 @@ if [ "$rule_mode" = "$rule_code" ]; then
         if [ -n "$zmake_tag" ]; then
             parse_zmake_type
         else
-            echo -e "${cl_y}not find flag<$zmake> in $path_name${cl_c}"
+            echo -e "${cl_y}not find zmake flag<$zmake> in $path_name${cl_c}"
             continue
         fi
     done
 fi
 
 # merge makefile_all makefile_<targets> and makefile_obj to Makefile
-
 # makefile_all => Makefile
 mv $makefile_all Makefile
+
 # all : => all : target1 target2 ...
-echo $zmake_target >> Makefile
+#echo $zmake_target >> Makefile
+zmake_tgt_cpy=$zmake_target
+while :; do
+    # all : prepare <dir>/tgt ...
+    [ -z "$zmake_tgt_cpy" ] && break
+    # get last target <space>target1<space>target2 => target2
+    zmake_tgt=${zmake_tgt_cpy##* }
+    # remove last target <space>t1<space>t2 => <space>t1
+    zmake_tgt_cpy=${zmake_tgt_cpy% *}
+    # generate build rule
+    printf " \$(BIN_ROOT)/\$(BUILDS)/$zmake_tgt" >> Makefile
+done
 echo >> Makefile
+
+# prepare :
+# @mkdir -p dirs...
+echo >> Makefile
+echo "prepare:" >> Makefile
+printf "\t@mkdir -p \$(BIN_ROOT)/\$(BUILDS) \$(BIN_ROOT)/obj_\$(BUILDS) ${zmake_subdir}\n\n" >> Makefile
 
 # target1 : obj1 obj2 ...
 while :; do
@@ -313,10 +400,19 @@ while :; do
     echo >> makefile_${zmake_tgt}
     if [ 1 -eq $(grep -c "# lib" makefile_${zmake_tgt}) ]; then
         # build library
-        printf "\t\$(CC) -shared -Wl,-soname,\$(LIB_SONAME) -o \$@ \$^" >> makefile_${zmake_tgt}
+        printf "\t\$(CC) \$(OPTM) -shared -Wl,-soname,${zmake_tgt}.\$(VER_MAJOR) -o \$@ \$^" >> makefile_${zmake_tgt}
+        # install/uninstall
+        echo >> makefile_${zmake_tgt}
+        echo "install_${zmake_tgt} :" >> makefile_${zmake_tgt}
+        printf "\t@echo install ${zmake_tgt}..." >> makefile_${zmake_tgt}
     else
         #build application
-        printf "\t@echo build application ${zmake_tgt}..." >> makefile_${zmake_tgt}
+        #printf "\t@echo build application ${zmake_tgt}..." >> makefile_${zmake_tgt}
+        printf "\t\$(CC) \$(OPTM) -o \$@ \$^ \$(${zmake_tgt}_DEP)" >> makefile_${zmake_tgt}
+        # install/uninstall
+        echo >> makefile_${zmake_tgt}
+        echo "install_${zmake_tgt} :" >> makefile_${zmake_tgt}
+        printf "\t@echo install ${zmake_tgt}..." >> makefile_${zmake_tgt}
     fi
     # append makefile_<target> to Makefile
     cat makefile_${zmake_tgt} >> Makefile
@@ -326,5 +422,20 @@ done
 # obj1 : src1 src2 ... depedents ...
 cat $makefile_obj >> Makefile
 
-# remove templary file
+# generate make install/uninstall/clean
+echo >> Makefile
+echo "# install librarys and applications" >> Makefile
+echo "install :" >> Makefile
+printf "\t@echo install libs and apps\n" >> Makefile
+echo >> Makefile
+echo "# uninstall librarys and applications" >> Makefile
+echo "uninstall :" >> Makefile
+printf "\t@echo uninstall libs and apps\n" >> Makefile
+echo >> Makefile
+echo "# clean up" >> Makefile
+echo "clean :" >> Makefile
+printf "\t@rm -fr \$(BIN_ROOT) auto_version.h" >> Makefile
+
+
+# remove temporary file
 rm -f makefile_*
