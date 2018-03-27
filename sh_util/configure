@@ -11,21 +11,29 @@
 # options
 function print_usage(){
 cat << !USAGE_END!
+zmake v1.0.0
+
 Options:
-  -h, --help                       print the usage message
-  --license                        print the MIT License
+  -h, --help                       Display this information
+  --license                        Display the MIT License
 Auto make rules:
-  --show-path-rule                 <reserved> print sample auto make tree rule
-  --show-code-rule                 print embedded codes rule
-  --with-code-rule                 auto generate Makefile by auto-code-rule
+  --show-path-rule                 Display sample auto make tree rule
+  --show-code-rule                 Display embedded codes rule
+  --with-code-rule                 Auto generate Makefile by auto-code-rule
   --with-path-rule
 Adapter no rules:
-  --libs-path=[path1:path2:...]    <reserved>
+  --libs-path=[path1:path2:...]    <Reserved>
                                    librarys path
                                    auto build path name: lib<name>
                                    auto exclude path: test[s]
-  --excl-libs-path=[libpath/exclpath:] <reserved>
+  --excl-libs-path=[libpath/exclpath:] <Reserved>
                                    exclude path in librarys path
+zmake tags:
+  @zmake.install [off|ON]          Default ON, target needs install
+  @zmake.all [off|ON]              Default ON, target build in all
+  @zmake.link <-l...>              Librarys needs to link
+  @zmake.app <name>                Attach file to target by application name, -o name
+  @zmake.lib <name>                Attach file to target by library name, -o libname.so.version 
 Outputs:
   ./bin                            binary files directory
     |- obj_debug                   debug version objects
@@ -36,6 +44,8 @@ Outputs:
     ...
   execute programs as follow:
   $ bin/release/<app-name> [--options]
+  For bug reporting instructions, please see:
+  <https://github.com/ZRiemann/zmake.git>.
 !USAGE_END!
 }
 # print_usage
@@ -182,6 +192,14 @@ zmake_cflag=$CFLAG
 zmake_target=""
 # obj sub directorys
 zmake_subdir=""
+
+zmake_install="on"
+zmake_all="on"
+zmake_link=""
+zmake_set_install=0
+zmake_set_all=0
+zmake_set_link=0
+
 # install directorys
 zmake_install_bin="/usr/local/bin"
 zmake_install_lib="/usr/local/lib"
@@ -227,22 +245,32 @@ ifeq (\$(BUILDS), debug)
 else ifeq (\$(BUILDS), release)
 	OPTM=-O3
 else
-	BUILDS=release
+    BUILDS=release
 	OPTM=-O3
 endif
+
+CC=${CC}
+CFLAG=${CFLAG}
+BIN_ROOT=${BIN_ROOT}
+
+BUILDS_DIR=\$(BIN_ROOT)/\$(BUILDS)
+OBJ_DIR=\$(BIN_ROOT)/obj_\$(BUILDS)
+
+# installation directory
+INST_BIN=${zmake_install_bin}
+INST_LIB=${zmake_install_lib}
+INST_INC=${zmake_install_inc}
+
+# version control
+VERSION=${zversion}
+VER_MAJOR=${zver_major}
+VER_MINOR=${zver_minor}
+VER_REVISION=${zver_revision}
+
+# all : prepare targets...
 !MAKE_ALL!
 
-echo >> $makefile_all
-echo "CC=${CC}" >> $makefile_all
-echo "CFLAG=${CFLAG}" >> $makefile_all
-echo "LIB_SONAME=${LIB_SONAME}" >> $makefile_all
-echo "BIN_ROOT=${BIN_ROOT}" >> $makefile_all
-echo "INST_BIN=${zmake_install_bin}" >> $makefile_all
-echo "INST_LIB=${zmake_install_lib}" >> $makefile_all
-echo "INST_INC=${zmake_install_inc}" >> $makefile_all
-echo >> $makefile_all
-printf "all : prepare " >> $makefile_all
-
+printf "all : prepare" >> $makefile_all
 # prepare header files
 header_file=$(find . -type f -a \( -name \*.h -o -name \*.hpp \))
 #for dep_match in ${header_file}; do
@@ -259,34 +287,85 @@ function parse_zmake_target(){
         # zmake_value = target2:...
         zmake_value=${zmake_value#*:}
 
-        zmake_tgt_name=${zmake_tgt}
-        if [ "lib" = "$zmake_type" ]; then
-            # zsi => libzsi.so
-            zmake_tgt_name=lib${zmake_tgt}.so
-        fi
         # test new target
-        [[ "$zmake_target" =~ "$zmake_tgt_name" ]] || {
-            #target_count=$((target_count + 1))
-            zmake_target+=" $zmake_tgt_name"
+        [[ "$zmake_target" =~ "$zmake_tgt" ]] || {
+            zmake_target+=" $zmake_tgt"
         }
 
         # target : source.o
-        [ -f "makefile_${zmake_tgt_name}" ] || {
+        [ -f "makefile_${zmake_tgt}" ] || {
             # tag app or lib, for what type to build
-            echo "# ${zmake_type}" > makefile_${zmake_tgt_name}
+            echo "# ${zmake_type}" > makefile_${zmake_tgt}
             # target :
-            printf "\$(BIN_ROOT)/\$(BUILDS)/${zmake_tgt_name} :" >> makefile_${zmake_tgt_name}
+            if [ "lib" = "${zmake_type}" ]; then
+                printf "\$(BUILDS_DIR)/lib${zmake_tgt}.so.\$(VERSION) :" >> makefile_${zmake_tgt}
+            else
+                printf "\$(BUILDS_DIR)/${zmake_tgt} :" >> makefile_${zmake_tgt}
+            fi
         }
+
+        if [ 1 -eq ${zmake_set_install} ]; then
+            echo "Set install"
+            if [ -f "makefile_${zmake_tgt}_flags" ]; then
+                if [ "0" != "$(grep install= makefile_${zmake_tgt}_flags)" ]; then
+                    # append
+                    echo "install=${zmake_install}" >> makefile_${zmake_tgt}_flags
+                else
+                    # error
+                    echo -e "${cl_r}Install flag already be set.${cl_c}"
+                fi
+            else
+                # create
+                echo "install=${zmake_install}" >> makefile_${zmake_tgt}_flags
+            fi
+        fi
+
+        if [ 1 -eq ${zmake_set_all} ]; then
+            echo "Set all"
+            if [ -f "makefile_${zmake_tgt}_flags" ]; then
+                if [ "0" != "$(grep all= makefile_${zmake_tgt}_flags)" ]; then
+                    # append
+                    echo "all=${zmake_all}" >> makefile_${zmake_tgt}_flags
+                else
+                    # error
+                    echo -e "${cl_r}All flag already be set.${cl_c}"
+                fi
+            else
+                # create
+                echo "all=${zmake_all}" >> makefile_${zmake_tgt}_flags
+            fi
+        fi
+
+        if [ 1 -eq ${zmake_set_link} ]; then
+            echo "Set link"
+            if [ -f "makefile_${zmake_tgt}_flags" ]; then
+                if [ "0" != "$(grep link= makefile_${zmake_tgt}_flags)" ]; then
+                    # append
+                    echo "link=${zmake_link}" >> makefile_${zmake_tgt}_flags
+                else
+                    # error
+                    echo -e "${cl_r}Link flag already be set.${cl_c}"
+                fi
+            else
+                # create
+                echo "link=${zmake_link}" >> makefile_${zmake_tgt}_flags
+            fi
+        fi
         # target : ... obj.o
-        printf " ${obj_name}" >> makefile_${zmake_tgt_name}
+        printf " ${obj_name}" >> makefile_${zmake_tgt}
         # test end of item: zmake_tgt == zmake_value == last target
         [ "$zmake_tgt" = "$zmake_value" ] && break
     done
 }
 
+
 function parse_zmake_type(){
-    # all : targets
     echo -e "${cl_p}parse $path_name ${cl_c}"
+
+    zmake_set_install=0
+    zmake_set_all=0
+    zmake_set_link=0
+
     while :; do
         zmake_tag=${zmake_tag#*.}
         zmake_type=${zmake_tag%% *}
@@ -298,17 +377,24 @@ function parse_zmake_type(){
         echo "${zmake_type} : ${zmake_value}"
 
         case "$zmake_type" in
-            cc)
-                zmake_cc=${zmake_value};;
+            install)
+                zmake_set_install=1
+                zmake_install=${zmake_value};;
+            all)
+                zmake_set_all=1
+                zmake_all=${zmake_value};;
+            link)
+                zmake_set_link=1
+                zmake_link=${zmake_value};;
             lib | app)
                 # source.o : source.c depedents.h
-                obj_name="\$(BIN_ROOT)/obj_\$(BUILDS)/${path_name%.*}.o"
+                obj_name="\$(OBJ_DIR)/${path_name%.*}.o"
 
                 # test new subdir
                 obj_path=${obj_name%/*}
                 [[ "$zmake_subdir" =~ "$obj_path" ]] || {
                     # append new sub ddir
-                    zmake_subdir+=$obj_path
+                    zmake_subdir+=" $obj_path"
                 }
 
                 # find out dependents header files
@@ -327,10 +413,10 @@ function parse_zmake_type(){
 
                 echo >> $makefile_obj
                 echo "$obj_name : ${path_name}$dependent_file" >> $makefile_obj
-                if [ "app" = "zmake_type" ]; then
-                    printf "\t\$(CC) \$(OPTM) \$(CFLAG) -c -o $obj_name $path_name\n" >> $makefile_obj
+                if [ "app" = "$zmake_type" ]; then
+                    printf "\t\$(CC) \$(OPTM) \$(CFLAG) -c -o \$@ $path_name\n" >> $makefile_obj
                 else
-                    printf "\t\$(CC) \$(OPTM) \$(CFLAG) -fPIC -c -o $obj_name $path_name\n" >> $makefile_obj
+                    printf "\t\$(CC) \$(OPTM) \$(CFLAG) -fPIC -c -o \$@ $path_name\n" >> $makefile_obj
                 fi
                 # all : target ...
                 # target : obj_name ...
@@ -339,9 +425,6 @@ function parse_zmake_type(){
             *) echo -e "${cl_r}UNRECOGNIZED TYPE: ${zmake_type}${cl_c}";;
         esac
     done
-
-    # reset cc, maybe replaced by @zamke.cc g++
-    zmake_cc=$CC
 }
 
 if [ "$rule_mode" = "$rule_code" ]; then
@@ -357,7 +440,7 @@ if [ "$rule_mode" = "$rule_code" ]; then
         if [ -n "$zmake_tag" ]; then
             parse_zmake_type
         else
-            echo -e "${cl_y}not find zmake flag<$zmake> in $path_name${cl_c}"
+            echo -e "${cl_y}$path_name has no @zmake.* tags, we not parse it.${cl_c}"
             continue
         fi
     done
@@ -367,18 +450,18 @@ fi
 # makefile_all => Makefile
 mv $makefile_all Makefile
 
-# all : => all : target1 target2 ...
-#echo $zmake_target >> Makefile
-zmake_tgt_cpy=$zmake_target
-while :; do
-    # all : prepare <dir>/tgt ...
-    [ -z "$zmake_tgt_cpy" ] && break
-    # get last target <space>target1<space>target2 => target2
-    zmake_tgt=${zmake_tgt_cpy##* }
-    # remove last target <space>t1<space>t2 => <space>t1
-    zmake_tgt_cpy=${zmake_tgt_cpy% *}
-    # generate build rule
-    printf " \$(BIN_ROOT)/\$(BUILDS)/$zmake_tgt" >> Makefile
+#echo "$zmake_target" >> Makefile
+for target in $zmake_target; do
+    if [ -f "makefile_${target}_flags" ]; then
+        if [ "0" = "$(grep -c all=off makefile_${target}_flags)" ]; then
+            printf " ${target}" >> Makefile
+            echo -e "${cl_g}${target} default build.${cl_c}"
+        else
+            echo -e "${cl_y}${target} not default build.${cl_c}"
+        fi
+    else
+        printf " ${target}" >> Makefile
+    fi
 done
 echo >> Makefile
 
@@ -386,36 +469,83 @@ echo >> Makefile
 # @mkdir -p dirs...
 echo >> Makefile
 echo "prepare:" >> Makefile
-printf "\t@mkdir -p \$(BIN_ROOT)/\$(BUILDS) \$(BIN_ROOT)/obj_\$(BUILDS) ${zmake_subdir}\n\n" >> Makefile
+printf "\t@mkdir -p \$(BUILDS_DIR) \$(OBJ_DIR) ${zmake_subdir}\n\n" >> Makefile
 
 # target1 : obj1 obj2 ...
-while :; do
-    # test zmake_target is empty
-    [ -z "$zmake_target" ] && break
-    # get last target <space>target1<space>target2 => target2
-    zmake_tgt=${zmake_target##* }
-    # remove last target <space>t1<space>t2 => <space>t1
-    zmake_target=${zmake_target% *}
+for target in $zmake_target; do
     # generate build rule
-    echo >> makefile_${zmake_tgt}
-    if [ 1 -eq $(grep -c "# lib" makefile_${zmake_tgt}) ]; then
+    echo >> makefile_${target}
+    if [ 1 -eq $(grep -c "# lib" makefile_${target}) ]; then
+        output="\$(BUILDS_DIR)/lib${target}.so"
+        # generate target : output
+        echo >> Makefile
+        echo "${target} : ${output}.\$(VERSION)" >> Makefile
         # build library
-        printf "\t\$(CC) \$(OPTM) -shared -Wl,-soname,${zmake_tgt}.\$(VER_MAJOR) -o \$@ \$^" >> makefile_${zmake_tgt}
+        printf "\t\$(CC) \$(OPTM) -shared -Wl,-soname,lib${target}.so.\$(VER_MAJOR) -o \$@ \$^\n" >> makefile_${target}
+        printf "\t@rm -f ${output}\n" >> makefile_${target}
+        printf "\t@ln -s lib${target}.so.\$(VERSION) ${output}.\$(VER_MAJOR) >/dev/null 2>&1\n" >> makefile_${target}
+        printf "\t@ln -s lib${target}.so.\$(VER_MAJOR) ${output} >/dev/null 2>&1\n" >> makefile_${target}
+        echo "ifeq (\$(BUILDS),release)" >> makefile_${target}
+        printf "\t@strip \$@\n" >> makefile_${target}
+        echo "endif" >> makefile_${target}
+
         # install/uninstall
-        echo >> makefile_${zmake_tgt}
-        echo "install_${zmake_tgt} :" >> makefile_${zmake_tgt}
-        printf "\t@echo install ${zmake_tgt}..." >> makefile_${zmake_tgt}
+        zmake_set_install=0
+        if [ -f "makefile_${target}_flags" ]; then
+            if [ "0" = "$(grep -c install=off makefile_${target}_flags)" ]; then
+                zmake_set_install=1
+            fi
+        else
+            zmake_set_install=1
+        fi
+
+        if [ "1" = "$zmake_set_install" ]; then
+            echo >> makefile_${target}
+            echo "install_${target} :" >> makefile_${target}
+            printf "\t@echo install ${target}..." >> makefile_${target}
+            echo >> makefile_${target}
+            echo "uninstall_${target} :" >> makefile_${target}
+            printf "\t@echo uninstall ${target}..." >> makefile_${target}
+            echo >> makefile_${target}
+        fi
     else
+        # generate target : output
+        output="\$(BUILDS_DIR)/${target}"
+        echo >> Makefile
+        echo "${target} : ${output}" >> Makefile
+
         #build application
-        #printf "\t@echo build application ${zmake_tgt}..." >> makefile_${zmake_tgt}
-        printf "\t\$(CC) \$(OPTM) -o \$@ \$^ \$(${zmake_tgt}_DEP)" >> makefile_${zmake_tgt}
+        zmake_link=""
+        if [ -f "makefile_${target}_flags" ]; then
+            if [ "1" = "$(grep -c link= makefile_${target}_flags)" ]; then
+                zmake_link=$(grep link= makefile_${target}_flags)
+                zmake_link=${zmake_link#*link=}
+            fi
+        fi
+
+        printf "\t\$(CC) \$(OPTM) -Wl,-rpath=\$(shell pwd)/\$(BUILDS_DIR) -L\$(shell pwd)/\$(BUILDS_DIR) -o \$@ \$^ ${zmake_link}" >> makefile_${target}
         # install/uninstall
-        echo >> makefile_${zmake_tgt}
-        echo "install_${zmake_tgt} :" >> makefile_${zmake_tgt}
-        printf "\t@echo install ${zmake_tgt}..." >> makefile_${zmake_tgt}
+        zmake_set_install=0
+        if [ -f "makefile_${target}_flags" ]; then
+            if [ "0" = "$(grep -c install=off makefile_${target}_flags)" ]; then
+                zmake_set_install=1
+            fi
+        else
+            zmake_set_install=1
+        fi
+
+        if [ "1" = "$zmake_set_install" ]; then
+            echo >> makefile_${target}
+            echo "install_${target} :" >> makefile_${target}
+            printf "\t@echo install ${target}..." >> makefile_${target}
+            echo >> makefile_${target}
+            echo "uninstall_${target} :" >> makefile_${target}
+            printf "\t@echo uninstall ${target}..." >> makefile_${target}
+            echo >> makefile_${target}
+        fi
     fi
     # append makefile_<target> to Makefile
-    cat makefile_${zmake_tgt} >> Makefile
+    cat makefile_${target} >> Makefile
     echo >> Makefile
 done
 
@@ -438,4 +568,4 @@ printf "\t@rm -fr \$(BIN_ROOT) auto_version.h" >> Makefile
 
 
 # remove temporary file
-rm -f makefile_*
+#rm -f makefile_*
