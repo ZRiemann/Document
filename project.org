@@ -224,3 +224,11 @@
     - <2018-02-07 Wed> node
       重构分布式网络模型，取消router节点，统一为只有node节点。
     - <2018-02-26 Mon> zsi
+  + Mar
+    - <2018-03-28 Wed> configure:zsi
+      + configure 消除标记尾部的;
+        make install/uninstall
+        Makefile generate zmake_def.h
+      + zsi test框架;
+        添加trace2file;
+        
