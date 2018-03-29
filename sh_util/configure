@@ -162,7 +162,7 @@ fi
 
 # preconfigure
 CC=gcc
-CFLAG="-I. -Isrc"
+CFLAG="-I. -Isrc  -fhosted"
 LIB_SONAME=1.0.0
 BUILDS=release
 BIN_ROOT=bin
@@ -496,7 +496,7 @@ for target in $zmake_target; do
         echo >> Makefile
         echo "${target} : ${output}.\$(VERSION)" >> Makefile
         # build library
-        printf "\t\$(CC) \$(OPTM) -shared -Wl,-soname,lib${target}.so.\$(VER_MAJOR) -o \$@ \$^\n" >> makefile_${target}
+        printf "\t\$(CC) \$(OPTM) -shared -Wl,--sort-common,-soname,lib${target}.so.\$(VER_MAJOR) -o \$@ \$^\n" >> makefile_${target}
         printf "\t@rm -f ${output} ${output}.\$(VER_MAJOR)\n" >> makefile_${target}
         printf "\t@ln -s lib${target}.so.\$(VERSION) ${output}.\$(VER_MAJOR)\n" >> makefile_${target}
         printf "\t@ln -s lib${target}.so.\$(VER_MAJOR) ${output}\n" >> makefile_${target}
@@ -542,7 +542,7 @@ for target in $zmake_target; do
             fi
         fi
 
-        printf "\t\$(CC) \$(OPTM) -Wl,-rpath=\$(BUILDS_DIR) -L\$(BUILDS_DIR) -o \$@ \$^ ${zmake_link}" >> makefile_${target}
+        printf "\t\$(CC) \$(OPTM) -Wl,--as-needed,--sort-common,-rpath=\$(BUILDS_DIR) -L\$(BUILDS_DIR) -o \$@ \$^ ${zmake_link}" >> makefile_${target}
         # install/uninstall
         zmake_set_install=0
         if [ -f "makefile_${target}_flags" ]; then
