@@ -58,7 +58,7 @@
 *communicate layer*    TCP/IP         COM  ...
 
 层次结构，通信层 --> 节点拓扑层 --> 应用层
-*应用层程* 序可以不感知拓扑层的结构。应用层可以实现为各类插件。
+*应用层程序* 可以不感知拓扑层的结构。应用层可以实现为各类插件。
 *节点拓扑层* 专注节点的拓扑网络以及其上数据的传输。
 *通信层* 基于TCP/IP网络以及串口等各类主流通信技术。
 ***** 典型拓扑
@@ -98,7 +98,16 @@
 
 一个 *混合网络* 由多个 *子网络* 组成，各子网络间可能不直接互通需要通过如域路由器转发；
 
-*** TODO [%]
+*** TODO [0%]
+    - [ ] [0%] communicate layer
+      + [ ] state-threads
+        - [ ] implement http server
+      + [ ] epoll
+      + [ ] select
+      + [ ] iocp
+      + [ ] user interface
+    - [ ] [0%] node toplogy layer
+    - [ ] [0%] application layer
 *** design
     - 选型
       C
@@ -115,7 +124,6 @@
       5. 路由缓存，路由记录；
     - 高级功能
       1. P2P 或公网打洞功能，避免路由中专；
-
 **** 模块划分
 - 原则(简单、粗暴、有效)
      - 简单
@@ -153,6 +161,10 @@
 
   + 多进程形式纯IO(state-threads)
     state-threads(适用业务处理时间极短<微妙级>的场景，如中转路由)
+- node toplogiy 节点拓扑层
+  
+- applocation layer 应用层
+  定义标准应用接口
 ** zmind(思想层)
    +--------------------------------+
    |            zplugins            |
@@ -163,8 +175,6 @@
    +--------------------------------+
    | Linux(CentOS/Ubuntu) | Windows |
    +--------------------------------+
-** libzit(夸平台基础库)
-   后期被zsi替代
 *** TODO [12%]
     - [ ] [0%] base
       + [ ] zlog <2018-01-20 Sat>
@@ -231,4 +241,6 @@
         Makefile generate zmake_def.h
       + zsi test框架;
         添加trace2file;
-        
+    - <2018-03-30 Fri> ChezScheme
+      + ChezScheme 添加tspl_sample.ss 列出要点信息；
+    - <2018-03-31 Sat> ChezScheme.lambda

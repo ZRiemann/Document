@@ -556,7 +556,7 @@ for target in $zmake_target; do
         if [ "1" = "$zmake_set_install" ]; then
             echo >> makefile_${target}
             echo "install_${target} :" >> makefile_${target}
-            echo "\t@echo install appppp"
+            printf "\t@echo install ${target}" >> makefile_${target}
             echo >> makefile_${target}
             echo "uninstall_${target} :" >> makefile_${target}
             printf "\t@echo uninstall ${target}..." >> makefile_${target}
