@@ -1,0 +1,183 @@
+* libevent 2.0+
+* 库组成
+  - libevent_core.so   ; 基础库
+  - libevent_extra.so  ; 扩展库，支持HTTP/DNS/RPC
+  - libevent_pthreads/openssl ; 适配库，必要时使用；
+* 头文件
+  event2
+    - API；
+    - 兼容老版头文件；废弃
+    - 结构头文件；*_struct.h
+* 1. 设置libevent
+** 1.1 日志消息
+   #+BEGIN_SRC c
+   #include <event2/event.h>
+   #define _EVENT_LOG_DEBUG 0
+   #define _EVENT_LOG_MSG   1
+   #define _EVENT_LOG_WARN  2
+   #define _EVENT_LOG_ERR   3
+   typedef void (*event_log_cb)(int severity, const char *msg);
+   /**
+     * @param cb [in] NULL 恢复默认行为
+     * @note 避免cb中调用libevent函数；
+     */
+   void event_set_log_callback(event_log_cb cb);
+   #+END_SRC
+** 1.2 致命错误处理
+   致命错误会调用exit(),abort();
+   #+BEGIN_SRC c
+   #include <event2/event.h>
+
+   typedef void (*event_fatal_cb)(int err);
+   void event_set_fatal_callback(event_fatal_cb cb);
+   #+END_SRC
+** 1.3 内存管理
+   用户确保线程安全；
+   #+BEGIN_SRC c
+   void event_set_mem_functions(void *(*malloc_fn)(size_t),
+                                void *(*realloc_fn)(void *, size_t),
+                                void *(*free_fn)(void *));
+   #+END_SRC
+** 1.4 锁和线程
+   使用系统内建线程函数 0 ok, -1 faile；
+   #+BEGIN_SRC c
+   #include <event2/thread.h>
+   #ifdef WIN32
+   int event_use_windows_threads(void);
+   #define EVTHREAD_USE_WINDOWS_THREADS_IMPLEMENTED
+   #endif
+   #ifdef _EVENT_HAVE_PTHREADS
+   int event_use_ptrheads(void);
+   #define EVTHREAD_USE_PTHREADS_IMPLEMENTED
+
+   evthread_set_lock_callbacks(...);
+   evthread_set_id_callback(...);
+   #endif
+   #+END_SRC
+** 1.5 调试锁
+   void evthread_enable_lock_debuging(void);
+** 1.6 调试事件
+   void event_enabale_debug_mode(void);
+   void event_debug_unassign(struct event *ev); /* 避免内存耗尽 */
+** 1.7 检测libevent版本
+   #+BEGIN_SRC c
+   #define LIBEVENT_VERSION_NUMBER 0x02000300
+   #define LIBEVENT_VERSION "2.0.3-alpha"
+   const char *event_get_version(void);
+   ev_uint32_t event_get_version_number(void);
+   #+END_SRC
+* 2. 创建event_base
+  一个或多个event_base;
+  每个event_base持有一个事件集合，可以检测确定那个事件是激活的；
+  可以使用锁被线程安全访问；
+  事件检测方法（后端）: select/poll/epoll/kqueue/devpoll/evport/win32
+  event_config_avoid_method(); // 禁用某后端
+** 2.1 建立默认event_base
+   #include <event2/event.h>
+   struct event_base *event_base_new(void);
+** 2.2 创建复杂evetn_base
+   #+BEGIN_SRC c
+   struct event_config *event_config_new();
+   // call config functions...
+   event_config_avoid_method();
+   event_config_require_features(EV_FEATURE_ET/O1/FDS);
+   event_config_set_flag(EVENT_BASE_FLAG_NOLOCK/IGNORE_ENV/STARTUP_IOCP/NO_CACHE_TIME/EPOLL_USE_CHANGLIST);
+   event_config_set_num_cpus_hint();
+   event_base_new_with_config();
+   event_base_priority_init();
+   event_config_free();
+   #+END_SRC
+** 2.6 fork()重新初始化event_base
+   event_reinit(struct event_base *baase);
+* 3. 与事件循环一起工作
+** 3.1 运行循环
+   #+BEGIN_SRC c
+   #define EVLOOP_ONCE             0x01
+   #define EVLOOP_NONBLOCK         0x02
+   #define EVLOOP_NO_EXIT_ON_EMPTY 0x04
+
+   int event_base_loop(struct event_base *base, int flags);
+
+   while (any events are registered with the loop,
+           or EVLOOP_NO_EXIT_ON_EMPTY was set) {
+
+       if (EVLOOP_NONBLOCK was set, or any events are already active)
+           If any registered events have triggered, mark them active.
+       else
+           Wait until at least one event has triggered, and mark it active.
+
+       for (p = 0; p < n_priorities; ++p) {
+          if (any event with priority of p is active) {
+             Run all active events with priority of p.
+             break; /* Do not run any events of a less important priority */
+          }
+       }
+
+       if (EVLOOP_ONCE was set or EVLOOP_NONBLOCK was set)
+          break;
+   }
+
+   /* Example: Shut down immediately */
+   #include <event2/event.h>
+
+   /* Here's a callback function that calls loopbreak */
+   void cb(int sock, short what, void *arg)
+   {
+       struct event_base *base = arg;
+       event_base_loopbreak(base);
+   }
+
+   void main_loop(struct event_base *base, evutil_socket_t watchdog_fd)
+   {
+       struct event *watchdog_event;
+
+       /* Construct a new event to trigger whenever there are any bytes to
+          read from a watchdog socket.  When that happens, we'll call the
+          cb function, which will make the loop exit immediately without
+          running any other active events at all.
+        ,*/
+       watchdog_event = event_new(base, watchdog_fd, EV_READ, cb, base);
+
+       event_add(watchdog_event, NULL);
+
+       event_base_dispatch(base);
+   }
+
+   /* Example: Run an event loop for 10 seconds, then exit. */
+   #include <event2/event.h>
+
+   void run_base_with_ticks(struct event_base *base)
+   {
+     struct timeval ten_sec;
+
+     ten_sec.tv_sec = 10;
+     ten_sec.tv_usec = 0;
+
+     /* Now we run the event_base for a series of 10-second intervals, printing
+        "Tick" after each.  For a much better way to implement a 10-second
+        timer, see the section below about persistent timer events. */
+     while (1) {
+        /* This schedules an exit ten seconds from now. */
+        event_base_loopexit(base, &ten_sec);
+
+        event_base_dispatch(base);
+        puts("Tick");
+     }
+   }
+   #+END_SRC
+** 3.4 转储event_base状态
+   void event_base_dump_events(struct event_base *base, FILE *f);
+** 3.5 废弃的事件循环
+* 4. 与事件一起工作
+  事件基本操作单元，一个事件一组条件集合；
+  - fd 就绪
+  - fd 变为可读写，边缘触发
+  - timeout；超时
+  - signal occor；信号
+  - user trigger event；用户触发事件
+  事件状态基
+  -(event_new)-> initialized -(event_add)-> pending --> active(persistent);
+* 4.3 持久事件
+  非持久事件，在回调前成为非未决，需要在回调中再次event_add();
+  持久事件，保持非未决，需要在回调中调用event_del()成为非未决；
+* 4.4 eventimer_ micro

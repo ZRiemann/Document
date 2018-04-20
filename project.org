@@ -244,3 +244,8 @@
     - <2018-03-30 Fri> ChezScheme
       + ChezScheme 添加tspl_sample.ss 列出要点信息；
     - <2018-03-31 Sat> ChezScheme.lambda
+  + Apr
+    - <2018-04-11 Wed> configure;
+    - <2018-04-12 Thu> test zsi static libs;
+    - <2018-04-13 Fri> znt com;
+    - <2018-04-18 Wed> ZppAdapter => zpp;
