@@ -206,5 +206,24 @@
    host: www.baidu.com 192.168.10.23
    port: 80 1935
 ** http代理
-   
+* RESTful(Resource Representational State Transfer) API
+  https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.htm
+  http://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html
+  http://www.ruanyifeng.com/blog/2014/05/restful_api.html
+  Richardson Maturity Model
+  - 资源(Resource)->(http-path)
+    名词，不能表示动作
+    使用复数名词；
+  - 表现形式(Representational)(http-body)
+    + json
+    + xml/jpg...
+  - 动作(State Transfer)(http-method)
+    + GET
+      查询资源，不知道参数即查询所有
+    + POST
+      添加资源
+    + PUT
+      修改资源
+    + DELETE
+      删除资源
    
