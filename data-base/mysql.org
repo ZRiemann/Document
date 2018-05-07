@@ -1,0 +1,296 @@
+* mysql
+* Tips
+  - 修改默认密码 ;sh_util/install/mysql.sh
+  - 执行脚本 ;mysql -h localhost -u root -p123456 < /path/data.sql
+  - 命令表
+    |-------------------------+----------------+--------------------------------------------|
+    | command                 | meaning        | sample                                     |
+    |-------------------------+----------------+--------------------------------------------|
+    | show                    | 显示           | show variables like 'validate_password.%'; |
+    |                         |                | show database;                             |
+    |                         |                | show tables;                               |
+    | use                     | 切换数据库     | use mysql;                                 |
+    | quit                    | 推出客户端     | \q                                         |
+    | describe                | 描述表结构     | describe pet;                              |
+    | show create table <tbl> | 显示表构造sql  |                                            |
+    | load_data               | 加载表数据     |                                            |
+    | insert                  | 插入表数据     |                                            |
+    |-------------------------+----------------+--------------------------------------------|
+    | varchar(20)             | 可变长度字符串 | len[1-65535]                               |
+    |                         |                |                                            |
+    |-------------------------+----------------+--------------------------------------------|
+    | AND                     |                |                                            |
+    | OR                      |                |                                            |
+    | distinct                | 不重复统计     |                                            |
+    | order by <col>          | 根据<列>排序   | select * from pet order by birth desc/asc; |
+    | IS NOT NULL             | 非空判断       | select * from pet where death is not null; |
+    | timestampdiff()         | 时间差         | ... timestampdiff(year, birth, death) ...  |
+    | year()                  | 获取年份       | year('2018-5-4') => 2018                   |
+    | month()                 | 获取月份       | month('2018-5-4') => 5                     |
+    | dayofmonth()            |                |                                            |
+
+* 3 Turorial(教程)
+** 3.2 Entering Queries(输入查询)
+   - \c ;不立即执行
+   - 提示符含义
+     |--------+----------------------|
+     | prompt | meaning              |
+     |--------+----------------------|
+     | mysql> | 等待新的查询         |
+     | ->     | 等待多行输入的查询   |
+     | '>     | 等待多行输入的配对'  |
+     | ">     | 等待多行输入的配对"  |
+     | `>     | 等待多行输入的配对`  |
+     | /*>    | 等待多行输入的配对/* |
+     |--------+----------------------|
+** 3.3 Creating and Using a Database ;创建并使用数据库
+*** 3.3.1 Creating and Selection a DataBase ;创建并选择数据库
+    create database test; 创建test数据库
+    - unix like 数据库名称大小写敏感
+*** 3.3.2 Creating a Table
+    create table pet (name VARCHAR(20), owner VARCHAR(20),
+    species VARCHAR(20), sex CHAR(1), birth DATE, death DATE);
+    show tables;
+    describe pet;
+*** 3.3.3 Loading Data into a Table
+    创建pet.txt，用tab分割数据项，一条数据一行，用\N表示空项；
+    load data local infile './pet.txt' into table pet;
+*** 3.3.4 Retrieving Infomation form a Table
+    select what-to-select -- *
+    from which-table -- pet
+    [where condition-to-satisfy];
+**** 3.3.4.1 Selecting All Data
+     select * from pet;
+     UPDATE pet SET birth = '1989-08-31' WHERE name = 'Bowser';
+**** 3.3.4.2 Selecting Particular Rows 选择指定行
+     SELECT * FROM pet WHERE name = 'Bowser';
+     SELECT * FROM pet WHERE birth >= '1998-1-1';
+     SELECT * FROM pet WHERE species = 'snake' OR species = 'bird';
+**** 3.3.4.3 Selecting Particular columns
+     select name, birth from pet;
+     SELECT DISTINCT owner FROM pet;
+**** 3.3.4.4 Sorting Rows ;行排序 order by <col> DESC
+     SELECT name, birth FROM pet ORDER BY birth DESC;
+**** 3.3.4.5 Data Calculations ;数据计算
+     SELECT name, birth, CURDATE(),
+       TIMESTAMPDIFF(YEAR,birth,CURDATE()) AS age
+       FROM pet;
+     SELECT name, birth, death,
+       TIMESTAMPDIFF(YEAR,birth,death) AS age
+       FROM pet WHERE death IS NOT NULL ORDER BY age;
+     SELECT name, birth FROM pet WHERE MONTH(birth) = 5;
+     SELECT name, birth FROM pet
+       WHERE MONTH(birth) = MONTH(DATE_ADD(CURDATE(),INTERVAL 1 MONTH));
+     SELECT name, birth FROM pet
+       WHERE MONTH(birth) = MOD(MONTH(CURDATE()), 12) + 1;
+**** 3.3.4.6 Working with NULL values ; IS [NOT] NULL
+     SELECT 1 IS NULL, 1 IS NOT NULL;
+     SELECT 1 = NULL, 1 <> NULL, 1 < NULL, 1 > NULL;
+     SELECT 0 IS NULL, 0 IS NOT NULL, '' IS NULL, '' IS NOT NULL;
+**** 3.3.4.7 Pattern Matching ; like/not like 模式匹配
+     - *_* 匹配一个字符
+     - *%* 匹配0~N个任意字符
+     - *like/not like* 匹配关键字
+       SELECT * FROM pet WHERE name LIKE 'b%'; 名字以b开头
+       SELECT * FROM pet WHERE name LIKE '_____'; 名字以有5个字母组成
+     - REGEXP_LIKE()
+       + *.* <==> *_*
+       + [abc] <=> a b c 匹配其中一个字符
+       + * <==> *%*
+       + {n} 重复N次
+       + ^/$ 锚定第一个字符/最后一个字符
+         SELECT * FROM pet WHERE REGEXP_LIKE(name, '^b'); 锚定b开头
+         SELECT * FROM pet WHERE REGEXP_LIKE(name, '^b' COLLATE utf8mb4_0900_as_cs);
+         SELECT * FROM pet WHERE REGEXP_LIKE(name, BINARY '^b');
+         SELECT * FROM pet WHERE REGEXP_LIKE(name, '^b', 'c');
+         SELECT * FROM pet WHERE REGEXP_LIKE(name, '^.....$'); 5字符长度
+         SELECT * FROM pet WHERE REGEXP_LIKE(name, '^.{5}$'); 5字符长度
+**** 3.3.4.8 Couting Rows ;行计数
+     SELECT COUNT(*) FROM pet; 获取表行数
+     SELECT owner, COUNT(*) FROM pet GROUP BY owner; 获取每人拥有的宠物数
+     SELECT sex, COUNT(*) FROM pet GROUP BY sex; 统计宠物性别
+     SELECT species, sex, COUNT(*) FROM pet GROUP BY species, sex; 统计各类宠物性别
+**** 3.3.4.9 Using More Than one Table ;多表复用
+     CREATE TABLE event (name VARCHAR(20), date DATE, type VARCHAR(15), remark VARCHAR(255));
+     SELECT pet.name,
+       TIMESTAMPDIFF(YEAR,birth,date) AS age,
+       remark
+       FROM pet INNER JOIN event
+       ON pet.name = event.name
+       WHERE event.type = 'litter';
+     SELECT p1.name, p1.sex, p2.name, p2.sex, p1.species
+       FROM pet AS p1 INNER JOIN pet AS p2
+       ON p1.species = p2.species AND p1.sex = 'f' AND p2.sex = 'm';
+** 3.4 Getting Infomation About Databases and Tables ;获取数据库及表信息
+   select database(); 获取当前数据库名称
+   show tables; 获取当前数据库下的所有表名称
+   describe pet; 获取表项信息
+    - field 列名称
+    - type 列数据类型
+    - null 是否可以为NULL
+    - key 是否索引项
+    - default 默认值(NULL)
+    - extra 额外属性[AUTO_INCREMENT]
+** 3.5 Using mysql in Batch Mode ;批量处理模式
+   mysql < batch-file
+   mysql -e "source batch-file" ;windows下有特殊字符
+   --force ;批处理发生错误时继续
+   mysql < batch-file | more ;浏览大量输出
+   mysql < batch-file > mysql.out ;将查询输出到文件mysql.out
+   mysql -t ;交互模式输出
+   mysql -v ;详细输出，输出命令行；
+
+   mysql> source filename; 客户端下执行批处理
+   mysql> \. filename; 同上
+** 3.6 Examples of common queries ;同性查询示例
+   9个示例解决一些同性问题:
+   CREATE TABLE shop (
+    article INT(4) UNSIGNED ZEROFILL DEFAULT '0000' NOT NULL,
+    dealer  CHAR(20)                 DEFAULT ''     NOT NULL,
+    price   DOUBLE(16,2)             DEFAULT '0.00' NOT NULL,
+    PRIMARY KEY(article, dealer));
+   INSERT INTO shop VALUES
+    (1,'A',3.45),(1,'B',3.99),(2,'A',10.99),(3,'B',1.45),
+    (3,'C',1.69),(3,'D',1.25),(4,'D',19.95);
+*** 3.6.1 The Maximum value of a column ;列最大值
+    SELECT MAX(article) AS article FROM shop; 获取最大的article值
+    SELECT MIN(article) AS article FROM shop; 获取最小的article值
+    SELECT AVG(article) AS article FROM shop; 获取article平均值
+    SELECT SUM(article) AS article FROM shop; 获取article平均值
+    select count(*), sum(price), avg(price), max(price), min(price) from shop;
+    SELECT sal FROM `emp` order by sal desc limit 3,1; 获取第四名
+*** 3.6.2 The row holding the maximum of a certain colum ;含最大值的行
+    SELECT article, dealer, price
+    FROM   shop
+    WHERE  price=(SELECT MAX(price) FROM shop); 获取报价最高的行，自查询
+*** 3.6.3 Maximum of column per group ;每组的列最大值
+    SELECT article, MAX(price) AS price
+    FROM   shop
+    GROUP BY article;
+    获取每组的最大值
+*** 3.6.4 The rows holding the group-wise maximum of a certain column
+    SELECT article, dealer, price
+    FROM   shop s1
+    WHERE  price=(SELECT MAX(s2.price)
+    FROM shop s2
+    WHERE s1.article = s2.article);
+    获取每组最大报价及其经销商；
+
+    SELECT s1.article, s1.dealer, s1.price
+    FROM shop s1
+    LEFT JOIN shop s2 ON s1.article = s2.article AND s1.price < s2.price
+
+    SELECT s1.article, dealer, s1.price
+    FROM shop s1
+    JOIN (
+      SELECT article, MAX(price) AS price
+      FROM shop
+      GROUP BY article) AS s2
+      ON s1.article = s2.article AND s1.price = s2.price;
+      WHERE s2.article IS NULL;
+
+*** 3.6.5 Using User-Defined Variables ; 用户自定义值
+    SELECT @min_price:=MIN(price),@max_price:=MAX(price) FROM shop; 缓存变量 
+    SELECT * FROM shop WHERE price=@min_price OR price=@max_price; 使用变量
+
+*** 3.6.6 Using Froeign Keys ; 外键
+    CREATE TABLE person (
+    id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name CHAR(60) NOT NULL,
+    PRIMARY KEY (id)
+    );
+    CREATE TABLE shirt (
+    id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    style ENUM('t-shirt', 'polo', 'dress') NOT NULL,
+    color ENUM('red', 'blue', 'orange', 'white', 'black') NOT NULL,
+    owner SMALLINT UNSIGNED NOT NULL REFERENCES person(id),
+    PRIMARY KEY (id)
+    );
+    INSERT INTO person VALUES (NULL, 'Antonio Paz');
+    SELECT @last := LAST_INSERT_ID();
+
+    INSERT INTO shirt VALUES
+    (NULL, 'polo', 'blue', @last),
+    (NULL, 'dress', 'white', @last),
+    (NULL, 't-shirt', 'blue', @last);
+
+    INSERT INTO person VALUES (NULL, 'Lilliana Angelovska');
+    SELECT @last := LAST_INSERT_ID();
+    
+    INSERT INTO shirt VALUES
+    (NULL, 'dress', 'orange', @last),
+    (NULL, 'polo', 'red', @last),
+    (NULL, 'dress', 'blue', @last),
+    (NULL, 't-shirt', 'white', @last);
+
+    SELECT * FROM person;
+    SELECT * FROM shirt;
+
+    SELECT s.* FROM person p INNER JOIN shirt s
+    ON s.owner = p.id
+    WHERE p.name LIKE 'Lilliana%'
+    AND s.color <> 'white';
+
+*** 3.6.7 Searching on Two Keys ; 在两个键间查找
+    SELECT field1_index, field2_index FROM test_table
+    WHERE field1_index = '1' OR  field2_index = '1';
+*** 3.6.8 Calculating visits per day ;统计每日访问
+    CREATE TABLE t1 (year YEAR(4), month INT(2) UNSIGNED ZEROFILL,
+             day INT(2) UNSIGNED ZEROFILL);
+    INSERT INTO t1 VALUES(2000,1,1),(2000,1,20),(2000,1,30),(2000,2,2),
+            (2000,2,23),(2000,2,23);
+    SELECT year,month,BIT_COUNT(BIT_OR(1<<day)) AS days FROM t1
+       GROUP BY year,month;
+
+    SELECT year, month, COUNT(DISTINCT day) AS days FROM t1 GROUP BY year,month;
+*** 3.6.9 Using AUTO_INCREMENT ;使用自增
+    CREATE TABLE animals (
+     id MEDIUMINT NOT NULL AUTO_INCREMENT,
+     name CHAR(30) NOT NULL,
+     PRIMARY KEY (id)
+     );
+
+     INSERT INTO animals (name) VALUES
+     ('dog'),('cat'),('penguin'),
+     ('lax'),('whale'),('ostrich');
+
+     SELECT * FROM animals;
+     
+     -- C API mysql_insert_id()
+     -- client LAST_INSERT_ID()
+     ALTER TABLE tbl AUTO_INCREMENT = 100; 从100开始自增
+** 3.7 Using MySQL With Apache ;Apache 相关
+   LogFormat \
+        "\"%h\",%{%Y%m%d%H%M%S}t,%>s,\"%b\",\"%{Content-Type}o\",  \
+        \"%U\",\"%{Referer}i\",\"%{User-Agent}i\""
+   LOAD DATA INFILE '/local/access_log' INTO TABLE tbl_name
+     FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '\\'
+* 4 MySQL Programs ; 程序
+** 4.1 Overview of MySQL Programs ;概览
+   - mysqld ;主服务
+   - mysqld_safe ;尝试启动mysqld脚本
+   - mysql.server ;服务启动脚本，调用mysqld_safe
+   - mydqld_multi ;启动多服务
+   - mysql ;客户端
+   - mysqladmin ;超级权限客户端
+   - mysqlcheck ;
+   - mydqldump ;将数据库导出到SQL，text，XML
+   - mysqlimport ;数据导入
+   - mysqlpump ;导出数据到SQL文件
+   - mysqlshow ;显示数据库信息
+  
+   ...
+** 4.2 Using MySQL Programs ;使用
+   shell> mysql --user=root test
+   shell> mysqladmin extended-status variables
+   shell> mysqlshow --help
+   shell> mysqldump -u root personnel
+** 4.3 MySQL Server and Server-Startup Programs; 服务端
+** 4.4 MySQL Installation-Related Programs ; 安装相关
+** 4.5 MySQL Client Programs ; 客户端
+** 4.6 MySQL Administrative and Utility Programs ; 高级及实用
+** 4.7 MySQL Program Development Utilities ; 开发实例
+** 4.8 Miscellaneous Programs ; 杂项
+** 4.9 MySQL Program Environment Variables ;编程
+* 27 Connectors and APIs
+** 27.7 C API
