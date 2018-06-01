@@ -143,7 +143,7 @@
     b
     c
     d
-*** 推出状态($?)
+*** 退出状态($?)
     大部分命令执行成功会返回 0，失败返回 1
     # bash ./test.sh aaa bbb
     # echo $?
@@ -778,7 +778,7 @@
       exec wall "Thanks for all the fish"
       # 修改但钱文件描述符
       exec 3< afile
-    - *exit <0~125>* 脚步返回值
+    - *exit <0~125>* 脚本返回值
       [ -f .profile ] && exit 0 || exit 1
     - *export* 变量导出
       set -a / set -allexport ;导出所有变量

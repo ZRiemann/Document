@@ -1,0 +1,112 @@
+#+TITLE ceph 手册
+
+* 安装
+  sh_util/install/ceph.sh
+* 体现结构
+  Ceph 独一无二地用统一的系统提供了对象、块、和文件存储功能，它可靠性高、管理简便、并且是自由软件
+  Ceph 可提供极大的伸缩性——供成千用户访问 PB 乃至 EB 级的数据。
+  Ceph 节点以普通硬件和智能守护进程作为支撑点
+  Ceph 存储集群组织起了大量节点，它们之间靠相互通讯来复制数据、并动态地重分布数据。
+
+  APP | APP     | HOST/VM                                   | CLIENT  |
+      +---------+-------------------------------------------+---------+
+      | RADOSGW | RBD                                       | CEPH FS |
+  ----------------------------------------------------------+         |
+  librados(A library allowing apps to directly access RADOS)|         |
+  --------------------------------------------------------------------+
+  RADOS(Reliable,Autonomous,Distributed Object Store) OSD+Monitor     |
+  --------------------------------------------------------------------+
+** 存储集群
+   RADOS: https://ceph.com/papers/weil-rados-pdsw07.pdf
+   *Daemons*
+   - *OSDs*
+     检查自身状态及其他OSD状态，并报告给监视器
+   - *Monitors*
+     监视集群运行图主副本
+   *数据存储*
+   - *一切数据存储为对象*
+     每个对象对于文件系统中的一个文件，存储在对象存储设备上，OSD处理读写操作
+     Object --> File --> Dist
+   - *OSD 扁平命名空间(无目录层次)*
+     Object = ID + BinData + metadata(key-value);
+     元数据语义取决于客户端;
+     |----+--------------+-------------|
+     | ID | Binrary Data | Metadata    |
+     |----+--------------+-------------|
+     | 12 | 010110100... | key1 value1 |
+     |    |              | key2 value2 |
+     |    |              | key* value* |
+     |----+--------------+-------------|
+   - *伸缩性/高可用性*
+     消除中心化通信组建，允许Client直接和OSD通讯；
+     OSD自动与其他OSD通信创建副本；
+     CRUSH算法消除中心节点；
+     CRUSH(Controlled Replication Under Scalable Hashing);
+     https://ceph.com/papers/weil-crush-sc06.pdf
+   - *集群运行图*
+     toplogic --> Client + OSD;
+     + Monitor Map
+       fsid, position, name, address:port, version, times.
+       $ ceph mon dump
+     + OSD Map
+       fsid, times, storage pool, copys, 归置组数量, OSD list(up,in)
+       $ ceph osd dump
+     + PG Map
+       包含归置组版本、其时间戳、最新的 OSD 运行图版本、占满率、以及各归置组详情，
+       像归置组 ID 、 up set 、 acting set 、 PG 状态（如 active+clean），
+       和各存储池的数据使用情况统计。
+     + CRUSH Map
+       包含存储设备列表、故障域树状结构（如设备、主机、机架、行、房间、等等）、
+       和存储数据时如何利用此树状结构的规则。要查看 CRUSH 规则，
+       执行 ceph osd getcrushmap -o {filename} 命令；
+       然后用 crushtool -d {comp-crushmap-filename} -o {decomp-crushmap-filename} 反编译；
+       然后就可以用 cat 或编辑器查看了
+     + MDS Map
+       包含当前 MDS 图的版本、创建时间、最近修改时间，
+       还包含了存储元数据的存储池、元数据服务器列表、
+       还有哪些元数据服务器是 up 且 in 的。
+       要查看 MDS 图，执行 ceph mds dump 。
+   - *监视器*
+     Ceph 客户端读或写数据前必须先连接到某个 Ceph 监视器、获得最新的集群运行图副本。
+     Paxos 算法就集群的当前状态达成一致。
+     http://docs.ceph.org.cn/rados/configuration/mon-config-ref/
+     为识别用户并防止中间人攻击， Ceph 用 cephx 认证系统来认证用户和守护进程。Kerberos
+     client.admin 用户从命令行调用 ceph auth get-or-create-key 来生成一个用户及其密钥
+     http://docs.ceph.org.cn/rados/configuration/auth-config-ref/
+   - *智能程序*
+     Ceph 消除了此瓶颈：其 OSD 守护进程和客户端都能感知集群
+     OSD 直接服务于客户端
+     OSD 成员和状态: up/down down+in
+     http://docs.ceph.org.cn/rados/operations/monitoring-osd-pg/#monitoring-osds
+     http://docs.ceph.org.cn/rados/configuration/mon-osd-interaction/
+     数据清洗 http://docs.ceph.org.cn/architecture/#id42
+     复制 client    primaryOSD    secondaryOSD   TertiaryOSD
+            |write----> | ----------> |              |
+            |           | <---------  |
+            |           |-------------+------------->|
+            |           | <-----------+------------  |
+            | <-------- |             |              |
+    - *动态集群管理*
+      自治，自修复、智能的 OSD 守护进程
+      + *存储池*
+        client  --(Retrives)---> ClusterMap
+        (obj)
+        Pool ------(Selects)---> CRUSH Ruleset
+        http://docs.ceph.org.cn/rados/operations/pools/#set-pool-values
+      + PG(PlacementGroup) --> OSD
+        obj obj obj  obj obj obj
+        |---+----/    +---|---+
+        PG1              PG2
+         |----------|     |
+         |    /-----+-----|
+        OSD1 OSD2 OSD3  OSD4
+        
+        PGID计算
+        客户端输入存储池 ID 和对象 ID （如 pool=”liverpool” 和 object-id=”john” ）；
+        CRUSH 拿到对象 ID 并哈希它；
+        CRUSH 用 PG 数（如 58 ）对哈希值取模，这就是归置组 ID ；
+        CRUSH 根据存储池名取得存储池 ID （如liverpool = 4 ）；
+        CRUSH 把存储池 ID 加到PG ID（如 4.58 ）之前。
+      + 互联(peering)和子集
+        peering这是一种把一归置组内所有对象（及其元数据）所在的 OSD 带到一致状态的过程。
+        状态达成一致并不意味着 PG 持有最新内容。

@@ -252,4 +252,5 @@
   + May
     - <2018-05-08 Tue> plutus
     - <2018-05-14 Mon> plutus make archives;
-    - <2018-05-18 Fri> plutul implement vachives;
+    - <2018-05-18 Fri> plutus implement vachives;
+    - <2018-05-21 Mon> plutus implement trade;
