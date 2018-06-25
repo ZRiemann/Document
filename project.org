@@ -209,6 +209,13 @@
       2. 数据分析
       3. 交易决策
     - 设计
+
+** zsa(shell脚本库)
+   linux部署脚本
+** ChezScheme(lisp)
+   重新的角度学习编程语言
+** chep(分布式存储)
+   
 * thrid party
 - GSL/FFTW(科学库)
 - unix-v6(10kl Unix)
@@ -254,3 +261,11 @@
     - <2018-05-14 Mon> plutus make archives;
     - <2018-05-18 Fri> plutus implement vachives;
     - <2018-05-21 Mon> plutus implement trade;
+  + Jun
+    - <2018-06-25 Mon> replan
+      10:00+2 Scheme 3.1 Syntactic Extension
+      13:30+2 chep code
+      15:30+2 tick deploy
+      17:30+1 review and summarizes
+    - plan
+      Scheme 3.2 More Recursion

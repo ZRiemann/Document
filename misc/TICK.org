@@ -1,0 +1,264 @@
+* Telegraf(V1.7)
+** 1. Concepts
+*** 1.1 Input data formats
+    metrics(度量)4要素:
+    Timestamp + Measurement name + Fields + Tags
+    时间戳      度量名             字段     标签
+    1. InfluxDB Line Protocol
+    2. JSON
+       {
+         "a": 5,
+         "b": {
+          "c": 6
+        },
+        "my_tag_1": "foo"
+       }
+       exec_mycollector,my_tag_1=foo a=5,b_c=6
+
+    3. Graphite
+    4. Value
+    5. Nagios
+    6. Collected
+    7. Dropwizard
+
+*** 1.2 Output data formats
+    1. InfluxDB Line Protocol
+       measurement_name[,tag1=val1,...]  field1=val1[,field2=val2,...]  [timestamp]
+
+       /etc/telegraf/telegraf.conf
+       [outputs.file]
+         # files = ["stdout"]
+         files = ["stdout", "/tmp/metrics.out"]
+         data_format = "influx"
+
+    2. JSON
+       {
+         "fields":{
+         "field_1":30,
+         "field_2":4,
+         "field_N":59,
+         "n_images":660
+        },
+         "name":"docker",
+         "tags":{
+         "host":"raynor"
+        },
+         "timestamp":1458229140
+       }
+
+       [[outputs.file]}
+         files = ["stdout", "/tmp/metrics.out"]
+         data_format = "json"
+         json_timestamp_units = "1ns"
+
+    3. Graphite
+       [[outputs.file}]
+         files = ["stdout","/tmp/metrics.out"]
+         data_format = "graphite"
+         prefix = "telegraf"
+         template = "host.tags.measurement.field"
+
+       cpu,cpu=cpu-total,dc=us-east-1,host=tars 
+         usage_idle=98.09,usage_user=0.89 1455320660004257758
+       =>
+       tars.cpu-total.us-east-1.cpu.usage_user 0.89 1455320690
+       tars.cpu-total.us-east-1.cpu.usage_idle 98.09 1455320690
+
+*** 1.3 Aggregator and processor plugins
+    ┌───────────┐
+    │           │
+    │    CPU    │───┐
+    │           │   │
+    └───────────┘   │
+                    │
+    ┌───────────┐   │                                              ┌───────────┐
+    │           │   │                                              │           │
+    │  Memory   │───┤                                          ┌──▶│ InfluxDB  │
+    │           │   │                                          │   │           │
+    └───────────┘   │    ┌─────────────┐     ┌─────────────┐   │   └───────────┘
+                    │    │             │     │Aggregate    │   │
+    ┌───────────┐   │    │Process      │     │ - mean      │   │   ┌───────────┐
+    │           │   │    │ - transform │     │ - quantiles │   │   │           │
+    │   MySQL   │───┼──▶ │ - decorate  │────▶│ - min/max   │───┼──▶│   File    │
+    │           │   │    │ - filter    │     │ - count     │   │   │           │
+    └───────────┘   │    │             │     │             │   │   └───────────┘
+                    │    └─────────────┘     └─────────────┘   │
+    ┌───────────┐   │                                          │   ┌───────────┐
+    │           │   │                                          │   │           │
+    │   SNMP    │───┤                                          └──▶│   Kafka   │
+    │           │   │                                              │           │
+    └───────────┘   │                                              └───────────┘
+                    │
+    ┌───────────┐   │
+    │           │   │
+    │  Docker   │───┘
+    │           │
+    └───────────┘
+
+    Aggregator plugins: preiod   is the size of the window of metrics 
+                                 that each aggregate represents.
+                        drop_original tells Telegraf to only emit the 
+                                      aggregates and not the original metrics.
+*** 1.4 Glossary of terms
+    agent: 代理，输入输出插件组合
+    aggregator plugin: 聚合插件，聚合一定时间内的数据并输出
+    batch size: 批处理大小
+    collection interval : 采样间隔
+    collection jitter : 收集抖动，避免同时采样
+    flush interval : 刷新间隔， > 采样间隔
+    flush jitter : 刷新抖动
+    input plugin : 输入插件，采集数据并投递给代理核心，供后续操作
+    metric buffer : 输出失败缓存数据大小
+    output plugin : 输出插件
+    precision : 精度 ns/us/ms/s
+** 2. Plugins
+*** 2.1 Input
+    插件帮助 ：telegraf --usage <service-input-name>
+    支持的插件:
+    1. ceph storage : MON and OSD
+    2. exec : 
+    3. http : 
+    4. http listener : 
+*** 2.2 Output
+    1. influxdb
+    2. file
+*** 2.3 Aggregator
+    1. BasicStats  count, max, min, mean, s2(variance), and stdev for 
+                a set of values, emitting the aggregate every period seconds.
+    2. Histogram 
+    3. minmax
+*** 2.4 Processor
+    1. convert
+    2. override
+    3. printer
+    4. Regex
+    5. TopK
+** 3. Administration
+*** configuring
+**** Generating a Configuation File 生成配置文件
+     telegraf config > telegraf.conf
+     telegraf --input-filter cpu:mem:net:swap --output-filter influxdb:kafka config
+**** Environment variables 支持环境变量
+**** global tags 全局标签
+     [global-tags]
+**** Agent configuratino 代理配置
+     [agent]
+**** Input configuration
+     [inputs.xxx]
+       interval 
+       name_override 
+       name_prefix 
+       name_suffix 
+       tags
+
+       xxxpass/xxxdrop = ["aaa","bbb"]
+**** Output configuration (NULL)
+**** Aggregator configuration
+     [aggregator.xxx]
+     period/delay/drop_original/name_override/name_prefix/name_suffix/tags
+**** Processor configuration
+     [processor.xxx]
+*** Running as Windows service
+*** Troubleshooting
+* InfluxDB(V1.5)
+  https://docs.influxdata.com/influxdb/v1.5/introduction/getting-started/
+** 1. Getting started
+   port 8086
+   points : timestamp + measurement + field + tags ; 类似数据库一条数据记录
+            pid         table         (data)  indexed
+            <measurement>[,<tag-key>=<tag-value>...]
+            <field-key>=<field-value>[,<field2-key>=<field2-value>...] 
+            [unix-nano-timestamp]
+
+   $ influx ; CLI
+   > CREATE DATABASE mydb ; 创建mydb数据库
+   > SHOW DATABASES ; 显示所有数据库
+   > USE mydb ;使用mydb数据库
+   
+   > INSERT cpu,host=serverA,region=us_west value=6.4 ;插入一条数据
+   > SELECT * FROM cpu LIMIT 1; 查询数据
+   > INSERT temperature,machine=unit42,type=assembly external=25,internal=37
+   > SELECT * FROM temperature LIMIT 5
+   
+   > exit ;exit influx CLI
+   
+** 2. Concepts
+*** 2.1 Key conceptts
+    database/field key/field set/field value/measurement/point/
+    retention policy/series/tag key/tag set/tag value/timestamp
+
+**** 2.1.1 Sample data
+     select * from census
+     name: census
+     time                butterflies honeybees location scientist
+     ----                ----------- --------- -------- ---------
+     1529733727009427345 12          23        1        langstroth
+     1529733749705364318 1           30        1        perpetua
+     1529733765025402403 11          28        1        langstroth
+     1529733794849110269 3           28        1        perpetua
+     1529733811185176671 2           11        2        langstroth
+     1529733819777430300 1           10        2        langstroth
+     1529733843465698777 8           23        2        perpetua
+     1529733852562304113 7           22        2        perpetua
+     timestamp          |       field set    |     tag set 
+                              无索引，遍历慢     有索引，过滤快
+
+     series(系列)Retention policy Measurement Tag set
+     series 1  autogen          census      location = 1,scientist = langstroth
+     series 2  autogen          census      location = 2,scientist = langstroth
+     series 3  autogen          census      location = 1,scientist = perpetua
+     series 4  autogen          census      location = 2,scientist = perpetua
+                              
+     point(点) is the field set in the same series with the same timestamp
+               同一时间戳的同一谢列的域集合
+*** 2.2 Glossary
+    aggregation : 聚合行数
+    batch : 行协议格式的点集合
+    continous query(CQ) : 定期允许的数据库查询；
+    database : 保存用户、策略、定期查询、时间系列数据的容器
+    duration : 时段保留策略
+    function : aggregations,selectors and transformations;
+    line protocol : 行协议
+    measurement : 描述相关域的结构
+    metastore : 元数据存储 
+    node : 一个独立的influxd进程
+    now() : 本地纳秒级时间戳
+    point : 采样点
+*** 2.3 compared to SQL database
+    SELECT * FROM "foodships" WHERE "planet" = 'Saturn' AND time > '2015-04-16 12:00:01'
+    SELECT * FROM "foodships" WHERE time > now() - 1h
+*** 2.4 design insights and tradeoffs(见解与权衡)
+*** 2.5 scheme design and data layouts(计划设计与数据展示)
+    tag 有索引，查询更有效
+*** 2.6 In-memory indexing and TSM 
+** 3. Guildes
+*** 3.1 Writing data with the HTTP API
+    创建数据库
+    curl -i -XPOST http://localhost:8086/query --data-urlencode "q=CREATE DATABASE mydb"
+    插入数据
+    curl -i -XPOST 'http://localhost:8086/write?db=mydb' 
+    --data-binary 'cpu_load_short,host=server02 value=0.67
+    cpu_load_short,host=server02,region=us-west value=0.55 1422568543702900257
+    cpu_load_short,direction=in,host=server01,region=us-west value=2.0 14225685437029002
+    重文件插入数据
+    curl -i -XPOST 'http://localhost:8086/write?db=mydb' --data-binary @cpu_data.txt
+
+    查询数据
+    curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=mydb" 
+    --data-urlencode "q=SELECT \"value\" FROM \"cpu_load_short\" WHERE \"region\"='us-west'"
+    
+    curl -G 'http://localhost:8086/query?pretty=true' --data-urlencode "db=mydb" 
+    --data-urlencode "q=SELECT \"value\" FROM \"cpu_load_short\" WHERE
+    \"region\"='us-west';SELECT count(\"value\") FROM \"cpu_load_short\" WHERE
+    \"region\"='us-west'")"
+
+    curl -G 'http://localhost:8086/query' --data-urlencode "db=mydb" 
+    --data-urlencode "epoch=s" 
+    --data-urlencode "q=SELECT \"value\" FROM \"cpu_load_short\" WHERE \"region\"='us-west'""
+** 4. Administration
+** 5. Tools
+** 6. Influx Query Language
+** 7. Write Protocols
+** 8. Supported Protocols
+** 9. High availability
+** 10. Troubleshooting
