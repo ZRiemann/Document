@@ -110,3 +110,30 @@
       + 互联(peering)和子集
         peering这是一种把一归置组内所有对象（及其元数据）所在的 OSD 带到一致状态的过程。
         状态达成一致并不意味着 PG 持有最新内容。
+* OpenAttic
+** Trademarks(商标)
+   Appache/Linux/RedHatLinux/CentOS/openSUSE
+** Prerequisties(先决条件)
+   - installed on Linux only
+*** Supported distributions(支持的发布版本)
+    openSUSE 42.3
+    only on 64-bit Linux OS, not support 32-bit OS
+*** Base Oberating System Installation
+*** Post-installation Operating System Configuration
+    1. must be-connected to a network
+    2. hostname --fqdn like: srvopenattic01.youdomain.com
+    3. install NTP
+    4. HTTP access
+** Installation(安装)
+*** Quick Start Guide(快速安装向导)
+    DeepSea
+**** Requirements
+     - at least five of six nodes;
+     - all node host names should follow a fixed naming convention
+       ceph-nn.yourdomain.com
+     - Distribution:openSUSE-Leap42.3(x86_64)
+     - Firewall must be-disabled on all nodes(关闭防火墙)
+**** Set a Ceph cluster with DeepSea
+     1. Log into the "master" node and run the following commands
+        
+

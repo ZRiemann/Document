@@ -1,0 +1,65 @@
+* KVM
+  https://www.linux-kvm.org/page/Main_Page
+  https://libvirt.org/storage.html
+  http://download.cirros-cloud.net/0.4.0/
+  http://www.cnblogs.com/polly-ling/articles/7155148.html
+  http://docs.openstack.org/developer/devstack/
+
+  git clone https://git.openstack.org/openstack-dev/devstack -b stable/liberty
+* VirtualBox
+* LXD/LXC
+  https://linuxcontainers.org/  
+** install
+  https://github.com/zriemann/zsa/install/lxd.sh
+** manual
+   lxc launch ubuntu:16.04 first ; 创建first容器
+   lxc launch centos/7 centos7 ;
+   lxc list ; 列出容器列表
+   lxc exec first -- /bin/bash ; 进入容器shell，暂时不能ssh登陆
+   lxc exec <container> -- <cmd> ; 通过指定容器执行命令
+   lxc file <push/pull> <filename> ; 向指定容器存取文件
+   lxc stop <container> ; 停止容器
+   lxc delete <container> ; 删除容器
+*** Container images
+**** 1. Use on of the built-in image remotes
+     - ubuntu(for stable Ubuntu images)
+       lxc launch ubuntu:14.04 ubt14
+     - ubuntu-daily(for daily Ubuntu images)
+       lxc launch ubuntu-daily:16.04 ubt16d
+     - images(for a bunch of other distros)
+       lxc launch images:centos/7/amd64 cnt7
+**** 2. Use a remote LXD as an image server
+     lxc remote add my-images 1.2.3.4
+     lxc launch my-images:image-name your-container
+     lxc image list my-images
+**** 3. Manually import an image tarball
+     lxc image import <file> --alias my-alias
+     lxc launch my-alias my-container
+*** Multiple hosts
+    - remote-host
+      lxc config set core.https_address "[::]" ; 绑定8443端口
+      lxc config set core.trust_password some-passwd ; 设置密码
+    - admin-host
+      lxc remote add <host-a> <ip addres or DNS>
+      lxc exec <host-a>:first -- apt-get update
+** install and configuring Nava LXD(OpenStack)
+   - Ubuntu(16.04) Server
+     sudo apt-get install nova-lxd
+     sudo usermod -G lxd -a nova ; 将lxd组加入nova组
+     sudo service nova-computer restart ; 重启nova
+     # 支持迁徙
+     sudo lxc config set core.https_address [::]
+     sudo lxc config set core.trust_password some-password
+     sudo lxc remote add host-a <ip address or DNS of remote service>
+   - LXD images for OpenStack
+     glance image-create --name="trusty" --public --progress \
+     --container-format=bare --disk-format=raw \
+     --copy-from http://cloud-images.ubuntu.com/trusty/current/trusty-server-cloudimg-amd64-root.tar.gz
+   - Creating containers
+     nova boot --image=trusty --flavor=m1.tiny my-first-openstack-lxd-container
+     
+** REST API
+    https://github.com/lxc/lxd/blob/master/doc/rest-api.md
+*** Introduction
+    GET /1.0/certificates
+    GET /1.0/images/*
