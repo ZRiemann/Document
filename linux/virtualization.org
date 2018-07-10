@@ -8,19 +8,43 @@
   git clone https://git.openstack.org/openstack-dev/devstack -b stable/liberty
 * VirtualBox
 * LXD/LXC
-  https://linuxcontainers.org/  
-** install
+  https://linuxcontainers.org/
+  http://www.bonsaiframework.com/wiki/display/bonsai/0.0+Bonsai+Framework+Philosophical+Concepts
+** LXC
+*** Components
+    - liblxc
+    - API
+    - tools
+    - templates
+*** Getting started
+**** Requirements
+     libcap
+     libapparmor
+     libselinux
+     libseccomp
+     libgnutls
+     liblua
+     python3-dev
+**** Installation
+     sudo apt-get install lxc
+**** Creating unpriviledged containers as a user
+     /etc/subuid
+     /etc/subgid
+     
+** LXD
+   更轻量级，便于资源分配
+*** install
   https://github.com/zriemann/zsa/install/lxd.sh
-** manual
+*** manual
    lxc launch ubuntu:16.04 first ; 创建first容器
-   lxc launch centos/7 centos7 ;
+   lxc launch images:centos/7 centos7 ;
    lxc list ; 列出容器列表
    lxc exec first -- /bin/bash ; 进入容器shell，暂时不能ssh登陆
    lxc exec <container> -- <cmd> ; 通过指定容器执行命令
    lxc file <push/pull> <filename> ; 向指定容器存取文件
    lxc stop <container> ; 停止容器
    lxc delete <container> ; 删除容器
-*** Container images
+**** Container images
 **** 1. Use on of the built-in image remotes
      - ubuntu(for stable Ubuntu images)
        lxc launch ubuntu:14.04 ubt14
@@ -35,14 +59,14 @@
 **** 3. Manually import an image tarball
      lxc image import <file> --alias my-alias
      lxc launch my-alias my-container
-*** Multiple hosts
+**** Multiple hosts
     - remote-host
       lxc config set core.https_address "[::]" ; 绑定8443端口
       lxc config set core.trust_password some-passwd ; 设置密码
     - admin-host
       lxc remote add <host-a> <ip addres or DNS>
       lxc exec <host-a>:first -- apt-get update
-** install and configuring Nava LXD(OpenStack)
+*** install and configuring Nava LXD(OpenStack)
    - Ubuntu(16.04) Server
      sudo apt-get install nova-lxd
      sudo usermod -G lxd -a nova ; 将lxd组加入nova组
@@ -58,8 +82,336 @@
    - Creating containers
      nova boot --image=trusty --flavor=m1.tiny my-first-openstack-lxd-container
      
-** REST API
+*** REST API
     https://github.com/lxc/lxd/blob/master/doc/rest-api.md
 *** Introduction
     GET /1.0/certificates
     GET /1.0/images/*
+*** docs
+*** networks
+**** bridge
+     lxc network set <network> <key> <value>
+     |---------------------------+---------+-----------+--------------+----------------------|
+     | key                       | type    | condition | default      | description          |
+     |---------------------------+---------+-----------+--------------+----------------------|
+     | bridge.driver             | string  | -         | native       | native/openvswith    |
+     | bridge.external_interface | string  | -         | -            | , 分割               |
+     | bridge.mode               | string  | -         | standard     | standard/fan         |
+     | bridge.mtu                | integer | -         | 1500         |                      |
+     | dns.domain                | string  | -         | lxd          |                      |
+     | dns.mode                  | string  | -         | managed      | none/managed/dyanmic |
+     | fan.overlay_subnet        | strig   | fun mode  | 240.0.0.0/8  |                      |
+     | fan.type                  | string  | fan mode  | vxlan        | vxlan/ipip           |
+     | fan.underlay_subnet       | string  | fan mode  | default      |                      |
+     |                           |         |           | gateway      |                      |
+     |                           |         |           | subnet       |                      |
+     | ipv4.address              | string  | standard  | random       | none/auto            |
+     | ipv4.dhcp                 | boolean | ipv4      | true         |                      |
+     | ipv4.dhcp.expiry          | string  | ipv4      | 1h           |                      |
+     | ipv4.dhcp.gateway         | string  | ipv4      | ipv4.address |                      |
+     | ipv4.dhcp.ranges          | string  | ipv4      | all address  | 10-20,35-100         |
+     | ipv4.firewall             | boolean | ipv4      | true         |                      |
+     | ipv4.nat                  | boolean | ipv4      | false        |                      |
+     | ipv4.routes               | string  | ipv4      | -            | CIDR1,CIDR2[,...]    |
+     | ipv4.routing              | boolean | ipv4      | true         |                      |
+     | ipv6...                   |         |           |              |                      |
+     |                           |         |           |              |                      |
+     | raw.dnsmasq               | string  | -         | -            |                      |
+     |                           |         |           |              |                      |
+     | tunnel.NAME.grou          | string  | vxlan     | 239.0.0.1    |                      |
+     | tunnel.NAME....           |         |           |              |                      |
+     |                           |         |           |              |                      |
+     |                           |         |           |              |                      |
+     |---------------------------+---------+-----------+--------------+----------------------|
+
+**** using macvlan
+     https://blog.simos.info/how-to-make-your-lxd-container-get-ip-addresses-from-your-lan/
+     容器获取局域网ip，但主机无法和容器进行网络通信
+     
+     lxc prifile list
+     lxc prifile copy default lanprofile
+
+     lxc prifile show lanprofile
+     config:
+     environment.TZ: ""
+     description: Default LXD profile
+     devices:
+     eth0:
+     nictype: bridged
+     parent: lxdbr0
+     type: nic
+     root:
+     path: /
+     pool: default
+     type: disk
+     name: lanprofile
+     used_by: []
+
+     ip route show default 0.0.0.0/0
+     default via 192.168.1.1 dev enp5s12 proto static metric 100
+
+     lxc profile device set lanprofile eth0 nictype macvlan
+     lxc profile device set lanprofile eth0 parent enp5s12
+     
+     lxc launch -p lanprofile ubuntu:16.04 net1
+     lxc launch -p lanprofile ubuntu:16.04 net2
+**** using OVH server
+     lxc profile device set lanprofile eth0 nictype macvlan
+     lxc exec c1 bash
+     ip -4 addr add dev eth0 149.56.148.6/32 preferred_lft 0
+     exit
+     lxc list c1
+
+     永久配置 /etc/network/interfaces
+     auto eth0
+     iface eth0 inet dhcp
+         post-up ip -4 addr add dev eth0 149.56.148.6/32 preferred_lft 0
+* BonsaiFramework
+** Bonsa Framework Philosophical Concepts(盆栽框架理念)
+   - 0FS(Zero Footprint Software) 0占用
+   - Architecture
+   - Cloud Density(isolating technology; Jail/lxc/Docker/Garden;CoudFoundy/ApachMesos)
+   - In Sync System(IST/UAT/PROD1 PROD2)
+** Linux/Unix Server Administration(服务管理)
+*** Ubuntu Need to Know Basics
+**** Name Resolution and Internal Network Nameresolution
+***** Bonjour for Name Resolution
+      sudo apt-get install avahi-demon
+      hostname: plex
+      access as: plex.local
+***** Quick Summary(概览)
+      Webserver: is a program response web request
+      request object contains:
+      - Source ip
+      - Page request
+      - Path
+      - Browser version
+      - Os server
+      - key value pair
+      - Prot
+      - Protocol(http/https)
+      response object which contains:
+      - Webserver IP
+      - Page url
+      - Cookies
+****** Introduction-Resolving DNS Process
+       - How to find an IP address on my computer
+         Control Panel
+         network and sharing
+         click local area conection
+         details
+         IPV4
+       - How to find an IP address on from command prompt
+         Press the window start key to open the Start screed
+
+         
+       1. OS     local host file(/etc/hosts)
+       2. Router DNS(DomainNameResolution)
+       3. Internet registrar
+          http://www.aaa.com/web-server.html
+
+       
+       - Public and Private Keys
+         Using Keys to Upload Content to a Host
+****** HTML(HyperText Markup Language) Basics
+**** Quick Sandbox to learn linux
+*** Setup Ubuntu Linux Base Server
+**** Initial Setup
+***** Download
+      https://www.ubuntu.com/download/server
+****** Your Own Home System
+       VMware
+****** Hosting Company
+       KVM Cloud
+       Azure/AWS
+***** Installing from Scratch in a Virtual Environment(从虚拟机开始)
+***** Starting from a Server Hosted Solution(购买虚拟机)
+***** Server Overview(Memory 1G/Disk 40G/ServerName tinman)
+**** Login
+     SSH/console
+**** Synchronize Server Time(同步时间)
+     date #detemine current timezone
+     sudo dpkg-reconfigure tzdata # sets the timezone
+     sudo apt-get update # updates you basic installatoin
+     sudo apt-get install ntp # install the ntp daemon
+**** Select a Locale(本地化配置)
+     $ locale # 显示本地化配置
+     $ sudo local-gen en_US.UTF-8
+     $ sudo update-local LANG=en_US.UTF-8
+**** Update Repositories(更新仓库)
+     $ sudo apt-get update
+**** Update Server
+     $ sudo apt-get dist-upgrade # upgrade to the newest kernel
+***** General Upgrades
+      $ sudo apt-get autoclean # clean out nolonger used package
+      $ sudo apt-get clean # clean out all download packages
+      $ sudo apt-get autoremove # cleans out unused packages
+      $ sudo reboot
+***
+**** Add Additional IP Addresses to Ubuntu Server
+     - Add Static IP Address
+       $ ifconfig -a
+       $ cat /etc/network/interfaces # interfaces(5)
+         auto lo
+         iface lo inet lookback
+         auto eth0
+         iface eth0 inet dhcp
+
+         # get gateway
+       $ route -n
+         Kernel IP routing table
+         Destination Gateway Genmask ...
+         0.0.0.0 64.73.220.1 ...
+
+         # Get name servers
+       $ /etc/resolve.conf
+         nameserver 216.15.129.205
+         nameserver 216.15.126.206
+**** Change Ubuntu from DHCP to Static IP(使用静态IP)
+     $ ifconfig
+     $ sudo cp /etc/network/interfaces /etc/network/interfaces.v0.0 # Make a backup
+     $ sudo vim /etc/network/interfaces
+       auto eth0
+       iface eth0 inet dhcp
+       -->
+       auto eth0
+       iface eth0 inet static
+       address 192.168.0.50
+       netmask 255.255.255.0
+       gateway 192.168.0.1
+       # dns-nameserver 192.169.0.1
+
+     $ sudo /etc/init.d/networking restart # 重启网络
+     $ sudo apt-get remove isc-dhcp-client dhcp3-client dhcpcd # 删除dhcp
+**** Home Server
+     - dynamic DNS
+       sudo apt-get install ddclient
+**** Hostname Standards
+     - samples
+       S1
+       PRD-RG-WEB1
+       PRD-RG-APP1
+       PRD-RG-APP2
+**** Resolve Proxy Caching Problem with Ubuntu Updates
+     W: GPG error: http://ca.archive.ubuntu.com intrepid-updates Release: 
+        The following signatures were invalid: BADSIG 40976EAF437D05B5 
+        Ubuntu Archive Automatic Signing Key <ftpmaster@ubuntu.com>
+     W: You may want to run apt-get update to correct these problems
+
+     $ sudo apt-get update -o Acquire::http::No-Cache=True
+     $ sudo apt-get update -o Acquire::BrokenProxy=true
+     $ sudo apt-get update
+*** Ubuntu Firewall Software
+    - mininal UFW Setup
+      sudo apt-get install ufw # install the firewall software
+      sudo ufw allow 22
+    - firewall-cmd
+*** SSH RSA Key Based Authentication
+    $ ssh-keygen
+    $ ssh-copy-id username@remotehost
+
+    - Disable Password Authentication
+      # sudo vi /etc/ssh/sshd_config
+      sudo sed -i 's/#PasswordAtuhentication yes/PassworkAuthentication no/g' /etc/ssh/sshd_config
+      sudo service ssh restart
+    - Disable Reverse DNS on SSH Server
+      echo '# Disable reverse DNS lookup to prevent slow login' | sudo tee -a /etc/ssh/sshd_config
+      echo 'UseDNS no' | sudo tee -a /etc/ssh/sshd_config
+*** Minimal Ubuntu Linux Security
+    - Disable Direct Login as Root Through SSH(/etc/ssh/sshd_config)
+      PermitRootLogin prohibit-password
+    - Prevent SSH Brute Force Dictionary Attacks
+      sudo apt-get install fail2ban
+      /etc/fai2ban/jail.conf
+      maxretry = 6 # max 6 retries
+      bantime = 600 # 10 minutes
+      ignoreip = 127.0.0.1
+
+      
+      sudo /etc/init.d/fail2ban stop
+      sudo /etc/init.d/fail2ban start
+*** Creating User Accounts
+    sudo addgroup --gid 3000 serveradmin
+    sudo useradd -d /home/serveradmin -m -g serveradmin -u 3000 -c "Admin catch-all" -s /bin/bash serveradmin
+    sudo passwd serveradmin
+    
+    adm - so staff can view logs in apps setup without having to use the sudo command
+    Here is the command,
+
+    sudo usermod -a -G adm brian.hitch
+    sudo usermod -a -G adm john.cassaday
+    sudo usermod -a -G adm warren.ellis
+*** Recommanded Tools
+    sudo apt-get install at man vim rsync ntp
+    sudo apg-get install dnsutil
+    geoip-database # determine geo location of ip
+    sudo apt-get install command-not-find
+    sudo apt-get install telnet zip unzip mlocate htop wget ne colordiff wdiff
+*** More Linux Security
+    sudo apt-get install postfix
+    sudo vim /etc/postfix/main.cf
+    sudo postconf mail_spool_directory
+    mail_spool_directory = /var/mail
+    sudo postconf -e 'home_mailbox = Maildir/'
+    In most cases, your system is be-ing used to send email outbound and not receive email or deliver the emails locally to the system.
+    sudo postconf -e "inet_interfaces = loopback-only" # receive no mail from the network, and do not deliver any mail local
+    sudo pat-get install bsd-mailx
+    echo "test | mail -s testsubject bhitch@imagecomics.command
+*** Upgrading Ubuntu Packages
+    $ uname -a
+    $ lsb_release -a
+    sudo apt-get install update-manager-core
+    /etc/update-manager/release-upgrades ==> Prompt=normal
+    do-release-upgrade
+    
+
+    dpkg --list 'linux-image*'
+    sudo apt-get remove linux-image-VERSION
+    sudo apt-get autoremove
+    sudo apt autoremove
+    sudo update-grub
+*** Setup Domain Name
+    - Register a Domain
+      https://www.rebel.ca/register
+*** Setup 0FS Apache
+    # Change dir to whichever working directory you want to use
+    $ cd /opt
+    # Change version number/archive type as required
+    $ wget --no-check-certificate https://archive.apache.org/dist/httpd/httpd-2.2.23.tar.bz2 [ -e use-proxy=yes -e https_proxy=xxxxx ]
+    # Apache also provides MD5 hashes to verify your downloads, so you could do the following to generate a local MD5 hash to compare
+    wget -O - https://archive.apache.org/dist/httpd-2.4.29.tar.bz2 | tee httpd-2.2.23.tar.bz2 | md5sum > md5sum.local
+    
+    $ tar -xzvf httpd-2.2.32.tar.gz -C /opt/httpd/
+*** Setup Apache WebServer on Unubtu Linux
+    sudo apt-get install apache2
+*** Setup ZeroFootprint Apache WebServer on Linux v0.3
+    #+BEGIN_SRC sh
+    # solely created and run apache services
+    sudo adduser apacheaem --shell=/bin/false --no-create-home
+    # install C compiler
+    sudo apt-get update
+    sudo apt-get install build-essential
+    # Download Apache Package
+    cd /tmp/
+    wget https://www.apache.org/dist/httpd/httpd-2.2.32.tar.bz2
+    tar -xvf httpd-2.2.32.tar.bz2
+    #+END_SRC
+** Server Standards
+** Ubunut Administrator commands
+   dpkg --get-selections > installed-software.txt
+   dpkg -S "/etc/ssl/certs" # detemine package program belongs to
+   dpkg -L ca-certificates
+** LXC
+   difference between triditional virtualization and cntainer
+   
+   -----------
+   app       |
+   lib       |
+   os        |                       -----
+   ------------                      |app|  <- namespaces/chroots/cgroups
+   hypervisor |                      |lib|
+   ----------------------------------------
+   os          
+   ----------------------------------------
+   x86 hardwar
+   -----------------------------------------
