@@ -1,0 +1,223 @@
+* 1. 概述
+** 1.1 引言
+   互联网基础
+** 1.2 分层
+   链路层 -> 网络层 -> 传输层 -> 应用层
+
+   1. 链路层 驱动/网卡
+   2. 网络层 处理分组/路由; IP
+   3. 传输层 端到端通信; TCP/UDP   
+   4. 应用层 Telnet/FTP/SMTP/SNMP
+*** 网络层/传输层的分层原因(为什么不统一)
+    1. 多个计算机组成一个网络(集线器) end-to-end
+    2. 多个网络组成一个互联网(IP Router/gateway 路由器,以太/令牌/P2P/FDDI) Hop-by-hop
+
+    端系统            中间系统                      段系统
+    End System        Intermediate system           End System
+    FTP client <----------------------------------> FTP Server  |
+    TCP        <----------------------------------> TCP         | End-to-end 端到端协议
+    IP         <----------> IP <------------------> IP            Hop-by-hop 逐跳协议
+     |                  /           \               |
+    以太驱动 <-----> 以太驱动    令牌环驱动 <----> 令牌环驱动
+    硬件---------------硬件        硬件---------------硬件
+                            路由器(Multihomed)
+
+    驱动               驱动 <-- 网桥 --> 驱动 (组合多个局域网)
+    硬件---------------硬件              硬件---------硬件
+
+    网络层 IP 不可靠，尽快投递分组
+    传输层 TCP IP + 超时重传 + ACK(确认机制)
+** 1.3 TCP/IP分层
+   FTP   Telnet  SMTP  SNMP
+           TCP   UDP
+   ICMP(控制)  IP      IGMP(多播)
+   ARP(地址解析)       RARP(逆解析)
+** 1.4 互联网地址(IP)
+   IP.len = 32bit
+      前缀   网络号           主机号  实例
+   A  [0]      7              24      0.0.0.0/8
+   B  [10]     14             16      128.0.0.0/16
+   C  [110]    21             8       192.0.0.0/24
+   D  [1110]        28(组播)          224.0.0.0
+   E  [11110]       保留              240.0.0.0
+
+   *InterNIC(Network Infomation Center) 负责分配网络号*
+   *系统管理员 分配主机号*
+   www.internic.net
+** 1.5 域名系统(DNS)
+   是个分布式数据库，提供 主机名 <==> IP 的映射
+** 1.6 封装
+   协议栈
+   每层增加首位信息
+   TCP报文(TCP segment) UDP数据报(UDP datagram)
+   IP数据报(IP datagram)
+   数据帧(Frame) 46~1500
+   *octet(byte)* 表述字节; DEC-10不使用8字节，所以用octet
+   *packet* IP datagram(完整数据报)/fragment(数据报分片)
+*** 分装层次
+          [user-data]
+   app       
+          [app-head][user-data]
+   TCP
+          [TCP-head][app-head][user-data]                                  segment
+   IP
+          [IP-head][TCP-head][app-head][user-data]                         datagram(packet)
+   Link
+          [ether-head][IP-head][TCP-head][app-head][user-data][ether-tail] frame
+           14           20      20                             4           (bytes)
+                      | <----------- 46 ~ 1500 bytes ------->|
+   Ethernet
+*** 头部内容概述
+**** ip头
+     协议标识(1byte): 1-ICMP, 2-IGMP, 6-TCP 17-UDP
+**** TCP/UDP头
+     程序标识(2byte)：1~65536 端口号
+**** 链路层帧头
+     协议标识(帧类型2byte)：IP/ARP/RARP
+      
+** 1.7 分用(解封装 Demultiplexing)
+   解析头部，逐级上升
+
+   app
+   -------------------------------
+   TCP      UDP
+   -------------------------------
+                    ICMP IGMP
+   ------------------------------
+   IP
+   ------------------------------
+                    ARP RARP
+   ------------------------------
+   Link
+** 1.8 CS模型
+   服务分类 重复性/并发性
+            UDP    TCP   一般情况
+** 1.9 端口号
+   *知名端口(1~1023)* 21 FTP; 22 SSH; 23 Telnet; TFTP 69; 80 http;
+   *IANA* (1~255)(256~1023 unix) (Internet Assigned Numbers Authority) 知名端口号分配机构
+   *临时端口号* 客户端端口号
+   */etc/services* 包含熟知端口; grep telnet /etc/services
+   
+   
+** 1.10 标准化过程
+   ISOC(Internet Society协会)推动、支持、促进Internet专业组织
+   IAB(Internet Architecture Board体系结构委员会)技术监督和协调
+    |- IETF(Internet Engineering Task Force工程小组)(IESG Steering Group)
+    |- IRTF(Internet Research Task Force研究小组)
+** 1.11 RFC(Request For Comment)标准文档
+   RFC 1340 Assigned Numbers RFC
+   RFC 1600 各协议标准化状态: 标准、草案、提议、实验、信息、历史
+                    要求层次：必须、建议、可选、限制、不推荐
+   RFC 1122/1123(应用层) 主机需求
+   RFC 1009 路由器需求
+   RFC 1000 术语出处
+** 标准的简单服务
+   | server  | TCP/UDP Port | RFC | description       |
+   |---------+--------------+-----+-------------------|
+   | echo    |            7 | 862 | 回显所有内容      |
+   | discard |            9 | 863 | 丢弃所有内容      |
+   | daytime |           13 | 867 | 返回可读日期时间  |
+   | chargen |           19 | 864 | 返回随机数据报/流 |
+   | time    |           37 | 868 | 32bit UTC         |
+   |---------+--------------+-----+-------------------|
+   都是奇数端口，NCP(TCP前身)单工，不是全双工；
+** 互联网(Internet)
+   internet 只是网络互联
+   Internet 特指世界范围的互联网
+** 1.14 实现
+   4.x BSD(Berkeley Software Distribution)
+
+   4.2BSD(1983)          TCP/IP
+   4.3BSD(1986)          TCP性能改善
+   4.3BSD Tahoe(1988)    慢启动，拥塞避免，快速重传
+               (1989)Net/1
+   4.3BSD Reno (1990)    快速恢复，TCP头预测，SLIP头压缩，路由表修改
+               (1991)Net/2
+   4.4BSD (1993)         多播，长肥管道修改
+          (1994)Net/3
+** 1.15 应用程序接口(API) socket/TLI(transport layer interface)
+** 1.16 测试网络
+   *网络号： 140.254.0.0/16*
+   *.tuc.noao.edu* National Optical Astronomy Observatories(国家光学天文台) Tucson(图森地面)
+
+                                       Internet
+                                       .104.1
+                                       --+----
+   AIX3.2.2    Solaris2.2  SunOS4.1.1  Sisco(Router)
+   aix         solaris     gemini      gateway
+   .1.92       1.32        1.11        .1.4
+   -+-----------+-----------+------+----+--------
+                                 .1.183
+                                 netb
+
+                                 (slip)
+
+                 .13.66          .1.29          
+   BSD/386       BSD/386         SonOS4.1.3      SVR4
+   slip    (SLIP)bsdi            sun             *svr4.tuc.noao.edu*
+   .13.65        .13.35          .13.33          *140.252.13.34*
+                 --+----------------+--------------+--------
+
+* 2. 链路层
+** 2.1 引言
+   1. 收发IP datagram
+   2. 收发 ARP
+   3. 收发 RARP
+   
+   不同链路层协议：以太、令牌、FDDI光纤、RS-232
+   本章讨论以太网链路层协议
+   SLIP/PPP 串行接口链路
+   loopback 回环
+   MTU(max trans unit)
+** 2.2 以太网和IEEE 802封装
+   Digital Equipment Corp. + Intel Corp. +　Xerox 1982 公布以太标准
+   CSMA/CD(Carrier Sense, Multiple Access with Collision Detection)带冲突检测的载波侦听多路接入
+   802 10Mb/s, 48bit
+   802.2 公共特性；LLC(logic link control)
+   802.3 CSMA/CD；不同于以太网帧格式
+   802.4 令牌总线
+   802.5 令牌环
+
+   *RFC 894*  以太网IP datagram封装标准(默认格式)
+   *RFC 1042* IEEE 802 IP datagram(兼容格式)
+
+   *48bit(MAC)地址* ARP/RARP 映射 32bit(IP) <==> 48bit(MAC)
+
+   *802.3* MAC       802.2 LLC         802.2 SNAP
+   [src][dst][len] [DSAP][SSAP][cntl][org] [type] [data]    [CRC]
+    6    6    2     1     1     1     3     2      38-1492   4
+                    aa    aa    03    00   0800  IP datagram
+                                           0806  ARP  PAD
+                                           0835  RARP PAC
+                                                 28   10
+   *RFC 894*
+   [src][dst][type][       IP datagram/ARP/RARP            ][CRC]
+    6    6    2                                               4
+             0800   IP datagram
+             0806   ARP   PAD
+             0835   RARP  RAD
+                    28    18
+   *SNAP* Sub-network Access Protocol 子网接入协议
+   *DSAP* Destination Service Access Point 目的服务访问点
+   *SSAP* Source SAP 源服务访问点
+   *802/RFC 894兼容* 因为len(40~1500)和type(>2048)不相同
+   *pad* 小于最小帧长度的填充pad字节
+   *RFC 893* 另一种尾部分装格式(tailer encapsulation) 内存映射提高效率(被反对)
+   *RFC 1055 SLIP* Serial Line IP 串行线路IP
+        END(0xc0)
+        ESC(0xdb) 数据END -> ESC+END
+                  数据ESC -> ESC+0xdd
+   *RFC 1144 CSLIP* 压缩SLIP
+   *PPP* 点对点修复SLIP缺陷
+         7e ff 03 [pro message CRC] 7e
+         data7e -> 7d 5e
+         data7d -> 7d 5d
+   *Loopback Interface* 回环
+   127.0.0.1 localhost
+   放入IP输入队列;广播多播包含自己；单播不进入链路层
+   *MTU*
+   超过MTU的IP数据报进行分片(fragmentation)
+   *RFC 1191* MTU 值，路径MTU发现机制
+   *netstat -i* 打印接口信息
+
+   
