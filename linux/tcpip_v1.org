@@ -221,3 +221,75 @@
    *netstat -i* 打印接口信息
 
    
+* 3. IP
+** 3.1 引言
+   TCP/UDP/ICMP/IGMP -(基于)-> IP
+   *unreliable* 不可靠，可能丢包
+   *connectionless* 无连接，无顺序保证
+   *RFC 791* IP标准规范
+   IP head
+   ifconfig/netstat
+** 3.2 IP head
+   *head size = 20Bytes*
+   *big endia*
+
+   [ver][hlen][TOS][ datagram-len  ]
+    4    4     8    16               bits
+   [  Identify    ][flag][  offset ] {fragment分片相关}
+    16              3      13        bits
+   [ TTL ][ proto ][ CRC           ]
+    8       8        16              bits
+   [         src IP                ] 32 bits
+   [         dst IP                ] 32 bits
+   [ options ...                   ]
+
+   - *ver=4* IPv4
+   - *hlen<60*
+   - *TOS服务类型* 
+     RFC 1340/1349 TOS
+     3(优先权)+4(TOS)+1(0) = 8 bits
+               |
+       /-------+---------+-------\
+       0       0         0       0    =  一般服务(BOOTP/ICMP/DNSquery)
+     最小时延、最大吞吐量、最高可靠、最小费用
+     Telnet
+     FTP ctl FTP data
+     TFTP
+     SMTPcmd SMTP data
+                         ICMP
+                         SNMP
+                                 NNTP
+   - *Datagram-len*
+   - *fragment* RFC 971 id + flag + offset
+   - *TTL(TimeToLive)* 控制跳数，到0时丢弃；防止回环路由
+   - *proto* 协议字段
+   - *CRC* 
+     RFC 1071 每16bit取反求和，结果存到CRC,验证全1 ok，否则丢弃不发送ICMPerr
+     RFC 1141 路由器 TTL--， ++CRC（BSD not use）
+   - *src/dst IP*
+   - *options* 不是所有都被支持
+     安全和处理限制（军事领域， RFC 1108）
+     记录路径（让每个路由器记录路径，see7.3）
+     时间戳（see7.4）
+     宽松源站选路（为主句制定一系列经过的IP弟子，see8.5）
+     严格源站选路（只能经过这些路由）
+     以32bit为边界，不足是补0到32bit
+** 3.3 IP route
+   host1 <---> router <---> host2
+   IP层配置成即是路由器又是主机
+   if(ip in ip-mem-router){
+     由指定模块处理
+   }else if(set-router){
+     转发数据
+   }else{
+     丢弃数据包
+   }
+
+   ip-mem-router{
+     destIP;
+     next-hop;
+     flag;
+     port;
+   }
+
+   - 路由选择功能
