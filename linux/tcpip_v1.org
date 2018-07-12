@@ -219,7 +219,6 @@
    超过MTU的IP数据报进行分片(fragmentation)
    *RFC 1191* MTU 值，路径MTU发现机制
    *netstat -i* 打印接口信息
-
    
 * 3. IP
 ** 3.1 引言
@@ -293,3 +292,244 @@
    }
 
    - 路由选择功能
+     hop-by-hop
+     假设下一站路由器与目标主机更近
+     if(ip in router){
+       send to router/host;
+     }else if(net-no in router){
+       send to router/host;
+     }else if(has default router){
+       send to default router;
+     }else{
+       drop datagram;
+       if(localhost datagram){
+         return unreachable;
+       }
+     }
+*** 多跳路由
+    bsdi --(IP)--> ftp.uu.net
+    .13.35         192.48.96.9
+
+    bsdi --(default router)--> sun --(default router) --> netb --(default router) --> gateway
+    ip:192.48.96.9           ip:192.48.96.9                      (ARP)
+    mac:sun-mac              lisp
+
+    - 使用默认路由
+    - IP地址不变，mac地址为下一站地址
+    - MAC通过ARP查询
+** 3.4 子网寻址(A,B类网络主机号太多，有必要分子网)
+   RFC 950 子网寻址需求
+   IP = 网络号 + 主机号(子网号 + 主机号)
+   *全0/1的主机号好无效的*
+   子网对路由器隐藏了内部网络组织细节；
+   *Rn* R-路由器；n-子网号
+** 3.5 子网掩码(确定网络号主机号)
+   255.255.255.0
+   255.255.255.192
+   IP目的类型 本子网；本网络其他子网；其他网络
+   A,B,C -(head 8bit)-> 网络号 --(netmask)--> 子网 + 主机号
+   140.252.1.1/24 --> 8bit sub-net; 8bit host;
+** 3.6 特殊IP地址
+   |-------+----------+--------+-----+-----+----------------|
+   |   net | subnet   |   host | src | dst | desc           |
+   |-------+----------+--------+-----+-----+----------------|
+   |     0 |          |      0 | OK  |     | 网络上的主机   |特殊源地址(BOOTP)
+   |     0 |          | hostid | OK  |     | 网络上特定主机 |
+   |   127 |          |    any | OK  | OK  | 回环           |回环
+   |    -1 |          |     -1 |     | OK  | 受限广播       |广播地址
+   | netid |          |     -1 |     | OK  | netid广播      |
+   | ndtid | subnetid |     -1 |     | OK  | subnetid广播   |
+   | netid | -1       |     -1 |     | OK  | 子网广播       |
+   |-------+----------+--------+-----+-----+----------------|
+
+** 3.7 例子(子网继续划分子网)
+   *RFC 1009* 变长子网，允许子网网络使用多个子网掩码(RIP不支持)
+** 3.8 ifconfig/netstat
+   引导时允许，配置每个接口
+   $ ifconfig -a
+   $ netstat (MTU/IO/router)
+** 3.10 IP未来
+   SIP
+   PIP
+   TUBA *RFC 1347*
+   TP/IX *RFC 1475*
+* 4. ARP(地址解析协议)
+  *RFC 826* ARP IP --> MAC (RARP 被无盘工作站/X终端使用)
+** 4.2 例子
+   $ ftp bsdi
+   
+   ftp                          bsdi
+   ip=gethostbyname(bsdi)        |
+   (/etc/hosts + DNS)            |
+   tcp.conn(ip)                  |
+   ARP.broadcast(ip) ----------> |
+     | <----------------------- ARP.response(ip,mac)
+     |                           |
+   IP.send(mac) --------------->IP.recv()
+
+   *MAC* 硬件地址
+** 4.3 APR cache
+   *life time = 20min*
+   *$ arp -a* 查看高速缓存
+     node7 (192.168.10.187) at 00:24:ec:f1:2d:b3 [ether] on enp4s0
+     node6 (192.168.10.186) at 00:24:ec:f1:2d:ad [ether] on enp4s0
+** ARP分组格式
+   [dstmac][srcmac][ftype][htype][ptype][hlen][plen][op][s-mac][s-IP][d-mac][d-IP]
+    6       6       2      2      2      1     1     2   6      4     6      4     = 42
+    -1(广播)
+    - *dst IP* 目标地址， -1 广播
+    - *src IP* 源IP
+    - *ftype* 帧类型 0x0806(ARP req)
+    - *htype* 硬件类型 1-mac
+    - *ptype* 协议类型 0x0800 IP
+    - *hlen* 硬件地址长度 mac 6
+    - *plan* 协议地址长度 IP 4
+    - *op* 1-ARPreq 2-ARPrsp 3-RARPreq 4-RARPrsp
+    - *s-mac/srcmac* 重复发送端硬件地址
+*** tcpdump
+   $ tcpdump -e
+                                   /- 帧类型
+   0.0      <mac-bsdi> -1 arp 60: arp who-has svr4 tell bsdi
+                                        \- op
+                                               /- reply and cache mac-bsdi
+   0.0021   <mac-svr4> <mac-bsdi> arp 60: arp reply svr4 is-at <mac-svr4>
+                                       \- frame-len(min60)          /- TCP sync (handl shake)
+   0.0028   <mac-bsdi> <mac-svr4> ip 60: bsdi.1030 > svr4.discard: S *521:*521(0)
+                                         win 4096 <mss 1024> [tos 0x10]
+                                                                    /- TCP sync+ack
+   0.0078   <mac-svr4> <mac-bsdi> ip 60: svr4.discard > dbdi.1030 : S *225:*225(0)
+                                         ack 522 win 4096 <mss 1024>
+   0.0096   <mac-badi> <mac-svr4> ip 60: bsdi.1030 > svr4.discard : . ack 1 win 4096 [tos 0x10]
+                                                                       \- TCP ack
+*** ARP请求不存在的主机
+   badi % data; telnet 140.252.13.36 ; date
+   Sat Jan 30 06:46:33 MST 1993
+   telnet: Unable to connect to remote host: Connect timed out
+   Sat Jan 30 06:47:49 MST 1993 # 76秒超时 BSD TCP 超时时间
+   
+   bsdi % arp -a
+   ? (140.252.13.36) at (incomplete)
+   
+   $ tcpdump
+   0.0        arp who-has 140.252.13.36 tell bsdi
+   5.5        arp who-has 140.252.13.36 tell bsdi (超时重发算法)
+   29.5       arp who-has 140.252.13.36 tell bsdi
+*** ARP cache超时设置
+** 4.6 ARP代理(router/Proxy/promiscuous/hack)
+** 4.7 免费ARP(gratuitous ARP)
+   在系统引导期间，用自己的mac请求自己
+   确认是否有其他主机使用相同IP
+   如硬件跟新，通知其他主机更新mac
+   不是所有都实现
+** arp命令
+   -d 删除
+   -s temp 增加
+   -s pub ARP代理
+* 5. RARP 逆地址解析协议
+  无盘机引导使用
+* 6. ICMP(Internet Control Message Protocol)
+  *RFC 792* ICMP
+  [IP-head][       ICMPdatagram     ]
+  [IP-head][type][code][crc][content]
+   20       1     1     2    x
+            | type | code | desc                    | q/e   |
+            |------+------+-------------------------+-------|
+            |    0 |    0 | ping request            | query |
+            |------+------+-------------------------+-------|
+            |    3 |      | dest unreachable        | err   |
+            |      |    0 | 网络不可达              | err   |
+            |      |    1 | 主机不可达              | err   |
+            |      |    2 | 协议不可达              | err   |
+            |      |    3 | 端口不可达              | err   |
+            |      |    4 | 要分片但设置不符        | err   |
+            |      |    5 | 源站选路失败            | err   |
+            |      |    6 | 目的网络不识别          | err   |
+            |      |    7 | 目的主机不识别          | err   |
+            |      |    8 | 源主被隔离              | err   |
+            |      |    9 | 目的网络被禁止          | err   |
+            |      |   10 | 目的主机被禁止          | err   |
+            |      |   11 | ...                     |       |
+            |------+------+-------------------------+-------|
+            |    4 |    0 | 源端被关闭(流控制11.11) |       |
+            |------+------+-------------------------+-------|
+            |    5 |      | 重定向(9.5)             |       |
+            |      |      | ...                     |       |
+            |------+------+-------------------------+-------|
+            |    8 |    0 | ping reply              |       |
+            |------+------+-------------------------+-------|
+            |    9 |    0 | 路由器通告(9.6)         |       |
+            |   10 |    0 | 路由器请求(9.6)         |       |
+            |------+------+-------------------------+-------|
+            |   11 |      | 超时                    |       |
+            |------+------+-------------------------+-------|
+            |   12 |      | 参数问题                |       |
+            |------+------+-------------------------+-------|
+            |   13 |    0 | 时间戳请求(6.4)         |       |
+            |   14 |    0 | 时间戳应答              |       |
+            |------+------+-------------------------+-------|
+            |   15 |    0 | 信息请求(作废)          |       |
+            |   16 |    0 | 信息应答                |       |
+            |------+------+-------------------------+-------|
+            |   17 |    0 | 地址掩码请求(6.3)       |       |
+            |   18 |    0 | 地址掩码应答            |       |
+            |------+------+-------------------------+-------|
+** 一下情况不产生ICMP报文(防止广播风暴)
+   1. ICMP差错报文
+   2. 目的地址是广播/多播地址
+   3. 作为链路层广播
+   4. IP分片的第一片
+   5. 源地址不是单个主机的数据报(0,loopback,broadcast,multicast)
+
+** 6.3 ICMP地址掩码请求与应答
+   无盘系统引导
+** 6.4 时间戳请起(毫秒级)
+** 6.5 端口不可达差错
+   [ICMP-head][err-ip-head][udp-head]
+   UDP: ICMP不返回给用户进程，除非connect
+* Ping
+  有可能被防火墙阻止；
+  内核支持ping服务
+** 7.2 WAN输出
+   有可能丢失ping包
+** 7.3 IP记录路由选项
+   ping -R 
+* 8. traceroute
+  利用TTL + ICMP
+* 9. IP选路
+* 10 RIP(Routing Information Protocol)
+* 11 UDP(User Datagram Protocol)
+** 11.1 引言
+   *RFC 768* UDP规范
+** 11.2 UDP head
+   [ src port][ dst port]
+    16          16
+   [ UDP len ][ UDP CRC ]
+    16          16
+   [ user data ...      ]
+** CRC(可选)
+   覆盖首部和数据；
+   计算校验和可能需要填充0，发送时不发送；
+*** 伪首部
+    [ src ip]
+    [ dst ip]
+    [ ...   ]
+    [ udp head]
+    [ data    ]
+    [ stuff ]
+** 11.5 IP 分片
+** 12. 广播和多播(UDP)
+** 12.2 广播
+** 12.2.1 受限广播
+   255.255.255.255; 路由器不转发，仅本地网络；
+** 12.2.2 指向网络的广播
+   主机号 = -1
+** 12.2.3 指向子网的广播
+   特定子网地址，主机号=-1
+** 12.3 广播例子
+** 12.4 多ibo
+* 13. IGMP(Internet Group Manager Protocol 组管理协议)
+  用于网络间多播
+* 14. DNS
+** 14.1 引言
+* 15. TFTP
+* 17. TCP
