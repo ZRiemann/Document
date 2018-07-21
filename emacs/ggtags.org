@@ -26,3 +26,158 @@
 |                    | M-..        | 从include <*.h> 跳转到文件 |                       |
 |                    | M-h         | 列出历史查询记录           |                       |
 |                    | M-/         | stores tag operation       |                       |
+
+ggtags-find-tag-dwim
+
+   Find a tag by context.
+
+   If point is at a definition tag, find references, and vice versa.
+   If point is at a line that matches ``ggtags-include-pattern``, find
+   the include file instead.
+
+   To force finding a definition tag, call it with a prefix (``C-u``).
+
+ggtags-find-tag-mouse
+
+   Like ``ggtags-find-tag-dwim`` but suitable for binding to mouse
+   events.
+
+ggtags-find-definition
+
+   Find definition tags. With ``C-u`` ask for the tag name with
+   completion.
+
+ggtags-find-reference
+
+   Find reference tags. With ``C-u`` ask for the tag name with completion.
+
+ggtags-find-other-symbol
+
+   Find tags that have no definitions. With ``C-u`` ask for the tag
+   name with completion.
+
+ggtags-find-tag-regexp
+
+   Find definition tags matching a regexp. By default it lists all
+   matching tags in the project. With ``C-u`` restrict the lists to a
+   directory of choice.
+
+ggtags-idutils-query
+
+   Use idutils to find matches.
+
+ggtags-grep
+
+   Grep for lines matching a regexp. This is usually the slowest.
+
+ggtags-find-file
+
+   Find a file from all the files indexed by ``gtags``.
+
+ggtags-query-replace
+
+   Do a query replace in all files found in a search.
+
+Handling multiple matches
++++++++++++++++++++++++++
+
+When a search finds multiple matches, a buffer named
+``*ggtags-global*`` is popped up and ``ggtags-navigation-mode`` is
+turned on to facilitate locating the right match.
+``ggtags-navigation-mode`` makes a few commands in the
+``*ggtags-global*`` buffer globally accessible:
+
+``M-n``
+
+   Move to the next match.
+
+``M-p``
+
+   Move to the previous match.
+
+``M-}``
+
+   Move to next file.
+
+``M-{``
+
+   Move to previous file.
+
+``M-=``
+
+   Move to the file where navigation session starts.
+
+``M-<``
+
+   Move to the first match.
+
+``M->``
+
+   Move to the last match.
+
+``C-M-s`` or ``M-s s``
+
+   Use ``isearch`` to find the match.
+
+``RET``
+
+   Found the right match so exit navigation mode. Resumable by ``M-,``
+   (``tags-loop-continue``).
+
+``M-*``
+
+   Abort and go back to the location where the search was started.
+
+Miscellaneous commands
+++++++++++++++++++++++
+
+Commands are available from the ``Ggtags`` menu in ``ggtags-mode``.
+
+ggtags-prev-mark
+
+   Move to the previously (older) visited location. Unlike ``M-*``
+   this doesn't delete the location from the tag ring.
+
+ggtags-next-mark
+
+   Move to the next (newer) visited location.
+
+ggtags-view-tag-history
+
+   Pop to a buffer listing all visited locations from newest to
+   oldest. The buffer is a next error buffer and works with standard
+   commands ``next-error`` and ``previous-error``. In addition ``TAB``
+   and ``S-TAB`` move to next/prev entry, and ``RET`` visits the
+   location. ``M-n`` and ``M-p`` move to and display the next/previous
+   entry.
+
+ggtags-view-search-history
+
+   View or re-run past searches as kept in
+   ``ggtags-global-search-history``.
+
+ggtags-kill-file-buffers
+
+   Kill all file-visiting buffers of current project.
+
+ggtags-toggle-project-read-only
+
+   Toggle opening files in ``read-only`` mode. Handy if the main
+   purpose of source navigation is to read code.
+
+ggtags-visit-project-root
+
+   Open the project root directory in ``dired``.
+
+ggtags-delete-tags
+
+   Delete the GTAGS, GRTAGS, GPATH and ID files of current project.
+
+ggtags-explain-tags
+
+  Explain how each file is indexed in current project.
+
+ggtags-browse-file-as-hypertext
+
+   Use ``htags`` to generate HTML of the source tree. This allows
+   browsing the project in a browser with cross-references.

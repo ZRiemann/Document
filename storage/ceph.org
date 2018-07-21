@@ -1,8 +1,8 @@
-#+TITLE ceph 手册
-
-* 安装
+#+TITLE ceph
+* 手册
+** 安装
   sh_util/install/ceph.sh
-* 体现结构
+** 体系结构
   Ceph 独一无二地用统一的系统提供了对象、块、和文件存储功能，它可靠性高、管理简便、并且是自由软件
   Ceph 可提供极大的伸缩性——供成千用户访问 PB 乃至 EB 级的数据。
   Ceph 节点以普通硬件和智能守护进程作为支撑点
@@ -110,7 +110,7 @@
       + 互联(peering)和子集
         peering这是一种把一归置组内所有对象（及其元数据）所在的 OSD 带到一致状态的过程。
         状态达成一致并不意味着 PG 持有最新内容。
-* OpenAttic
+** OpenAttic
 ** Trademarks(商标)
    Appache/Linux/RedHatLinux/CentOS/openSUSE
 ** Prerequisties(先决条件)
@@ -136,4 +136,231 @@
 **** Set a Ceph cluster with DeepSea
      1. Log into the "master" node and run the following commands
         
+* 源码分析
+** 1. 整体架构
+*** 1.1 历史
+    author: Sage Weil, 加州大学 SantaCruz, 2004-2006, Inktank -(2014)-> Red Hat
+*** 1.2 设计目标
+    大规模、高可用、可扩展、高性能、分布式存储(10000+nodes)
+*** 1.3 基础架构
+    
+    APP | APP     | HOST/VM                                   | CLIENT  |
+        +---------+-------------------------------------------+---------+
+        | RADOSGW | RBD                                       | CEPH FS |
+    ----------------------------------------------------------+         |
+    librados(A library allowing apps to directly access RADOS)|         |
+    --------------------------------------------------------------------+
+    RADOS(Reliable,Autonomous,Distributed Object Store) OSD+Monitor     |
+    --------------------------------------------------------------------+
+*** 1.4 客户端接口
+**** 1.4.1 RBD(rados block device)
+     - *librbd*
+     - *like SAN* 向云平台的虚拟机提供虚拟磁盘
+       *QEMU Driver* for KVM
+       *kernel mode*
+**** 1.4.2 CephFS
+     - *MDS* (Metadata Server)
+     - *libcephfs* / *POSIX like*
+**** 1.4.3 RadosGW
+     - *Amazon S3* / *OpenStack Swift*
+       root
+        \- Account(账户)
+            \- Bucket(桶)[swift:Container]
+                \- Obhect(对象)
+*** 1.5 RADOS(Reliable Autonomous Distributed Object Store)
+    - *Monitor* 配置、管理信息
+    - *CRUSH* 对象寻址、读写、均衡
+    - *Peering* 一致性、恢复、克隆、快照、Scrub
+**** 1.5.1 Monitor
+     - *Paxos* 实现数据一致性
+     - *Cluster Map*
+       + *Monitor Map*
+         fsid/Minotor addr:port/current epoch
+       + *OSD Map*
+       + *MDS Map*
+**** 1.5.2 对象存储
+     不是S3/Swift指的对象
+     - *基本存储单元(def:4MB)*
+       |------+--------------+--------------|
+       |   ID |  Binary Data | Metadata     |
+       |------+--------------+--------------|
+       | 1234 | 010111101... | name1 value1 |
+       |      |              | name2 value2 |
+       |      |              | nameN valueN |
+       |------+--------------+--------------|
 
+**** 1.5.3 pool/PG
+     OSD1        OSD2         OSD3
+      \-----+----/ \-----+----/
+            |            |
+           PG1 -------  PG2 ----->   pool1(replicated)
+            |            |
+          objs1        objs2
+     
+     - *pool* 存储池
+       规定数据冗余类型、副本分布策略
+       replicated(副本)/Erasure Code(纠删码)
+     - *PG(Placement Group)* 归置组
+       对象集合
+**** 1.5.4 对象寻址
+     1. Map pg_id --> PG
+        pg_id = hash(object_id) % pg_num
+     2. Map PG --> OSD (CRUSH)
+        OSD = CRUSH(PG)
+**** 1.5.5 数据读写
+     - write
+       client          primaryOSD        SecondaryOSD        TeriaryOSD
+       write(0) -----> write(1)   -----> write(2)
+                       ack(1)     <-----
+                                  -------------------------> write(3)
+                       ack(2)     <-------------------------
+       ack(3)   <-----
+**** 1.5.6 数据均衡
+     - *增加OSD* 发生数据迁徙, 单位(PG)
+       update CRUSH Map -> [PG - OSD]
+       |--------+------+------+------+------|
+       | before | OSD1 | OSD2 | OSD3 | NULL |
+       |--------+------+------+------+------|
+       | PGa    | PGa1 | PGa2 | PGa3 |      |
+       | PGb    | PGb1 | PGb2 | PGb3 |      |
+       | PGc    | PGc1 | PGc2 | PGc3 |      |
+       | PGd    | PGd1 | PGd2 | PGd3 |      |
+       |--------+------+------+------+------|
+       | after  | OSD1 | OSD2 | OSD3 | OSD4 |
+       |--------+------+------+------+------|
+       | PGa    |      | PGa2 | PGa3 | PGa1 |
+       | PGb    | PGb3 | PGb1 |      | PGb2 |
+       | PGc    | PGc2 |      | PGc1 | PGc3 |
+       | PGd    | PGd1 | PGd2 | PGd3 |      |
+       |--------+------+------+------+------|
+**** 1.5.7 Peering
+     - *OSD 重启/失效* 发生Peering
+       PG内所有副本通过PG日志来达成数据一致的过程；peering结束后才对外提供读写服务；
+**** 1.5.8 Recovery/Backfill
+     - *Recovery* 在Peering过程中推算出不一致的对象列表来修复其他副本上的数据；
+     - *Backfill* 在OSD长时失效后从新加入集群时，原OSD数据过时需要进行Backfill(回填)
+**** 1.5.9 Erasure Code(纠删码)
+     - 1960s提出
+     - 原理
+       将数据分成N份，计算出M份校验数据，N+M分别保存到不同设备；
+       最多允许M个数据快失效，通过N+M份中的任意N分数据就能还原。
+**** 1.5.10 快照和克隆
+     - *snapshot* 存储设备某时刻的全部只读镜像；
+       *pool snapshot* 
+       *user snapshot* RBD 用户级快照
+     - *clone* 某时刻的全部可读写镜像；
+       *RBD* RBD-snapshot + librbd-Copy-on-Write(cow)
+**** 1.5.11 Cache Tier(cache 等级)
+     - *自动分层* pool为基础
+       cache pool (SSD)
+        \- data pool (HDD)
+
+     - *结构图*
+       ceph-client     Objecter
+                  <-->    |
+                          +---   Cach Tier(Faster I/O)
+                          \---   Storage Tier(Slower I/O)
+**** 1.5.12 Scrub
+     - *检查数据一致性* 后台定期检查
+** 2. 通用模块
+   Object/Buffer/ThreadPool/Finisher(异步回调)/Throttle(限制系统请求)/SafteTimer(定时器)
+*** 2.1 Object
+    - 默认4MB的数据快，对应一个文件，
+      struct object_t{string name; ...};
+      struct sobject_t{...; 
+                        snapid_t snap; /* CEPH_NOSNAP | id */}; // object_t 增加snapshot信息
+      struct hobject_t{ sobject_t so;
+                        uint32_t hash;
+                        bool max;
+                        ... }; // hash object, sobject_t 增加hash字段
+      struct ghobject_t{}; // hobject_t + gereration + shard_id; 用于ErasureCode模式下
+    - 相关类：object/sobject/hobject/ghobject
+*** 2.2 Buffer
+    就是一个名字空间，名字空间下定义了相关的数据结构；
+    buffer::raw
+    buffer::ptr
+    buffer::list
+**** 2.2.1 buffer::raw
+     原始数据 + 长度 + 引用计数 + crc
+     class buffer::raw{
+     public:
+       char *data; // 数据指针
+       unsigned len; // 数据长度
+       atomic_t nref; // 引用计数
+       mutable RWLock crc_lock; // 读写锁，保护crc_map
+       map<pair<size_t, size_t>, pair<uint32_t, uint32_t> > crc_map; // crc校验信息
+     };
+     class buffer::raw_malloc : public buffer::raw{}; // 内存分配
+     class buffer::raw_mmap_pages : public buffer::raw{}; //　内存映射
+     class buffer::raw_posix_aligned // 分配内存对齐空间
+     class buffer::raw_hack_aligned // 系统不支持对齐情况下，自己实现的对齐
+     class buffer::raw_pipe // pipe 作为buffer内存空间
+     class buffer::raw_char // C++ new 分配空间
+**** 2.2.2 buffer::ptr
+     对buffer::raw的一个部分数据段，raw中的任意数据段；
+     class CEPH_BUFFER_API ptr{
+       raw *_raw;
+       unsigned _off, _len;
+       ...
+     };
+     [ ........................ raw .....................]
+                [ptr<_raw=raw, _off=100, len=50> ...]
+**** 2.2.3 buffer::list
+     buffer::list多个buffer::ptr的列表
+     class buffer::list{
+       std::list<ptr> _buffers;
+       unsigned _len; // 总长度
+       unsigned _memcopy_count; // 内存对齐数据量
+       ptr append_buffer;
+       multable iterator last_p;
+     };
+*** 2.3 ThreadPool
+     _threads
+     join _old_threads
+     记录线程状态，如果超时就断言自杀；
+**** 2.3.5 Sharded ThreadPool
+     void shardedthreadpool_worker(uint32_t thread_index);
+*** 2.4 Finisher
+    执行回调
+** 3. 网络通信
+*** 3.1 通信架构
+    src/msg    抽象框架
+     +- sample 每个连接创建2个线程，对于I/O
+     +- async  epoll
+     +- xio    accelio,支持infiniband
+**** 3.1.1 Message
+     [header][user_data][footer]
+**** 3.1.2 Connection
+**** 3.1.3 Dispatcher
+**** 3.1.4 Messnger
+* 杂项
+** 目录结构
+   - ceph
+     + src ;各功能模块
+       - include
+       - common         ; 公共
+       - log            ; 日志
+       - global         ; 全局
+       - auth           ; 授权
+       - crush          ;
+       - msg            ; 消息通信
+       - messages       ; 消息定义
+       - os             ; 对象(Object Store)
+       - osdc           ; OSD Client
+       - mon            ;
+       - mds            ;
+       - rgw            ;
+       - librados       ;
+       - librbd         ;
+       - client         ; cephfs
+       - mount          ;
+       - tools          ;
+       - test
+       - prefglue       ; 性能优化相关
+       - doc            ; 代码相关说明文档
+     + qa  ;功能测试
+     + wireshark ; wireshark的ceph插件
+     + admin     ; 管理工具，假设文档服务器
+     + debian    ; 制作debian安装包
+     + doc       ; 项目文档
+     + man       ; 手册文件
