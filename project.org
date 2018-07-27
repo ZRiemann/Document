@@ -269,3 +269,5 @@
       17:30+1 review and summarizes
     - plan
       Scheme 3.2 More Recursion
+  + Jul
+    - <2018-07-27 Fri> plutus market add sqlite3 database;
