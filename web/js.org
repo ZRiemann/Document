@@ -1,5 +1,6 @@
 * js全栈
   https://www.liaoxuefeng.com/wiki/001434446689867b27157e896e74d51a89c25cc8b43bdb3000
+  https://developer.mozilla.org/en-US/docs/Web/JavaScript
 ** 快速入门
    一般放在html <head>中
    <head><script>alert('Hello, world');</script></head>
@@ -39,5 +40,353 @@
       arr.slice(0,3); // [1, 2, 3.14]
     - *对象* key-value 无序集合
       var person = {name:'bob', age:20, tags:['aaa', 'bbb','ccc']};
+      person.name;
     - *变量* var <key>=<value>;
     - *strict* 'use strict'; 强制变量声明var
+    - *Map/Set*
+      var m = new map();
+      m.set('aaa', 123);
+      m.get('aaa');
+      var s = new set();
+      for(var x of m){console.log(x);}
+*** 控制结构
+    - if(){}else if(){}else{}
+      var height = parseFloat(prompt("aaa")); // 提示获取输入
+    - var i; for(i=1; i<=1000; ++i){x = x + i;}
+      var arr = ['apple', 'google', 'microsoft'];
+      for(i=0; i<var.length; i++){console.log(var[i]);}
+      for(var key in o){console.log(key);}
+      *while(){}*
+      *do{}while();
+** 函数
+    *function abs(x){if(x>=0){return x;}return -x;}*
+    *var abs = function(x){...};*
+    *typeof <var>* 
+    var x = 1;
+    typeof x; // 'number'
+    *arguments* 参数数组
+    *function foo(a, b, ...rest){...}*
+    *变量作用域* 同C
+    *名字空间* 全局对象window；
+    var nsapp={};
+    nsapp.foo = function(){return 'foo';}
+    *let局部作用域*
+    *const常量*
+    *解构赋值* var [x,y,z] = ['hello', 123, 3.14];
+    var x=1,y=2;
+    [x,y]=[y,x]
+    var {hostname:domain, pathname:path}=location;
+    function buildDate({year, month, day, hour=0, minute=0, second=0}) {
+    return new Date(year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second);
+    }
+    buildDate({ year: 2017, month: 1, day: 1 });
+    *方法(成员函数)*
+    var person={
+    name:'aaa',
+    birth:1990,
+    age:function(){
+      var y = new Date().getFullYear();
+      return y - this.birth;
+    },
+    age1:function(){
+      var that = this;
+      function getAgeFromBirth(){
+        var y = new Date().getFullYear();
+        return y - that.birth;
+      }
+      return getAgeFromBirth();
+    },
+    age2:getAgr()
+    };
+    function getAge(){this.birth;}
+    getAge.apply(person,[]);
+    getAge.call(person);
+    Math.max.call(null,3,5,4);
+    Math.max.apply(null, [3,5,4]);
+** 高阶函数
+    函数作为参数，函数参数称为高阶函数；
+    function add(x,y,f){
+      return f(x) + f(y); // f为高阶函数
+    }
+    - *map/reduce*
+      function pow(x) {
+        return x * x;
+      }
+      var arr = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      var results = arr.map(pow); // [1, 4, 9, 16, 25, 36, 49, 64, 81]
+      console.log(results);
+      arr.reduce(function (x, y) {
+      return x + y;
+      }); // 45
+    - *filter*
+      arr.filter(function (x){return x % 2 !== 0;});
+      arr.filter(function (element, index, self){
+        ...
+        return true;
+      });
+    - *sort*
+      arr.sort(function (x,y){...});
+    - *闭包*
+      把函数作为结果返回值；
+      function lazy_sum(arr) {
+        var sum = function () {
+          return arr.reduce(function (x, y) {
+            return x + y;
+          });
+        }
+        return sum;
+      }
+      var f = lazy_sum([1,2,3,4,5]);
+      f();
+    - *箭头函数* 修复this问题
+      fn = x => x * x
+      function fn(x){return x * x;}
+      var obj = {
+        ...,
+        getAge:function(){
+          var fn = () => new Date().getFullYear - this.birth;
+        }
+      }
+    - *generator* 生成器
+      function* foo(x){
+        yield x + 1;
+        yield x + 2;
+        return x + 3;
+      }
+      function fib(max) {
+        var
+          t,
+          a = 0,
+          b = 1,
+        arr = [0, 1];
+        while (arr.length < max) {
+          [a, b] = [b, a + b];
+          arr.push(b);
+        }
+      return arr;
+      }
+
+      function* fib(max) {
+        var
+        t,
+        a = 0,
+        b = 1,
+        n = 0;
+        while (n < max) {
+        yield a; // 重点
+        [a, b] = [b, a + b];
+        n ++;
+        }
+      return;
+      }
+      var f = fib(5);
+      f.next();
+      for(var x of fib(10)){console.log(x);)
+** 标准对象
+    typeof 123; // 'number'
+    typeof NaN; // 'number'
+    typeof 'str'; // 'string'
+    typeof true; // 'boolean'
+    typeof undefined; // 'undefined'
+    typeof Math.abs; // 'function'
+    typeof null; // 'object'
+    typeof []; // 'object'
+    typeof {}; // 'object'
+    - *包装对象*
+      typeof new Number(123); // object
+      var n = Number('123'); // parseInt()
+      typeof n; // number
+      arr.isArray(); // 判断是否数组
+      123..toString();
+      (123).toString();
+    - *Date*
+      var now = new Data();
+      var d = new Date(2015, 5, 19, 20, 15, 30, 123);
+      var d = Date.parse('2015-06-24T19:49:22.875+08:00');
+      var d = new Date(1435146562875);
+      d.toLocalString();
+      d.toUTCString();
+    - *RegExp*
+      | key           | description    | sample                  |
+      |---------------+----------------+-------------------------|
+      | \d            | 匹配一个数字   | 00\d ->007 ok; 00A fail |
+      | \w            | 一个字母或数字 |                         |
+      | .             | 任意一个字符   |                         |
+      | *             | 0~n            |                         |
+      | +             | 1~n            |                         |
+      | ?             | 0-1            |                         |
+      | {n}           | nnnnn          |                         |
+      | {n,m}         | n~m字符        |                         |
+      | \s            | 空白符         | \d{3}\s+\d{3,8}         |
+      | [0-9a-zA-Z\_] |                |                         |
+      | ^             | 开头           |                         |
+      | $             | 结尾           |                         |
+      |---------------+----------------+-------------------------|
+      
+      /表达式/
+      new RegExp('表达式')
+      var re = /^\d{3}\-\d{3,8}$/;
+      *test 测试*
+      re.test('010-12345');
+      'a b   c'.split(' '); // a,b, , ,c
+      'a b   c'.split(/\s+/); // a,b,c
+      'a,b;; c  d'.split(/[\s\,\;]+/); // ['a', 'b', 'c', 'd']
+      *exec + () 分组，提取字符串*
+      var re = /^(\d{3})-(\d{3,8})$/;
+      re.exec('010-12345'); // ['010-12345', '010', '12345']
+      re.exec('010 12345'); // null
+      *非贪婪匹配*
+      var re = /^(\d+)(0*)$/;
+      re.exec('102300'); // ['102300', '102300', '']
+      var re = /^(\d+?)(0*)$/;
+      re.exec('102300'); // ['102300', '1023', '00']
+      */^(\d+)/g* g 表示全局匹配
+      var r2 = new RegExp('test','g');
+    - *json*
+      JSON.parse();
+      toJSON:function(){...}
+** 面向对象编程
+    - *prototype*
+      var robot = {
+        name:'robot',
+        height:1.6,
+        run:function(){console.log(this.name + ' is running');}
+      };
+      xiaoming.__proto__ = robot;
+      #+BEGIN_SRC javascript
+      // 原型对象:
+      var Student = {
+          name: 'Robot',
+          height: 1.2,
+          run: function () {
+              console.log(this.name + ' is running...');
+          }
+      };
+
+      function createStudent(name) {
+          // 基于Student原型创建一个新对象:
+          var s = Object.create(Student);
+          // 初始化新对象:
+          s.name = name;
+          return s;
+      }
+
+      var xiaoming = createStudent('小明');
+      xiaoming.run(); // 小明 is running...
+      xiaoming.__proto__ === Student; // true
+
+      function Student(name) {
+          this.name = name;
+          this.hello = function () {
+              alert('Hello, ' + this.name + '!');
+          }
+      }
+      var xiaoming = new Student('小明');
+      xiaoming.name; // '小明'
+      xiaoming.hello(); // Hello, 小明!
+
+
+      // 原型继承
+      // PrimaryStudent构造函数:
+      function PrimaryStudent(props) {
+          Student.call(this, props);
+          this.grade = props.grade || 1;
+      }
+
+      // 空函数F:
+      function F() {
+      }
+
+      // 把F的原型指向Student.prototype:
+      F.prototype = Student.prototype;
+
+      // 把PrimaryStudent的原型指向一个新的F对象，F对象的原型正好指向Student.prototype:
+      PrimaryStudent.prototype = new F();
+
+      // 把PrimaryStudent原型的构造函数修复为PrimaryStudent:
+      PrimaryStudent.prototype.constructor = PrimaryStudent;
+
+      // 继续在PrimaryStudent原型（就是new F()对象）上定义方法：
+      PrimaryStudent.prototype.getGrade = function () {
+          return this.grade;
+      };
+
+      // 创建xiaoming:
+      var xiaoming = new PrimaryStudent({
+          name: '小明',
+          grade: 2
+      });
+      xiaoming.name; // '小明'
+      xiaoming.grade; // 2
+
+      // 验证原型:
+      xiaoming.__proto__ === PrimaryStudent.prototype; // true
+      xiaoming.__proto__.__proto__ === Student.prototype; // true
+
+      // 验证继承关系:
+      xiaoming instanceof PrimaryStudent; // true
+      xiaoming instanceof Student; // true
+
+      // class 继承
+      class Student {
+          constructor(name) {
+              this.name = name;
+          }
+
+          hello() {
+              alert('Hello, ' + this.name + '!');
+          }
+      }
+
+      var xiaoming = new Student('小明');
+      xiaoming.hello();
+
+      class PrimaryStudent extends Student {
+          constructor(name, grade) {
+              super(name); // 记得用super调用父类的构造方法!
+              this.grade = grade;
+          }
+
+          myGrade() {
+              alert('I am at grade ' + this.grade);
+          }
+      }
+      #+END_SRC
+      
+** 浏览器
+   - *window*
+     充当全局作用于，同时表示浏览器窗口；
+     *innerWidth/Height*
+   - *navigator*
+     *appName* 浏览器名称
+   - *screen* 屏幕信息
+   - *location* 当前页的URL
+   - *document* 当前页面
+     document.cookie;
+   - *history* 
+** Node.js
+   后端web
+   - *npm -v* 
+   - *mode.exports = <name>* // 导出模块
+   - *var greet = require('./hello');* // 引入模块
+*** 基本模块
+    - *global*
+      global.console;
+    - *process* global.process;
+**** fs 负责文件读写
+     $.getJSON('http://example.com/ajax', function (data){})
+     var fs = require('fs');
+     fs.readFile('sample.txt', 'utf-8', function(err, data){
+       if(err){console.log(err);}else{console.log(data);}
+     });
+     fs.stat('sample.txt', function(err, stat){});
+**** stream
+     var rs = fs.createReadStream('sample.txt', 'utf-8');
+     rs.on('data', function(chunk){...});
+     rs.on('end',function(){...});
+**** pipe
+     rs.pipe(ws);
+     readable.pipe(writable, {end:false});
+*** Web开发
+**** koa
+     

@@ -1,0 +1,105 @@
+* android studio
+  http://www.cnblogs.com/whycxb/category/1001652.html
+** 代码混淆
+修改 build.gradle -> buildTypes.release.minifyEnabled true
+
+#==================================API=================================================
+#API里边的类，最好都要避免混淆
+-keep public class * extends android.app.Fragment
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Application
+-keep public class * extends android.app.Service
+-keep public class * extends android.content.BroadcastReceiver
+-keep public class * extends android.content.ContentProvider
+-keep public class * extends android.app.backup.BackupAgentHelper
+-keep public class * extends android.preference.Preference
+-keep public class * extends android.support.v4.**
+-keep public class com.android.vending.licensing.ILicensingService
+
+-dontwarn android.annotation
+-keepattributes *Annotation*
+
+#=====================保留了所有的Native变量名及类名=====================
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+#某些构造方法不能去混淆
+-keepclasseswithmembernames class * {
+    public <init>(android.content.Context, android.util.AttributeSet);
+}
+#枚举类不能去混淆
+-keepclasseswithmembernames class * {
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+}
+
+#aidl文件不能去混淆.
+-keep class * implements android.os.Parcelable {
+  public static final android.os.Parcelable$Creator *;
+}
+
+-keepclassmembers class * {
+   public <init>(org.json.JSONObject);
+}
+
+#=====================不混淆资源类=====================
+-keepclassmembers class **.R$* {
+    public static <fields>;
+}
+#过滤R文件的混淆：
+-keep class **.R$* {
+    *;
+}
+
+#=================================当前项目==================================================
+#一般model最好避免混淆（model无关紧要，不混淆也没多大关系）如：
+#-keep class com.why.project.helloworld.bean.**{*;}
+
+#===================================其他常规================================================
+#加上这句话，不然会在控制台中报warning警告【不添加的话比较好，可以用来验证签名是否成功】
+#-ignorewarnings
+#设置混淆的压缩比率 0 ~ 7
+-optimizationpasses 5
+#Aa aA
+-dontusemixedcaseclassnames
+#混淆后生产映射文件 map 类名->转化后类名的映射
+-verbose
+#混淆采用的算法.
+-optimizations !code/simplification/arithmetic,!field/*,!class/merging/*
+* android develop
+** 1. 项目组成
+   - src ; 源码目录
+   - AndroidMainfest.xml ; 清单文件，描述程序构成，组件，权限等配置
+   - gen/R.java ;
+   - assets ; 静态资产文件
+   - drawable ; 图标
+   - layout ; 布局
+   - values ; string.xml
+   - apk ; 安装包
+** 2. 核心组件
+   - View ; 界面视图，组织UI控件
+   - Intent ; 意图，支持组件间通信
+   - Activity ; 处理界面与UI交互
+   - Content Provider ; 存储共享数据
+   - IntentReceiver ; 接收消息及事件处理
+   - Service ; 后台服务，硬件与启动
+   - Notification ; 消息与通知
+** 3. Activity(活动)
+*** 概念
+    - 最基本的应用程序组件
+    - 一个单独的屏幕，显示响应事件，以及启动其它组件
+    - android.app.Activity
+*** 生命周期
+    onCreate()/onStart()/onRestart()/onResume()/onPause()/onStop()/onDestroy()
+    (Activity start)
+    onCreate()            /---<----------------------------------------\
+    onStart()  <-------------------------------------\                 |
+    onResume() <-----------------------------------\ |                 |
+    (Activity is-running)                          | |                 |
+    <New Activity is-started)           (comes to the foreground)  (navigates back)
+    onPause() -->----------------------------------/ |            (porcess is-killed)
+    <Your Activity is no longer visible>             |                 |
+    onStop() -->------------------------------------/                  |
+                  \--------------------->------------------------------/
+    onDestroy()
+    (Activity is-shut down)
+   
