@@ -1,0 +1,69 @@
+* Architecture(架构)
+  https://webrtc.org/architecture/
+
+  Web app
+  ----------------------------------------------------------------------
+  Web API (Edited by W3C WG)
+  ======================================================================
+  WebRTC C++ API(Peer Connection)
+  ----------------------------------------------------------------------
+  Session management/Abstract signaling(Session)
+  ----------------------------------------------------------------------
+  Voice Engine        Video Engine         Transport
+  iSAC/iLBC           VP8                  SRTP
+  NetEQ               Video jitter buffer  Multiplexing
+  AEC/CR              Image enhancements   P2P/STUN+TURN+ICE
+  ----------------------------------------------------------------------
+  Audio               Vedio Capture        Network I/O
+  Capture/Rander      
+  
+  https://chromium.googlesource.com/webm/libvpx ; VP8 WebM Project
+* Real-time communication without plugins
+  https://www.html5rocks.com/en/tutorials/getusermedia/intro/
+  https://w3c.github.io/mediacapture-main/getusermedia.html#idl-def-MediaTrackConstraints
+* WebRTC three APIs
+  - MediaStream(aka getUserMedia) ; 获取多媒体流
+    https://w3c.github.io/mediacapture-main/getusermedia.html
+  - RTCPeerConnection             ; 信令通信
+  - RTCDataChannel                ; 点对点数据通信
+** two specs
+   - WebRTC
+     https://w3c.github.io/webrtc-pc/
+   - getUserMedia
+     https://www.w3.org/TR/mediacapture-streams/
+* My first WebRTC
+  1. 获取数据
+  2. p2p/跨越防火墙
+  3. 信令通信
+  4. 交换媒体/客户端能力集
+  5. 数据流传输
+* Security(安全)
+  https://www.ietf.org/proceedings/82/slides/rtcweb-13.pdf
+  - compromise security
+    未加密数据被截获
+    被程序非法记录或转发
+    流氓软件
+  - 避免上述问题的WebRTC特性
+    DTLS/SRTP 协议
+    所有WebTRC组件强制加密
+    摄像头和麦克风必须显式授权，
+* In conclulsion(结论)
+  民主化、分散化内容创建(content creation)和通信工具(democratize and decentralize tools)
+  用于电话，游戏，视频制作，音乐制作，新闻采集和许多其他应用。
+* Developer tools(开发者工具)
+  - 实时状态
+    chrome://webrtc-internals page in Chrome
+    opera://webrtc-internals page in Opera
+    about:webrtc page in Firefox
+  - https://github.com/webrtc/adapter
+  - https://appr.tc/
+  - http://io13webrtc.appspot.com/#69
+  - https://github.com/webrtc
+* Standards and protocols(标准与协议)
+  http://dev.w3.org/2011/webrtc/editor/webrtc.html
+  http://dev.w3.org/2011/webrtc/editor/getusermedia.html
+  http://tools.ietf.org/wg/rtcweb/charters
+  http://tools.ietf.org/html/draft-jesup-rtcweb-data-protocol-01
+  http://tools.ietf.org/html/draft-uberti-rtcweb-jsep-02
+  http://tools.ietf.org/html/rfc5245 ; proposed standard for ICE
+  http://tools.ietf.org/html/draft-ietf-rtcweb-use-cases-and-requirements-10
