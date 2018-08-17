@@ -1,3 +1,716 @@
+* w3schools
+  https://www.w3schools.com
+
+  |-------------------+----------------------------------------|
+  | tag               | description                            |
+  |-------------------+----------------------------------------|
+  | <quote>           |                                        |
+  | <blockquote>      |                                        |
+  | <abbr>            | 缩写，鼠标移动到上面会探出提示         |
+  | <address>         | 地址                                   |
+  | <cite>            | 引用工作标题 - 斜体                    |
+  | <bdo>             | bi-directional override ; 方向重写     |
+  |-------------------+----------------------------------------|
+  | Images            | 图片相关标签                           |
+  |-------------------+----------------------------------------|
+  | <img>             | 图片标签                               |
+  | <map>             | 图片内容映射 <img ... usemap="#map"    |
+  | <area>            | 图片区域, <map name="map"><area ...>   |
+  | <picture>         | 不同页面大小适配不同的图片             |
+  |-------------------+----------------------------------------|
+  | Tables            | 表格标签                               |
+  |-------------------+----------------------------------------|
+  | <table>           | 表格                                   |
+  | <tr>              | table row 行                           |
+  | <th>              | table header 表头                      |
+  | <td>              | table data/cell 表项                   |
+  | <caption>         | 标题                                   |
+  |-------------------+----------------------------------------|
+  | style             |                                        |
+  | border            | table, th, td{border:1px solid black;} |
+  |                   | 边框有重复                             |
+  | collapsed borders | table{...;border-collapse: collapse;}  |
+  |                   | 解决边框重复问题                       |
+  | Cell padding      | th,td{...; padding:15px;}              |
+  |                   | 控制表项留白大小                       |
+  | text-align        | th{ text-align: center;}               |
+  |                   | 控制表项内字符对齐方式                 |
+  | boarder-spaceing  | table{border-spacing:5px;}             |
+  |                   | 控制表项间距                           |
+  | colspan           | <th colspan="2">Tele</th>              |
+  |                   | 将表项拆分成2列                        |
+  | rowspan           | <th rowspan="2">                       |
+  |                   | 将表项拆分成2行                        |
+
+** 1. HTML Introduction
+*** 1.1 What is HTML?
+    一种网页标记语言
+    HTML stands for Hyper Text Markup Language
+    使用标记描述网页解构 ; HTML describes the structure of web pages using Markup
+    HTML 元素是网页块 ; HTML *elements* are the building blocks of HTML pages
+    HTML 使用标签(tag)呈现 ; HTML elements are-represented by *tags*
+    HTML 标签使用 head/paragraph/table 等标识 ; HTML tags label pieces of content such as heading , and so on
+    网页不显示标签，但是使用标签渲染页面；(将标签转化为渲染指令执行) ; Browsers do not display the HTML tags but use them to render the content of page
+*** 1.2 A Simple HTML Document
+    #+BEGIN_SRC html
+    <!--(MAST)declaration defines the document to be HTML5 -->
+    <!DOCTYPE html>
+    <!--The <html> elements is the root element of an HTML page-->
+    <html>
+      <!--The <head> element contains meta infomation(元信息) about the document-->
+      <head>
+        <!--specifies a title of the document ; 指定文档标题-->
+        <title>Page Title</title>
+      </head>
+      <!--contains the visible page content ; body 包含可视内容-->
+      <body>
+        <!--(h1~h6六层级标题)element defines a large heading ; 定义一个大号头部-->
+        <h1>My First Heading</h1>
+        <!--element defines a paragraph-->
+        <p>My first paragraph</p>
+      </body>
+    </html>
+    #+END_SRC
+*** 1.3 HTML tags
+    HTML tags are-element names surrounded by angle brackets ; HTML 标记是使用尖括号包围的元素名称
+    <tagname>content goes here...</tagname>
+    HTML tags normally come in paires like <p> and </p> ; HTML标记通常是配对的，如<p>...</p>
+    The first tag in a pair is the *start tag*, the second tag is the *end tag*. ; 第一个是 *开始标签*, 第二个是 *结束标签*
+    The end tag is-written like the start tag, but with a *forward slash(斜杠)* inserted before the tag name. ; 结束标签在标签名前加斜杠
+**** 1.3.1 Web Browsers (网页浏览器)
+    The purpose of a web broser(Chrome, IE, Firefox, Safari) is to read HTML documents and display them.
+    浏览器的一个目的是读取HTML文档然后显式该文档；
+    The browser does not display the HTML tags, but uses them to determine how to display the document(render).
+    浏览器不显示HTML标签，但使用标签来决定如何渲染页面；
+**** 1.3.2 HTML Page Structure (页面结构)
+     html(root)
+      +- head
+      +- body
+     Only the content inside <body> section is-displayed in a browser.
+**** 1.3.3 The <!DOCTYPE> Declaration
+     The <!DOCTYPE> declaration represents the document type, and helps browsers to display web pages correctly.
+     <!DOCTYPE>声明了文档类型，并帮助浏览器正确的显示页面
+     It mast only appear once, at the topof the page(before any HTML tags).
+     它必须出现一次，在页面的顶部(所有标签的上面)
+     The <!DOCTYPE> declaration is not case sensitive(大小写无关);
+     The <!DOCTYPE> declaration for *HTML5 is：<!DOCTYPE html>*
+**** 1.3.4 HTML Versions
+     |-----------+------|
+     | Version   | Year |
+     |-----------+------|
+     | HTML      | 1991 |
+     | HTML 2.0  | 1995 |
+     | HTML 3.2  | 1997 |
+     | HTML 4.01 | 1999 |
+     | XHTML     | 2000 |
+     | HTML5     | 2014 |
+     |-----------+------|
+
+*** 1.4 HTML Editors(编辑器)
+   Notepad/TextEdit/emacs/vim
+*** 1.5 HTML basic(基础)
+    - *HTML Headings(标题)* <h1>heading content</h1> ~ <h6>...</h6>
+    - *HTML Paragraphs(段落)* <p>paragraph content</p>
+    - *HTML Links(连接)* <a href="https://www.w3schools.com">This is a link</a>
+      The link's destination is-specified in the *href attribute*.
+      *Attributes* are-used to provide additional infomation about HTML elements.
+      *属性* 被用来给 *元素* 提供更多地信息。
+    - *HTML Images(图片)* <img src="w3schools.jpg" alt="W3schools.com" with="104" height="142">
+    - *HTML Bottons(按钮)* <botton>Click me</button>
+    - *HTML List <ul>|<ol>* <ul><li>...</li><li>...</li></ul>
+
+** 2. HTML Elements(元素)
+   An HTML element ususlly consists of a tart tag and end tag, with the content inserted in between:
+   <tagname>Content goes here...</tagname>
+   HTML element with no content are-called *empty elements*.
+   *Empty elements* do not have a end tag, such as the <br> element(which indicates a *line break*)
+*** 2.1 Nested HTML Elements(嵌套元素)
+    HTML elements can be-nested(elements can contain elements).
+    ALL HTML documents consists of(组成) hested HTML elements. ; 文档由元素组成，元素内部可以包含元素
+    The <html> element defines the *whole document*
+    The element *content* is tow other HTML elements(<h1> and <p>)
+*** 2.2 Empty Elements(空标签)
+    <br> or <br />
+*** 2.3 Use Lowercase Tags
+    HTML tags are-not case sensitive: <P> means the same as <p>.
+
+** 3. HTML Attributes(属性)
+   - ALL HTML elements can have attribute
+   - Attributes provide *additional information* about an element
+   - Attributes are-always *specified in the start tag*
+   - Attributes usually come in name/value paires like *name=value*
+   - A complete list of all attributes for each HTML element.
+     https://www.w3schools.com/tags/ref_attributes.asp
+     |----------------+-------------+-----------------------------------------------------|
+     | Attribute      | Belongs to  | Description                                         |
+     |----------------+-------------+-----------------------------------------------------|
+     | href           | 连接        | <a href="http://www.w3school.com">w2school</a>      |
+     | src            | 资源        | <img src="girl.jpg" with="500" height="600">        |
+     | alt            | 替代字符串  | <img src="not_exist.jpg" alt="image not exists"     |
+     | style          | 样式        | <p style="color:red">I am red text</p>              |
+     | lang           | 语言<html>  | <html lang="en-US"                                  |
+     | title          | tooltip提示 | <p title="tooltip">paragraph with tooltip</p>       |
+     | id             | 元素id      |                                                     |
+     | disabled       | 元素去使能  |                                                     |
+     |----------------+-------------+-----------------------------------------------------|
+     | accept         | <input>     | Specifies the tyeps of file that the servre accepts |
+     | accept-charset | <form>      | Specifies the character encodings                   |
+     | accesskey      | Global      | Specifies a shortcut key to active/focus an element |
+     | action         | <from>      |                                                     |
+*** The href Attribute
+    HTML links are define with the <a> tag, The link address is-specifed in href attribute:
+    <a href="https://www.w2shools.com">w3schools</a>
+*** The src/width/height Attribure
+    HTML images are define with the <img> tag.
+    The filename of the image sourece is specifie/d in the *src* attribute:
+    <img src "img_girl.jpg" width="500" height="600">
+*** The alt Attribute
+    The *alt* attribute specifies an *alternative()* text to be-used, when an image cannot be display\ed.
+    The value of the attribute can be rea\d by screen read.
+    This way, someone "listening" to the webpage, e.g. a blind person, can "hear" the element.
+    The *alt* attribute is also useful if the image does not exist
+    <img src="img_girl.jpg" alt="Girl with a jacket">
+*** The style Attribute
+    The style attribute is use/d to specify the styling of an element, like color,font,size etc.
+    <p style="color:red">I am a paragraph with red color</p>
+    see: CSS Tutoral
+*** The lang Attribute
+    The language of the document can be declare in the <html> tag.
+    Declaring a language is important for accessibility applications(screen readers) and search engines
+    <html lang="en-US">
+    The first two letters specify the language(en).
+    If There is a dialect(方言), use tow letter(US).
+*** The title Attribute
+    Here, a *title* attribute is-added to the <p>/<head>... element.
+    The value of the title attribute will be-displayed as a *tooltip* when you mouse over the content.
+    <p title="I'm a tooltip">This is a paragraph</p>
+*** We suggest
+    - use lower case atribute ; 使用小写字母
+    - quote attribute values; 使用双引号
+*** Single or Double Quotes
+    Double quotes around attribute values are the most common in HTML, but single quotes can also bu used.
+    In some situations, when the attribute value itself contains double quotes, 
+    it's nesscessary to use single quetes.
+    <p title='John "ShotGun" Nelson'>
+    <p title="Join 'ShotGun' Nelson">
+
+** 4. Headings(标题)
+    <h1~6><h1~6>
+**** Headings Are Important
+     *Search engines* use the head headings to index the structure and content of you web pages.
+     Users *skim(略读)* your pages by its headings.
+     It's important to use headings to show *the document structure*.
+     Use HTML headings for headings only. *Don't* use heading to make text *BIG* or *bold*.
+
+     Each HTML heading has a default size. However, you can specify the szie for any heading with
+     *style* attribute, using the CSS *font-size* property
+     *<h1 sytle="font-size:60px;">Heading 1 with 60 pixe</h1>*
+**** HTML Horizontal Rules(水平分割线)
+     The <hr> tag defines a thematic break in an HTML page,
+     and is most often displayed as a horizontal rule.
+     The <hr> element is use/d to separate(or define a change) in an HTML page
+     <h1>This is heading 1</h1>
+     <p>This is some text.</p>
+     <hr>
+     <h2>This is heading 2</h2>
+     <p>This is some other text.</p>
+     <hr>
+
+**** The HTML <head> Element
+     The HTML <head> element has nothing to do with HTML headings.
+     The <head> element is a container for metadata.
+     HTML metadata is data about the HTML document.
+     Metadata is not displayed.
+     The <head> element is place/d between <html> tag and <body> tag.
+     <html>
+     <head>
+     <title>My First HTML</title>
+     <meta charset="UTF-8">
+     </head>
+     <body></body>
+     </html>
+**** How to View HTML Source
+     
+** 5. Paragraphs(段落)
+   Browsers atomatically add some white space before and after a paragraph.
+*** HTML Display
+    The browser will remove any extra spaces and extra lines when the page is displaye/d
+    浏览器忽略所有多余的空格和换行,要换行使用<br> 或 <pre>
+*** HTML Line Breaks <br>
+    The HTML <br> element defines a *line break*.
+*** The Poem Problem, use <pre>
+    The HTML <pre> element defines *preformatted* text.
+    <pre>
+    My Bonnie lies over the ocean.
+    
+    My Bonnie lies over the sea.
+    
+    ...
+    </pre>
+
+** 6. Styles(样式)
+   Setting the sytle of an HTML element, can be don/e with the style attribute.
+   The HTML style attribute has the following *syntax*:
+   <tagname style="CSSproperty:CSSvalue;">
+   #+BEGIN_SRC html
+   <!-- Background color -->
+   <body style="background-color:powderblue;">
+     <h1 style="color:blue;font-family:verdana;font-size:300%">This is a heading</h1>
+     <p style="color:red;font-familly:courier">This is a paragrapf.</p>
+     <p style="text-align:center;">Centered paragraph</p>
+   </body>
+   #+END_SRC
+** 7. Text Formatting
+   HTML also defines speccial elements for defining text with a special meaning.
+   
+   Browsers display <strong> as <b>, and <em> as <i>. However, there is a difference
+   in the meaning of thest tags:<b> and <i> defines bold and etalic text, 
+   but <strong> and <em> means that the text is "important".
+   |------------+---------------------------------|
+   | tag        | desciption                      |
+   |------------+---------------------------------|
+   | <b>...</b> | Bold text ;粗体字               |
+   | <strong>   | Important text; 重点<b>         |
+   | <i>        | Italic text; 斜体               |
+   | <em>       | Emphasized text ; 强调<i>       |
+   | <mark>     | Marked text ; 标记-字符背景黄色 |
+   | <small>    | Small text ; 小 字体相对变小    |
+   | <del>      | Deleted text ; 删除-中划线      |
+   | <ins>      | Inserted text ; 插入-下划线     |
+   | <sub>      | Subscript ;下标                 |
+   | <sup>      | Superscrpt ; 上标               |
+   |------------+---------------------------------|
+   #+BEGIN_SRC html
+   <!DOCTYPE html>
+   <html>
+   <body>
+   <p><b>This text is bold</b></p>
+   <p><i>This text is italic</i></p>
+   <p>This is<sub> subscript</sub> and <sup>superscript</sup></p>
+   <p><strong>This text is strong.</strong></p>
+   <p><em>This text is-emphasized.</em></p>
+   <h2>HTML <mark>Marked</mark> Formatting</h2>
+   <h2>HTML <small>Small</small> Formatting</h2>
+   <p>My favorite color is <del>blue</del> red.</p>
+   <p>My favorite <ins>color</ins> is red.</p>
+   </body>
+   </html>
+
+   #+END_SRC
+   
+** 8. HTML Quotation and Citation Elements(引用)   
+   #+BEGIN_SRC html
+   <!DOCTYPE html>
+   <html>
+   <body>
+   <!-- blockquote -->
+   <p>Here is a quote from WWF's website:</p>
+   <blockquote cite="http://www.worldwildlife.org/who/index.html">
+   For 50 years, WWF has been protecting the future of nature.
+   The world's leading conservation organization,
+   WWF works in 100 countries and is supported by
+   1.2 million members in the United States and
+   close to 5 million globally.
+   </blockquote>
+   <!-- abbr -->
+   <p>The <abbr title="World Health Organization">WHO</abbr> was founde/d in 1948.</p>
+   <!-- address -->
+   <address>
+   Written by John Doe.<br> 
+   Visit us at:<br>
+   Example.com<br>
+   Box 564, Disneyland<br>
+   USA
+   </address>
+   <!-- cite -->
+   <img src="img_the_scream.jpg" width="220" height="277" alt="The Scream">
+   <p><cite>The Scream</cite> by Edvard Munch. Painted in 1893.</p>
+   <!-- bdo -->
+   <bdo dir="rtl">This line will be-written from right to left</bdo>
+   </body>
+   </html>
+   #+END_SRC
+** 9. HTML Comments(批注)
+   Comments are-not displayed by the browser, but they can 
+   help document your HTML source code. ; 有助文档月的，调试
+   #+BEGIN_SRC html
+   <!DOCTYPE html>
+   <html>
+   <body>
+   <!-- This is a comment -->
+   <p>This is a paragraph.</p>
+   <!-- Comments are not displayed in the browser -->
+   <!-- Do not display this at the moment
+   <img border="0" src="pic_trulli.jpg" alt="Trulli">
+   -->
+   </body>
+   </html>
+   #+END_SRC
+** 10. HTML Colors
+   HTML colors are specifie/d using predifined color names, or RGB,HEX,HSL,RGBA,HSLA values.
+   https://www.w3schools.com/colors/colors_names.asp
+   - background-color:Tormato;   背景色
+   - color:DodgerBlue;           字体色
+   - Border:2px solid Tomato;    边框色
+   + hsl(hue, saturation, lightness)
+   #+BEGIN_SRC html
+   <!DOCTYPE html>
+   <html>
+   <body>
+   <!-- background-color -->
+   <h1 style="background-color:Tomato;">Tomato</h1>
+   <h1 style="background-color:Orange;">Orange</h1>
+   <h1 style="background-color:DodgerBlue;">DodgerBlue</h1>
+   <h1 style="background-color:MediumSeaGreen;">MediumSeaGreen</h1>
+   <h1 style="background-color:Gray;">Gray</h1>
+   <h1 style="background-color:SlateBlue;">SlateBlue</h1>
+   <h1 style="background-color:Violet;">Violet</h1>
+   <h1 style="background-color:LightGray;">LightGray</h1>
+   <!-- 字体颜色 -->
+   <h1 style="color:Tomato;">Hello World</h1>
+   <p style="color:DodgerBlue;">Lorem ipsum...</p>
+   <p style="color:MediumSeaGreen;">Ut wisi enim...</p>
+   <!-- 边框颜色 -->
+   <h1 style="border:2px solid Tomato;">Hello World</h1>
+   <h1 style="border:2px solid DodgerBlue;">Hello World</h1>
+   <h1 style="border:2px solid Violet;">Hello World</h1>
+   <!-- 数值表示颜色 -->
+   <h1 style="background-color:rgb(255, 99, 71);">...</h1>
+   <h1 style="background-color:#ff6347;">...</h1>
+   <h1 style="background-color:hsl(9, 100%, 64%);">...</h1>
+
+   <h1 style="background-color:rgba(255, 99, 71, 0.5);">...</h1>
+   <h1 style="background-color:hsla(9, 100%, 64%, 0.5);">...</h1>
+   </body>
+   </html>
+   #+END_SRC
+** 11 HTML Styles-CSS
+   CSS stands for Cascading Style Sheets.
+   CSS describes how HTML elements are t be displaye/d on schreen, paper, or in other media.
+   CSS saves a lo/t of work. It can control the layout of multiple web pages all at once.
+   CSS can be edde/d to HTML elements in 3 ways:
+   - inline - by using the style attribute in HTML elements
+     <h1 style="color:blue;">This is a Blue Heading</h1>
+   - internal - by using a <style> element in the <head> section
+     #+BEGIN_SRC html
+     <!DOCTYPE html>
+     <html>
+     <head>
+     <style>
+     body {background-color: powderblue;}
+     h1   {color: blue;}
+     p    {color: red;}
+     </style>
+     </head>
+     <body>
+
+     <h1>This is a heading</h1>
+     <p>This is a paragraph.</p>
+
+     </body>
+     </html>
+     #+END_SRC
+   - external - by using an external CSS file(most common way to add CSS)
+     #+BEGIN_SRC html
+     <!DOCTYPE html>
+     <html>
+     <head>
+       <link rel="stylesheet" href="styles.css">
+     </head>
+     <body>
+
+     <h1>This is a heading</h1>
+     <p>This is a paragraph.</p>
+
+     </body>
+     </html>
+     #+END_SRC
+     
+     styles.css
+     border:1px solid powderblue - 边框
+     padding: 30 px -边框内衬垫
+     margin:50px - 边框外边缘
+     #+BEGIN_SRC css
+     body {
+         background-color: powderblue;
+     }
+     h1 {
+         color: blue;
+     }
+     p {
+         color: red;
+         border: 1px solid powderblue;
+         padding: 30px;
+     }
+     #+END_SRC
+   + <id> 单指一个element
+   + <class> 指一类element
+
+   表单解决模板化问题，
+   <id> and <class> 解决表单模板特例问题；
+
+*** The id Attribute
+    To define a specific style for one special element, and an <id> attribute to the element:
+    <p id="p01">I am different</p>
+    
+    Then define a style for the element with specific id:
+    #p01 {
+      color: blue;
+    }
+*** The class Attribute
+    To define a style for special types of element, add a <class> attribute to the element:
+    <p class="error">I am different</p>
+    then define a style for the element with the specific class:
+    p.error{
+      color:red;
+    }
+*** External References(外部关联)
+    <link rel="stylesheet" href="https://aaa.com/styles.css">
+** 12 HTML Links
+   Links allow users to click their way from page to page. ; 叶面跳转
+*** Hyperlinks
+    You can click on a link and jump to another document.
+    A link does not have to be text. It can be an image or any other html element.
+*** Syntax(语法)
+    <a href="url">link text</a>
+    The *href* attribute specifies the destination address
+    The *link text* is the visible part
+    Clicking on the *link text* will send yu to the specified address.
+*** Local Links
+    A Local link is specifie/d with a relative URL(without http://www...)
+*** Link Colors
+    An unvisited link is underline/d and blue
+    A visited link is underline/d and purple
+    An active link is underline and red
+    you can change it, by using CSS:
+    a:hover{} -鼠标指针悬浮在连接上
+    a:active{} -鼠标按下，但未弹开
+    #+BEGIN_SRC css
+    <style>
+    a:link {
+        color: green; 
+        background-color: transparent; 
+        text-decoration: none;
+    }
+
+    a:visited {
+        color: pink;
+        background-color: transparent;
+        text-decoration: none;
+    }
+
+    a:hover {
+        color: red;
+        background-color: transparent;
+        text-decoration: underline;
+    }
+
+    a:active {
+        color: yellow;
+        background-color: transparent;
+        text-decoration: underline;
+    }
+    </style>
+    #+END_SRC
+*** The target Attribute
+    The target attribute specifies where to open the linked document.
+    <a ... target="_blank">link</a>
+    - _blank - Opens the linked document in a new window or tab
+    - _self - Opens ... in the same window/tab as it was clicke/d (default)
+    - _parent -Opens ... in the parent frame
+    - _top -Opens ... in the full body of the body(break out of the frame)
+    - framename -Opens ... in a named frame
+*** Image as Link
+    #+BEGIN_SRC html
+    <a href="default.asp">
+      <img src="smiley.gif" alt="HTML tutorial" style="width:42px;height:42px;border:0;">
+    </a>
+    #+END_SRC
+*** Link Titles
+    连接内容提示
+    #+BEGIN_SRC html
+    <a href="https://www.w3schools.com/html/" title="Go to W3Schools HTML section">Visit our HTML Tutorial</a>
+    #+END_SRC
+*** Create a Bookmark
+    HTML bookmarks are use/d to allow reader to jump to specific parts of a web page.
+    Bookmark can be useful if your webpage is very long.
+    To make a bookmark, you mast first create the bookmark, and then add a link to it.
+    <h2 id="C4">Chapter 4</h2>
+    <a href="#C4">Jump to Chapter4</a>
+    <a href="html_demo.html#C4">Jump to C4 from another page</a>
+*** External Paths
+    <a href="https://www.w3schools.com/html/default.asp">HTML tutorial</a>
+** 13 HTML Images
+   Images can improve the design and appearance of a web page.
+*** Syntax
+    <img src="url">
+*** The alt Attribute
+    <img src="url" alt="Flowers in Chania">
+*** Image Size - Width and Height
+    <img src="img_girl.jpg" alt="Girl in a jacket" style="width:500px;height:600px;">
+    <img src="img_girl.jpg" alt="Girl in a jacket" width="500" height="600">
+*** Images in Another Folder
+    <img src="/images/html5.gif">
+*** Images on Another Server
+    <img src="https://aaa/images/w3school_green.jpg">
+*** Animated Images
+    <img src="programming.gif">
+*** Image as a Link
+    <a href="sss.html"><img src="aaa.jpg"></a>
+*** Image Floating
+    loat:right
+    <style="float:right;width:32px;height:42px;">
+    #+BEGIN_SRC html
+    <p>
+    <img src="smiley.gif" alt="Smiley face" style="float:right;width:42px;height:42px;">
+    A paragraph with a floating image. A paragraph with a floating image. A paragraph with a floating image.
+    </p>
+    #+END_SRC
+*** Image Maps
+    The <map> tag defines an image-map.
+    An image-map is an image with clickable areas.
+    允许点击图片内部的区域，跳转到某连接
+    #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+    <body>
+
+    <h2>Image Maps</h2>
+    <p>Click on the computer, the phone, or the cup of coffee to go to a new page and read more about the topic:</p>
+
+    <img src="workplace.jpg" alt="Workplace" usemap="#workmap" width="400" height="379">
+
+    <map name="workmap">
+      <area shape="rect" coords="34,44,270,350" alt="Computer" href="computer.htm">
+      <area shape="rect" coords="290,172,333,250" alt="Phone" href="phone.htm">
+      <area shape="circle" coords="337,300,44" alt="Cup of coffee" href="coffee.htm">
+    </map>
+
+    </body>
+    </html>
+    #+END_SRC
+
+*** Background Image
+    To add a background image on an HTML element, use CSS property:
+    background-image:
+    #+BEGIN_SRC html
+    <body style="background-image:url('clouds.jpg')">
+    <h2>Background Image</h2>
+    </body>
+    #+END_SRC
+*** The <picture> Element
+    HTML5 introduced the <picture> element to add more flexibility when sepcifying
+    image resources.
+    The <picture> element contains a number of <source> elements, each referring to 
+    different image sources. This way the browser can choose the image that best fits
+    the current view and/or device.
+    Each <source> element have attributes describing when their image is the most suitable.
+    The browser will use the first <source> element with matching attribute values, 
+    and ignore an following <source> elements.
+    #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+
+    <h2>The picture Element</h2>
+
+    <picture>
+      <source media="(min-width: 650px)" srcset="img_pink_flowers.jpg">
+      <source media="(min-width: 465px)" srcset="img_white_flower.jpg">
+      <img src="img_orange_flowers.jpg" alt="Flowers" style="width:auto;">
+    </picture>
+
+    <p>Resize the browser to see different versions of the picture loading at different viewport sizes.
+    The browser looks for the first source element where the media query matches the user's current viewport width,
+    and fetches the image specified in the srcset attribute.</p>
+
+    <p>The img element is required as the last child tag of the picture declaration block.
+    The img element is used to provide backward compatibility for browsers that do not support the picture element, or if none of the source tags matched.
+    </p>
+
+    <p><strong>Note:</strong> The picture element is not supported in IE12 and earlier or Safari 9.0 and earlier.</p>
+
+    </body>
+    </html>
+    #+END_SRC
+*** HTML Screen Readers
+    Screen reader is a software program that reads the HTML code, converts the text
+    and allows the user to "linten" to the content. Screen readers are useful for
+    people who are blind, visually impaired, or learning disabled.
+
+** 14 HTML Tables
+   #+BEGIN_SRC html
+   <!DOCTYPE html>
+   <html>
+   <head>
+   <style>
+   table {
+       font-family: arial, sans-serif;
+       border-collapse: collapse;
+       width: 100%;
+   }
+
+   td, th {
+       border: 1px solid #dddddd;
+       text-align: left;
+       padding: 8px;
+   }
+
+   tr:nth-child(even) {
+       background-color: #dddddd;
+   }
+   </style>
+   </head>
+   <body>
+
+   <h2>HTML Table</h2>
+
+   <table>
+     <tr>
+       <th>Company</th>
+       <th>Contact</th>
+       <th>Country</th>
+     </tr>
+     <tr>
+       <td>Alfreds Futterkiste</td>
+       <td>Maria Anders</td>
+       <td>Germany</td>
+     </tr>
+     <tr>
+       <td>Centro comercial Moctezuma</td>
+       <td>Francisco Chang</td>
+       <td>Mexico</td>
+     </tr>
+     <tr>
+       <td>Ernst Handel</td>
+       <td>Roland Mendel</td>
+       <td>Austria</td>
+     </tr>
+     <tr>
+       <td>Island Trading</td>
+       <td>Helen Bennett</td>
+       <td>UK</td>
+     </tr>
+     <tr>
+       <td>Laughing Bacchus Winecellars</td>
+       <td>Yoshi Tannamuri</td>
+       <td>Canada</td>
+     </tr>
+     <tr>
+       <td>Magazzini Alimentari Riuniti</td>
+       <td>Giovanni Rovelli</td>
+       <td>Italy</td>
+     </tr>
+   </table>
+
+   </body>
+   </html>
+   #+END_SRC
+*** Defining an HTML Table
+    An HTML table is define/d with the <table> tag.
 * 2 HTML 
 ** 2.1 标签和元素
  - 标签(tag)
@@ -32,8 +745,9 @@
    |      | 除号 | &divide  |        |
    |------+------+----------+--------|
 ** 2.2 主体结构
-   <html>
-     <head>
+   <!DOCTYPE html>
+   <html>     ; 代表html
+     <head>   ; html 头
       <title>必须有标题</title>
       <base href="URL" target="WINDOW_NAME"/>
       <link rel="stylesheet" type="text/css" href="style.css"/>
@@ -44,7 +758,7 @@
       <script></script>
       
      </head>
-     <body>
+     <body>   ; html 体
      </body>
    </html>
  - <head>
@@ -68,17 +782,17 @@
    | style        | 样式属性                 |
    |              |                          |
 ** 2.3 格式标签
-   | 标签     | 描述     |
-   |----------+----------|
-   | <br>     | 换行     |
-   | <p>      | 换段落   |
-   | <center> | 居中     |
-   | <pre>    | 预格式化 |
-   | <li>     | 列表     |
-   | <ul>     | 无序列表 |
-   | <ol>     | 有序列表 |
-   | <hr>     | 水平分割线 |
-   |          |            | 
+   | 标签     | 描述       | description  |
+   |----------+------------+--------------|
+   | <br>     | 换行       |              |
+   | <p>      | 换段落     | paragraph    |
+   | <center> | 居中       | center       |
+   | <pre>    | 预格式化   | pre          |
+   | <li>     | 列表       | list         |
+   | <ul>     | 无序列表   | unorded list |
+   | <ol>     | 有序列表   | orded list   |
+   | <hr>     | 水平分割线 |              |
+   |          |            |              |
 ** 2.4 文本标签
    | 标签    | 描述         |
    |---------+--------------|
@@ -614,3 +1328,20 @@
  - 模板引擎
  - MVC模式
 
+* www进化论
+本文旨在向广场舞大妈(外行)了解网站原理；
+假设你是一个70年代的天才科学家，突然厌倦了看报纸，想自自己的电脑上看报纸；
+电脑上看报纸那怎么搞呢？
+报纸首先得有纸呀！
+于是吃包泡面功夫你做了张纸就叫浏览器(browser)。
+现在有纸了得有印刷机在上面印字呀！
+于是吃包泡面功夫你做了印刷机叫浏览器内核引擎。
+有了印刷机，但他不知道怎么排版！
+又吃包泡面，你发明了HTML(超文本标记语言)来告诉打印机怎么排版。
+但大妈很好学，很想知道HTML是怎么告诉打印机排版的。
+于是大妈默默的递给你一碗泡面，于是你感动了。
+一张报纸的内容，在电脑里叫一份文档(document)名字如index.html
+报纸的名称在文档里写作<head><title>钱江晚报</title></head>
+报纸里面有篇报道(element)西湖第一朵荷花开了，
+报道的(heading)大标题叫<h1>西湖第一朵荷花开了</h1>
+报道的内容(paragraph)叫段落<p>真每的荷花啊...</p>
