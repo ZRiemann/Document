@@ -1,46 +1,82 @@
 * w3schools
   https://www.w3schools.com
 
-  |-------------------+----------------------------------------|
-  | tag               | description                            |
-  |-------------------+----------------------------------------|
-  | <quote>           |                                        |
-  | <blockquote>      |                                        |
-  | <abbr>            | 缩写，鼠标移动到上面会探出提示         |
-  | <address>         | 地址                                   |
-  | <cite>            | 引用工作标题 - 斜体                    |
-  | <bdo>             | bi-directional override ; 方向重写     |
-  |-------------------+----------------------------------------|
-  | Images            | 图片相关标签                           |
-  |-------------------+----------------------------------------|
-  | <img>             | 图片标签                               |
-  | <map>             | 图片内容映射 <img ... usemap="#map"    |
-  | <area>            | 图片区域, <map name="map"><area ...>   |
-  | <picture>         | 不同页面大小适配不同的图片             |
-  |-------------------+----------------------------------------|
-  | Tables            | 表格标签                               |
-  |-------------------+----------------------------------------|
-  | <table>           | 表格                                   |
-  | <tr>              | table row 行                           |
-  | <th>              | table header 表头                      |
-  | <td>              | table data/cell 表项                   |
-  | <caption>         | 标题                                   |
-  |-------------------+----------------------------------------|
-  | style             |                                        |
-  | border            | table, th, td{border:1px solid black;} |
-  |                   | 边框有重复                             |
-  | collapsed borders | table{...;border-collapse: collapse;}  |
-  |                   | 解决边框重复问题                       |
-  | Cell padding      | th,td{...; padding:15px;}              |
-  |                   | 控制表项留白大小                       |
-  | text-align        | th{ text-align: center;}               |
-  |                   | 控制表项内字符对齐方式                 |
-  | boarder-spaceing  | table{border-spacing:5px;}             |
-  |                   | 控制表项间距                           |
-  | colspan           | <th colspan="2">Tele</th>              |
-  |                   | 将表项拆分成2列                        |
-  | rowspan           | <th rowspan="2">                       |
-  |                   | 将表项拆分成2行                        |
+  |--------------------+--------------------------------------------|
+  | tag                | description                                |
+  |--------------------+--------------------------------------------|
+  | <quote>            |                                            |
+  | <blockquote>       |                                            |
+  | <abbr>             | 缩写，鼠标移动到上面会探出提示             |
+  | <address>          | 地址                                       |
+  | <cite>             | 引用工作标题 - 斜体                        |
+  | <bdo>              | bi-directional override ; 方向重写         |
+  |--------------------+--------------------------------------------|
+  | Images             | 图片相关标签                               |
+  |--------------------+--------------------------------------------|
+  | <img>              | 图片标签                                   |
+  | <map>              | 图片内容映射 <img ... usemap="#map"        |
+  | <area>             | 图片区域, <map name="map"><area ...>       |
+  | <picture>          | 不同页面大小适配不同的图片                 |
+  |--------------------+--------------------------------------------|
+  | Tables             | 表格标签                                   |
+  |--------------------+--------------------------------------------|
+  | <table>            | 表格                                       |
+  | <tr>               | table row 行                               |
+  | <th>               | table header 表头, 默认粗体居中            |
+  | <td>               | table data/cell 表项                       |
+  | <caption>          | 表标题                                     |
+  |--------------------+--------------------------------------------|
+  | style              |                                            |
+  | border             | table, th, td{border:1px solid black;}     |
+  |                    | 边框有重复                                 |
+  | collapsed borders  | table{...;border-collapse: collapse;}      |
+  |                    | 解决边框重复问题                           |
+  | Cell padding       | th,td{...; padding:15px;}                  |
+  |                    | 控制表项留白大小                           |
+  | text-align         | th{ text-align: center;}                   |
+  |                    | 控制表项内字符对齐方式                     |
+  | boarder-spaceing   | table{border-spacing:5px;}                 |
+  |                    | 控制表项间距                               |
+  | colspan            | <th colspan="2">Tele</th>                  |
+  |                    | 将表项拆分成2列                            |
+  | rowspan            | <th rowspan="2">                           |
+  |                    | 将表项拆分成2行                            |
+  |--------------------+--------------------------------------------|
+  | Lists              | 列表                                       |
+  |--------------------+--------------------------------------------|
+  | <ul>               | Unordered List; 无序列表                   |
+  | <ol>               | Ordered List ; 有序列表                    |
+  | <li>               | list item ; 列表项                         |
+  | <dl>               | description list ; 描述列表                |
+  | <dt>               | description term ; 描述项                  |
+  | <dd>               | description data ; 描述数据                |
+  |--------------------+--------------------------------------------|
+  | attributes         | 列表属性                                   |
+  | <ol type="*">      | 控制列表计数类型，1,A,a,I,i                |
+  | <ol start="50">    | 控制列表开始计数                           |
+  |--------------------+--------------------------------------------|
+  | style              | 列表样式                                   |
+  | "list-style-type:" | <ul style="list-style-type:disc">          |
+  |                    | disc/cricle/square/none                    |
+  | CSS more           |                                            |
+  |--------------------+--------------------------------------------|
+  | Grouping Tags      |                                            |
+  |--------------------+--------------------------------------------|
+  | Blocks             | 块                                         |
+  |                    | <address/article/aside/blockquote/         |
+  |                    | canvas/dd/div/dl/dt/filedset/figure/       |
+  |                    | figcaption/footer/form/h1-h6/header/       |
+  |                    | hr/li/main/nav/noscript/ol/output/p/       |
+  |                    | pre/section/table/tfoot/ul/video>          |
+  | inline             | 内联                                       |
+  |                    | <a/abbr/acronym/b/bdo/big/br/botton/       |
+  |                    | cite/code/dfn/em/i/img/input/kbd/label/    |
+  |                    | map/object/q/samp/script/select/small/span |
+  |                    | strong/sub/sup/textarea/time/tt/var>       |
+  |--------------------+--------------------------------------------|
+  | <div>              | <html> elements container ; html元素容器   |
+  | <span>             | a container for some text ; 文本容器       |
+  |                    |                                            |
 
 ** 1. HTML Introduction
 *** 1.1 What is HTML?
@@ -260,7 +296,7 @@
      <p style="text-align:center;">Centered paragraph</p>
    </body>
    #+END_SRC
-** 7. Text Formatting
+** 7. Text Formatting(字体格式)
    HTML also defines speccial elements for defining text with a special meaning.
    
    Browsers display <strong> as <b>, and <em> as <i>. However, there is a difference
@@ -346,7 +382,7 @@
    </body>
    </html>
    #+END_SRC
-** 10. HTML Colors
+** 10. HTML Colors(颜色)
    HTML colors are specifie/d using predifined color names, or RGB,HEX,HSL,RGBA,HSLA values.
    https://www.w3schools.com/colors/colors_names.asp
    - background-color:Tormato;   背景色
@@ -384,7 +420,7 @@
    </body>
    </html>
    #+END_SRC
-** 11 HTML Styles-CSS
+** 11. HTML Styles-CSS(层叠样式单)
    CSS stands for Cascading Style Sheets.
    CSS describes how HTML elements are t be displaye/d on schreen, paper, or in other media.
    CSS saves a lo/t of work. It can control the layout of multiple web pages all at once.
@@ -466,7 +502,7 @@
     }
 *** External References(外部关联)
     <link rel="stylesheet" href="https://aaa.com/styles.css">
-** 12 HTML Links
+** 12. HTML Links(链接)
    Links allow users to click their way from page to page. ; 叶面跳转
 *** Hyperlinks
     You can click on a link and jump to another document.
@@ -540,7 +576,7 @@
     <a href="html_demo.html#C4">Jump to C4 from another page</a>
 *** External Paths
     <a href="https://www.w3schools.com/html/default.asp">HTML tutorial</a>
-** 13 HTML Images
+** 13. HTML Images(图片)
    Images can improve the design and appearance of a web page.
 *** Syntax
     <img src="url">
@@ -641,7 +677,7 @@
     and allows the user to "linten" to the content. Screen readers are useful for
     people who are blind, visually impaired, or learning disabled.
 
-** 14 HTML Tables
+** 14. HTML Tables(表格)
    #+BEGIN_SRC html
    <!DOCTYPE html>
    <html>
@@ -711,6 +747,269 @@
    #+END_SRC
 *** Defining an HTML Table
     An HTML table is define/d with the <table> tag.
+    Each table row is define/d with the <tr> tag.
+    A table header is define/d with the <th> tag.
+    By default, table heading are hold and centered.
+    A table data/cell is define/d with the <td> tag.
+*** Adding a Border(边界)
+    If you do not specify a border for the table, it will be displaye/d without borders.
+    A border is se/t using the CSS border property
+    每个表项都有一个边界框，导致重复边框；
+    #+BEGIN_SRC css
+    table, th, td {
+        border: 1px solid black;
+    }
+    #+END_SRC
+*** Collapsed Borders(折叠边界)
+    将重复边框折叠成单一边框。
+    If you want the borders to collapse into one border, add the CSS *border-collapse* property
+    (特性/属性)
+    #+BEGIN_SRC css
+    table, th, td{
+        border: 1px solid black;
+        border-collapse: collapse;
+    }
+    #+END_SRC
+*** Adding Cell Padding(添加表项衬垫)
+    Cell padding specifies the space between the cell contennt and its borders.
+    (内容与边框之间的空白部衬垫-内边距)
+    If you do not specify a padding, the table cells will be displaye/d without padding.
+    To set the padding, use the CSS padding property:
+    #+BEGIN_SRC css
+    th, td{
+        padding: 15px;
+    }
+    #+END_SRC
+*** Left-align Headings(表头左对齐)
+    By default, table headings are bold and centered.(标题居中、加粗)
+    To left-align the table headings, use CSS text-align property:
+    #+BEGIN_SRC css
+    th{
+        text-align: left;
+    }
+    #+END_SRC
+*** Add Border Spacing(边框间距)
+    与collapse特性冲突
+    Border spacing specifies the space between the cells.
+    To set the border spacing for a table, use the CSS border-spacing property:
+    *Note: If the table has collapse borders, the border-spacing has not effect.*
+    #+BEGIN_SRC css
+    table{
+        border-spacing: 15px;
+    }
+    #+END_SRC
+
+*** Cells That Span Many Columns(列合并)
+    To make a cell span more than one column, use the *colspan* attribute:
+    #+BEGIN_SRC css
+    <table style="width:100%">
+      <tr>
+        <th>Name</th>
+        <th colspan="2">Telephone</th>
+      </tr>
+      <tr>
+        <td>Bill Gates</td>
+        <td>55577854</td>
+        <td>55577855</td>
+      </tr>
+    </table>
+    #+END_SRC
+*** Cells That Span Many Rows(行合并)
+    To make a cell span more then one row, use the *rowspan* attribute:
+    #+BEGIN_SRC css
+    <table style="width:100%">
+      <tr>
+        <th>Name:</th>
+        <td>Bill Gates</td>
+      </tr>
+      <tr>
+        <th rowspan="2">Telephone:</th>
+        <td>55577854</td>
+      </tr>
+      <tr>
+        <td>55577855</td>
+      </tr>
+    </table>
+    #+END_SRC
+*** Adding a Caption(表标题)
+    To add a caption, use the *<caption>* tag:
+    #+BEGIN_SRC html
+    <table style="width:100%">
+      <caption>Monthly savings</caption>
+      <tr>
+        <th>Month</th>
+        <th>Savings</th>
+      </tr>
+      <tr>
+        <td>January</td>
+        <td>$100</td>
+      </tr>
+      <tr>
+        <td>February</td>
+        <td>$50</td>
+      </tr>
+    </table>
+    #+END_SRC
+** 15. HTML Lists(列表)
+*** Unordered HTML List(无序列表)
+    An unordered list starts with the *<ul>* tag.
+    Each *list item* start with the *<li>* tag.
+    The list items will be marke/d with bullets(small black circles) by default:
+    #+BEGIN_SRC html
+    <ul>
+      <li>Coffee</li>
+      <li>Tea</li>
+      <li>Milk</li>
+    </ul>
+    #+END_SRC
+**** Choose List Item Marker
+     The CSS *list-style-type* property is use/d to define the style of the list item marker:
+     |--------+------------------------------------------------|
+     | value  | description                                    |
+     |--------+------------------------------------------------|
+     | disc   | Sets the list item marker to a bullet(default) |
+     | circle | ... to a circle                                |
+     | square | ... to a square                                |
+     | none   | The list item will not be marked               |
+     |--------+------------------------------------------------|
+     #+BEGIN_SRC html
+     <ul style="list-style-type:disc">
+       <li>Coffee</li>
+       <li>Tea</li>
+       <li>Milk</li>
+     </ul>
+     #+END_SRC
+     
+*** Ordered HTML List(有序列表)
+    An ordered list starts with the *<ol>* tag.
+    Each list item starts with the *<li>* tag.
+**** The Type Attribute
+     The *type* attribute of the *<ol>* tag, define the type of the list item marker:
+     |----------+------------------------------------------------------|
+     | Type     | Description                                          |
+     |----------+------------------------------------------------------|
+     | type="1" | The list items will be numbered with number(default) |
+     | type="A" | ... with uppercase letters                           |
+     | type="a" | ... with lowercase letters                           |
+     | type="I" | ... with uppercase roman numbers                     |
+     | type="i" | ... with lowercase roman numbers                     |
+     |----------+------------------------------------------------------|
+          
+*** Description Lists(描述列表)
+    A descrition list is a list of terms, with a description of each term.
+    The *<dl>* tag defines the description list, the *<dt>* tag defines 
+    the term(name), and the *<dd>* tag describes each term:
+    #+BEGIN_SRC html
+    <dl>
+      <dt>Coffee</dt>
+      <dd>- black hot drink</dd>
+      <dt>Milk</dt>
+      <dd>- white cold drink</dd>
+    </dl>
+    #+END_SRC
+
+*** Nested HTML Lists(列表嵌套)
+    List items can contain new list, and other HTML elements, like images and links, etc.
+    #+BEGIN_SRC html
+    <ul>
+      <li>Coffee</li>
+      <li>Tea
+        <ul>
+          <li>Black tea</li>
+          <li>Green tea</li>
+        </ul>
+      </li>
+      <li>Milk</li>
+    </ul>
+    #+END_SRC
+*** Control List Counting(控制列表计数)
+    By default, an order list will start counting from 1. If you want to start counting
+    from a specified number, you can use the *start* attribute:
+    #+BEGIN_SRC html
+    <ol start="50">
+      <li>Coffee</li>
+      <li>Tea</li>
+      <li>Milk</li>
+    </ol>
+    #+END_SRC
+
+*** Horizontal List with CSS
+    HTML list can be style/d in many different ways with CSS.
+    One popular way is to style a list horizontally, to create a navigation menu:
+    #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #333333;
+    }
+
+    li {
+        float: left;
+    }
+
+    li a {
+        display: block;
+        color: white;
+        text-align: center;
+        padding: 16px;
+        text-decoration: none;
+    }
+
+    li a:hover {
+        background-color: #111111;
+    }
+    </style>
+    </head>
+    <body>
+
+    <h2>Navigation Menu</h2>
+    <p>In this example, we use CSS to style the list horizontally, to create a navigation menu:</p>
+
+    <ul>
+      <li><a href="#home">Home</a></li>
+      <li><a href="#news">News</a></li>
+      <li><a href="#contact">Contact</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+
+    </body>
+    </html>
+    #+END_SRC
+** 16. HTML Blocks(块)
+   Every HTML element has a default *display value* depending on what type of element it is.
+   The default value for most elements is *block* or *line*.
+*** Block-level Elements(块层级元素)
+    A block-level element always starts on a new line and takes up the full width
+    available(stretches out to the left and right as far as it can).
+    The *<div>* element is a block-level element.
+    
+*** Inline Elements(内联元素)
+    An inline element does not start on a new line and only takes up 
+    as mutch width as nesscessary. 
+    This is an inline *<span>* element inside a paragraph.
+    
+*** The <div> Element
+    The *<div>* element is often used *as a container of other HTML elements*.
+    The <div> element has no require attributes, but *style,class,id* are common.
+    When used target with CSS, the <div> element can be use/d to *style blocks of content*:
+    #+BEGIN_SRC html
+    <div style="background-color:black;color:white;padding:20px;">
+      <h2>London</h2>
+      <p>London is the capital city of England. It is the most populous city in the United Kingdom, with a metropolitan area of over 13 million inhabitants.</p>
+    </div>
+    #+END_SRC
+*** The <span> Element
+    主要用于控制文本的CSS
+    The <span> element is often used as a container for some text.
+    When used target with CSS, the <span> elemnt can be use/d to *sytle part of text*:
+    <h1>My <span style="color:red">Important</span> Heading</h1>
+    
 * 2 HTML 
 ** 2.1 标签和元素
  - 标签(tag)
