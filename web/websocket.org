@@ -1,0 +1,277 @@
+* RFC6455
+  https://datatracker.ietf.org/doc/rfc6455/?include_text=1
+** 1. Introduction
+   The WebSocket Protocol is designed to supersede existing
+   bidirectional communication technologies that use HTTP as a transport
+   layer to benefit from existing infrastructure.
+*** 1.2 Protocol Overview(概览)
+   The Protocol has tow parts:
+   - handshake(握手)
+     Request-Line and Status-Line productions are defined in [RFC2616]
+     + handshake from the client
+       GET /chat HTTP/1.1
+       Host: server.example.com
+       Upgrade: websocket
+       Connection: Upgrade
+       Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+       Origin: http://example.com
+       Sec-WebSocket-Protocol: chat, superchat
+       Sec-WebSocket-Version: 13
+     + handshake from server
+       HTTP/1.1 101 Switching Protocols
+       Upgrade: websocket
+       Connection: Upgrade
+       Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+       Sec-WebSocket-Protocol: chat
+     If the handshake was successful, then the *data transfer* part starts.
+   - data transfer(数据传输)
+     *message* conceptual units(数据以消息为传输单位)
+     a *message* is composed of one or more *frames*.(消息有1~n个帧组成，非网络协议帧)
+     a *frame* has a assoiated *type*, Each frame beloning to the same message
+     contains the same type of data. (帧有个关联类型，同一消息的帧类型相同)
+     *type* textual data, binary data, control frames. 6 frame types, 10 reserved;
+*** 1.3 Opening Handshake(连接握手)
+   GET /chat HTTP/1.1 ; 允许多个websocket domain server
+   Host: server.example.com ; 用于验证是否统一使用主机
+   Upgrade: websocket  ; 复用协议为websocket
+   Connection: Upgrade ; websocket复用http端口
+   Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ== ; [RFC4648]base64-encode
+   Origin: http://example.com
+   Sec-WebSocket-Protocol: chat, superchat ; 子协议选择器 selector
+   Sec-WebSocket-Version: 13               ; 版本选择器
+   # extern
+   Origin: xxx         ; [RFC6454] 保护跨域使用
+
+*** Prove handshake was received
+    Server has to take two pieces of information and combine them to form a response.
+    (证明受到握手消息，需要获取2个信息并组合返回应答)
+    Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+    "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+    base64((SHA-1)("dGhlIHNhbXBsZSBub25jZQ==258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+    > 0xb3 0x7a 0x4f 0x2c 0xc0 0x62 0x4f 0x16 0x90 0xf6
+      0x46 0x06 0xcf 0x38 0x59 0x45 0xb2 0xbe 0xc4 0xea.
+    > "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+*** Response    
+    HTTP/1.1 101 Switching Protocols
+    Upgrade: websocket
+    Connection: Upgrade
+    Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+    Sec-WebSocket-Protocol: chat
+*** 1.4 Closing Handshake(断开握手)
+*** 1.5 Design Philosiphy(设计哲学/原理)
+   - adds a web origin-based security model for browsers(安全模型)
+   - adds an address and protocol naming mechanism to support
+     multiple services on one port and multiple host names on on IP address(支持多服务)
+   - layers a framing mechanism on top of TCP to get back to the IP
+     packet mechanism that TCP is built on, but without length limits()
+   - includes an additional closing handshake in-band that is designed
+     to work in the presence of proxies and other intermediaries(关闭机制，支持代理中介)
+*** 1.6 Security Model(安全模型)
+*** 1.7 Relationship to TCP and HTTP(TCP与HTTP的关联关系)
+*** 1.8 Establishing a Connection(建立连接)
+*** 1.9 Subprotocols Using the WebSocket protocol
+** 2. Conformance Requirements(一致性要求)
+** 2.1 Terminology and Other Conventions(术语约定)
+** 3 WebSocket URIs
+  ws-URI=ws://<host>[:port]/path[/?query]
+  wss-URI=wss://<host>[:port]/path[/?query]
+** 4. Opening Handshake
+** 4.1. Client Requirements
+   GET /chat HTTP/1.1                  ; MUST GET HTTP/1.1
+   Host: server.example.com            ; MUST Host: <host>[:not-default-port]
+   Upgrade: websocket                  ; MUST 
+   Connection: Upgrade                 ; MUST Connection: Upgrade[ keep-active]
+   Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ== ; MUST 随机16字节的base64编码
+   Sec-WebSocket-Version: 13           ; MAST 
+   Origin: http://example.com          ; if(browser){MUST}else{MAY}[RFC6454]
+   Sec-WebSocket-Protocol: chat, superchat ; _MAY_
+   Sec-WebSocket-Extensions: ...           ; _MAY_
+   ...                                     ; _MAY_ cookies/authentication
+
+   *MAST wait for a response from the server before sending any further data.*
+   *MAST* validate the server's response as follows:(必须验证应答)
+   HTTP/1.1 101 Switching Protocols  ; MUST
+   Upgrade: websocket                ; MUST
+   Connection: Upgrade               ; MUST
+   Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo= ; MUST
+   Sec-WebSocket-Protocol: chat      ; _MAY_
+   #+BEGIN_SRC c
+   zerr_t validate_response(response *rsp){
+           int code = rsp->get_code();
+           char *upgrade_value = {"none"};
+           // NOTE: all key-value are case-insensitive(大小写不敏感)
+           if(code == 101){
+                   if(!http_get_head(rsp, "Upgrade", &upgrade_value) &&
+                      strcmp(upgrade_value, "websocket")){
+                           return ZEFAIL;
+                   }
+                   if(!http_get_head(rsp, "Connection", &conn_value) &&
+                      strcmp(conn_value, "Upgrade")){
+                           return ZEFAIL;
+                   }
+                   if(!http_get_head(rsp, "Sec-WebSocket-Accept", &acc_value)){
+                           return ZEFAIL;
+                   }
+                   if(strcmp(acc_value, base64(sha1(key+"258EAFA5-E914-47DA-95CA-C5AB0DC85B11")))){
+                           return ZEFAIL;
+                   }
+                   if(http_get_head(rsp, "Sec-WebSocket-Extensions", ext_value)){
+                           if(strcmp(ext_value, req_ext_value)){
+                                   return ZEFAIL;
+                           }
+                   }
+                   if(http_get_head(rsp, "Sec-WebSocket-Protocol", protocol_value)){
+                           if(strcmp(protocol_value, req_protocol_value)){
+                                   return ZEFAIL;
+                           }
+                   }
+                   /*
+                    ,* WebSocket Connection is in the OPEN state.
+                    ,* if cookies set, these cookies are referred to as _Cookies Set_
+                    ,*/
+                   return ZEOK;
+           }else if(code == 401){
+                   // might perform authentication
+           }else if(code > 300 && code < 400){
+                   // might redirect the client, but clients are not required to follow them
+           }else if(code == 101){
+           }else{
+                   // unknown failed
+           }
+   }
+   #+END_SRC
+** 4.2 Server-Side Requirements
+   #+BEGIN_SRC c
+   websocket_server(){
+           while(1){
+                   reading_opening_handshake(){
+                           response rsp;
+                           request *req = reading();
+                           if(req->get_method() != HTTP_GET)continue; // response("failed")
+                           if(req->get_http_version() != "HTTP/1.1")continue;
+                           if(req->get_header("Host") != WS_HOST)continue;
+                           if(req->get_header("Upgrade") != "websocket")continue;
+                           if(req->get_header("Connection").find("Upgrade") = NULL)continue;
+                           ws_key = req->get_header("Sec-WebSocket-Key");
+                           if(ws_key.empty())continue;
+                           if(base64_decode(ws_key).lenght() != 16)continue;
+                           rsp_kye = base64(sha1(ws_key+CONST_SUFFER));
+                           if(req->get_header("Sec-WebSocket-Version") != "13")continue; // 426 Upgrade Required
+                           origin = req->get_header("Origin");
+                           if(origin.size()){
+                                   // set not browser client
+                                   origin.convert_to_lowercase();
+                                   // determination origin;
+                                   // send("403 Forbidden")
+                           }
+                           subprotocol = req->get_header("Sec-WebSocket-Protocol");
+                           if(subprotocol.size()){
+                                   // set the client subprotocol
+                                   if(!is_supoort(subprotocol)){
+                                           // MUST NOT send back a Sec-Websocket-Protocol response    
+                                   }
+                           }
+                           if(req->get_header("Sec-WebSocket-Extensions").size()){
+                                   // set the client extensions
+                           }
+                           resource_name = req->get_resource_name();
+                           if(resource_name.size()){
+                                   if(find_resource(resource_name)){
+                                           send req(404 Not Found);
+                                           continue;
+                                   }
+                           }
+                           // cookies/authentication and ignored other headers
+                           if(need_authentication){
+                                   send rsp("HTTP/1.1 401 ...");
+                           }if(need_redirect){
+                                   send rsp("HTTP/1.1 3xx ...");
+                           }else{
+                                   send rsp("HTTP/1.1 101 Switching Protocols\r\n"
+                                           "Upgrade: Websocket\r\n"
+                                           "Connection: Upgrade\r\n"
+                                           "Sec-WebSocket-Accetp: "+res_key
+                                           "");
+                                   /*
+                                    ,* WebSocket connection is established and in OPEN state.
+                                    ,*/
+                                   /*
+                                    ,* Collected ABNF
+                                    ,*/
+                           }
+                   }
+                   
+           }
+   }
+   #+END_SRC
+   _MAY_ offload the management of the connection to other agents(load balancers/reverse proxies).
+** 5. Data Framing(数据帧)
+*** 5.1 Overview(概览)
+    *frame*
+*** 5.2 Base Framing Protocol
+    #+BEGIN_SRC c
+    /*
+     ,*     0                   1                   2                   3
+     ,*     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     ,*   +-+-+-+-+-------+-+-------------+-------------------------------+
+     ,*   |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+     ,*   |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+     ,*   |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+     ,*   | |1|2|3|       |K|             |                               |
+     ,*   +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+     ,*   |     Extended payload length continued, if payload len == 127  |
+     ,*   + - - - - - - - - - - - - - - - +-------------------------------+
+     ,*   |                               |Masking-key, if MASK set to 1  |
+     ,*   +-------------------------------+-------------------------------+
+     ,*   | Masking-key (continued)       |          Payload Data         |
+     ,*   +-------------------------------- - - - - - - - - - - - - - - - +
+     ,*   :                     Payload Data continued ...                :
+     ,*   + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+     ,*   |                     Payload Data continued ...                |
+     ,*   +---------------------------------------------------------------+
+     ,*/
+    #paragma pack(1)
+    /**
+     ,* @brief frame command structure
+     ,* @par   fin: indicates that this is the final fragment in a message.
+     ,*        rsv*: MAST be 0, unless an extension is negotiated that defines meanings for non-zero values
+     ,*        opcode: Defines the interpretation of the payload data, if unknown MUST FAIL
+     ,*                %x0 denotes a continuation frame
+     ,*                %x1 denotes a text frame
+     ,*                %x2 denotes a binary frame
+     ,*                %x3-7 are reserved for further non-control frames
+     ,*                %x8 denotes a connection close
+     ,*                %x9 denotes a ping
+     ,*                %xA denotes a pong
+     ,*                %xB-F are reserved for further control frames
+     ,*         mask: Define whether the payload data if masked. if(1){presend in masking-key}
+     ,*               All frames send from client to sherver have this bit set to 1.
+     ,*         payload_len: 7bit/7+16bit/7+64bit
+     ,*/
+    #define WS_OP_CONTINUATION 0x0
+    #define WS_OP_TEXT 0x1
+    #define WS_OP_BINARY 0x2
+    #define WS_OP_CLOSE 0x8
+    #define WS_OP_PING 0x9
+    #define WS_OP_PONG 0xa
+    #define PAYLOAD16 126
+    #define PAYLOAD64 127
+    typedef websocket_command_s{
+            int16_t fin:1,
+            int16_t rsv1:1,
+            int16_t rsv2:1,
+            int16_t rsv3:1,
+            int16_t opcode:2,
+            int16_t mask:1,
+            int16_t payload_len:7
+                   
+    }ws_cmd_t;
+    typedef websocket_base_frame_s{
+            ws_cmd_t cmd;
+            //int16_t ext_payload_len;
+            //uint32_t ext_payload_len1;
+            //uint16_t ext_payload_len2;
+            //uint16_t mask_key; /* if MASK set to 1*/
+            char payload[0];
+    }ws_frame_t;
+    #+END_SRC

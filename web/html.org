@@ -1,82 +1,127 @@
+* https://developer.mozilla.org
 * w3schools
   https://www.w3schools.com
+  <tag attribute="value">element</tag>
 
-  |--------------------+--------------------------------------------|
-  | tag                | description                                |
-  |--------------------+--------------------------------------------|
-  | <quote>            |                                            |
-  | <blockquote>       |                                            |
-  | <abbr>             | 缩写，鼠标移动到上面会探出提示             |
-  | <address>          | 地址                                       |
-  | <cite>             | 引用工作标题 - 斜体                        |
-  | <bdo>              | bi-directional override ; 方向重写         |
-  |--------------------+--------------------------------------------|
-  | Images             | 图片相关标签                               |
-  |--------------------+--------------------------------------------|
-  | <img>              | 图片标签                                   |
-  | <map>              | 图片内容映射 <img ... usemap="#map"        |
-  | <area>             | 图片区域, <map name="map"><area ...>       |
-  | <picture>          | 不同页面大小适配不同的图片                 |
-  |--------------------+--------------------------------------------|
-  | Tables             | 表格标签                                   |
-  |--------------------+--------------------------------------------|
-  | <table>            | 表格                                       |
-  | <tr>               | table row 行                               |
-  | <th>               | table header 表头, 默认粗体居中            |
-  | <td>               | table data/cell 表项                       |
-  | <caption>          | 表标题                                     |
-  |--------------------+--------------------------------------------|
-  | style              |                                            |
-  | border             | table, th, td{border:1px solid black;}     |
-  |                    | 边框有重复                                 |
-  | collapsed borders  | table{...;border-collapse: collapse;}      |
-  |                    | 解决边框重复问题                           |
-  | Cell padding       | th,td{...; padding:15px;}                  |
-  |                    | 控制表项留白大小                           |
-  | text-align         | th{ text-align: center;}                   |
-  |                    | 控制表项内字符对齐方式                     |
-  | boarder-spaceing   | table{border-spacing:5px;}                 |
-  |                    | 控制表项间距                               |
-  | colspan            | <th colspan="2">Tele</th>                  |
-  |                    | 将表项拆分成2列                            |
-  | rowspan            | <th rowspan="2">                           |
-  |                    | 将表项拆分成2行                            |
-  |--------------------+--------------------------------------------|
-  | Lists              | 列表                                       |
-  |--------------------+--------------------------------------------|
-  | <ul>               | Unordered List; 无序列表                   |
-  | <ol>               | Ordered List ; 有序列表                    |
-  | <li>               | list item ; 列表项                         |
-  | <dl>               | description list ; 描述列表                |
-  | <dt>               | description term ; 描述项                  |
-  | <dd>               | description data ; 描述数据                |
-  |--------------------+--------------------------------------------|
-  | attributes         | 列表属性                                   |
-  | <ol type="*">      | 控制列表计数类型，1,A,a,I,i                |
-  | <ol start="50">    | 控制列表开始计数                           |
-  |--------------------+--------------------------------------------|
-  | style              | 列表样式                                   |
-  | "list-style-type:" | <ul style="list-style-type:disc">          |
-  |                    | disc/cricle/square/none                    |
-  | CSS more           |                                            |
-  |--------------------+--------------------------------------------|
-  | Grouping Tags      |                                            |
-  |--------------------+--------------------------------------------|
-  | Blocks             | 块                                         |
-  |                    | <address/article/aside/blockquote/         |
-  |                    | canvas/dd/div/dl/dt/filedset/figure/       |
-  |                    | figcaption/footer/form/h1-h6/header/       |
-  |                    | hr/li/main/nav/noscript/ol/output/p/       |
-  |                    | pre/section/table/tfoot/ul/video>          |
-  | inline             | 内联                                       |
-  |                    | <a/abbr/acronym/b/bdo/big/br/botton/       |
-  |                    | cite/code/dfn/em/i/img/input/kbd/label/    |
-  |                    | map/object/q/samp/script/select/small/span |
-  |                    | strong/sub/sup/textarea/time/tt/var>       |
-  |--------------------+--------------------------------------------|
-  | <div>              | <html> elements container ; html元素容器   |
-  | <span>             | a container for some text ; 文本容器       |
-  |                    |                                            |
+  |-------------------------+--------------------------------------------|
+  | tag                     | description                                |
+  |-------------------------+--------------------------------------------|
+  | <quote>                 |                                            |
+  | <blockquote>            |                                            |
+  | <abbr>                  | 缩写，鼠标移动到上面会探出提示             |
+  | <address>               | 地址                                       |
+  | <cite>                  | 引用工作标题 - 斜体                        |
+  | <bdo>                   | bi-directional override ; 方向重写         |
+  |-------------------------+--------------------------------------------|
+  | Images                  | 图片相关标签                               |
+  |-------------------------+--------------------------------------------|
+  | <img>                   | 图片标签                                   |
+  | <map>                   | 图片内容映射 <img ... usemap="#map"        |
+  | <area>                  | 图片区域, <map name="map"><area ...>       |
+  | <picture>               | 不同页面大小适配不同的图片                 |
+  |-------------------------+--------------------------------------------|
+  | Tables                  | 表格标签                                   |
+  |-------------------------+--------------------------------------------|
+  | <table>                 | 表格                                       |
+  | <tr>                    | table row 行                               |
+  | <th>                    | table header 表头, 默认粗体居中            |
+  | <td>                    | table data/cell 表项                       |
+  | <caption>               | 表标题                                     |
+  |-------------------------+--------------------------------------------|
+  | style                   |                                            |
+  | border                  | table, th, td{border:1px solid black;}     |
+  |                         | 边框有重复                                 |
+  | collapsed borders       | table{...;border-collapse: collapse;}      |
+  |                         | 解决边框重复问题                           |
+  | Cell padding            | th,td{...; padding:15px;}                  |
+  |                         | 控制表项留白大小                           |
+  | text-align              | th{ text-align: center;}                   |
+  |                         | 控制表项内字符对齐方式                     |
+  | boarder-spaceing        | table{border-spacing:5px;}                 |
+  |                         | 控制表项间距                               |
+  | colspan                 | <th colspan="2">Tele</th>                  |
+  |                         | 将表项拆分成2列                            |
+  | rowspan                 | <th rowspan="2">                           |
+  |                         | 将表项拆分成2行                            |
+  |-------------------------+--------------------------------------------|
+  | Lists                   | 列表                                       |
+  |-------------------------+--------------------------------------------|
+  | <ul>                    | Unordered List; 无序列表                   |
+  | <ol>                    | Ordered List ; 有序列表                    |
+  | <li>                    | list item ; 列表项                         |
+  | <dl>                    | description list ; 描述列表                |
+  | <dt>                    | description term ; 描述项                  |
+  | <dd>                    | description data ; 描述数据                |
+  |-------------------------+--------------------------------------------|
+  | attributes              | 列表属性                                   |
+  | <ol type="*">           | 控制列表计数类型，1,A,a,I,i                |
+  | <ol start="50">         | 控制列表开始计数                           |
+  |-------------------------+--------------------------------------------|
+  | style                   | 列表样式                                   |
+  | "list-style-type:"      | <ul style="list-style-type:disc">          |
+  |                         | disc/cricle/square/none                    |
+  | CSS more                |                                            |
+  |-------------------------+--------------------------------------------|
+  | Grouping Tags           |                                            |
+  |-------------------------+--------------------------------------------|
+  | Blocks                  | 块                                         |
+  |                         | <address/article/aside/blockquote/         |
+  |                         | canvas/dd/div/dl/dt/filedset/figure/       |
+  |                         | figcaption/footer/form/h1-h6/header/       |
+  |                         | hr/li/main/nav/noscript/ol/output/p/       |
+  |                         | pre/section/table/tfoot/ul/video>          |
+  | inline                  | 内联                                       |
+  |                         | <a/abbr/acronym/b/bdo/big/br/botton/       |
+  |                         | cite/code/dfn/em/i/img/input/kbd/label/    |
+  |                         | map/object/q/samp/script/select/small/span |
+  |                         | strong/sub/sup/textarea/time/tt/var>       |
+  |-------------------------+--------------------------------------------|
+  | <div>                   | <html> elements container ; html元素容器   |
+  | <span>                  | a container for some text ; 文本容器       |
+  |                         |                                            |
+  |-------------------------+--------------------------------------------|
+  | Classes                 |                                            |
+  |-------------------------+--------------------------------------------|
+  | <div class="city">      | <style>div.city{...}</style>               |
+  | <span class="note">     | <style>span.note{...}</style>              |
+  |-------------------------+--------------------------------------------|
+  | LAYOUT                  | 布局                                       |
+  |-------------------------+--------------------------------------------|
+  | <div>                   | 利用div                                    |
+  |-------------------------+--------------------------------------------|
+  | <header>                | Defines a header for a document or section |
+  | <nav>                   | ...container for navigation links          |
+  | <section>               | section                                    |
+  | <aritcle>               | an independent self-contained article      |
+  | <footer>                |                                            |
+  | <details>               | additional details                         |
+  | <summary>               | heading for the <details> element          |
+  |-------------------------+--------------------------------------------|
+  | <table>                 | 利用table                                  |
+  |-------------------------+--------------------------------------------|
+  |-------------------------+--------------------------------------------|
+  | Script                  |                                            |
+  |-------------------------+--------------------------------------------|
+  | <script>                |                                            |
+  | <noscript>              |                                            |
+  |-------------------------+--------------------------------------------|
+  | Forms                   | 表单,获取用户输入                          |
+  |                         | <form><input type="...">...</form>         |
+  |-------------------------+--------------------------------------------|
+  | <input type="text">     | 文本输入                                   |
+  | <input type="password"> | 密码框                                     |
+  | <input type="checkbox"> | 复选框                                        |
+  | <input type="radio">    | 单选输入                                   |
+  | <input type="submit">   | 提交按钮                                   |
+  | <fieldset>              | 数据集合                                   |
+  | <legend>                | 数据集标题                                 |
+  | <select>                | 下拉列表框                                 |
+  | <textarea>              | 文本区域                                   |
+  | <button>                | 按钮                                       |
+  | <datalist>              | 预定以数据列表                             |
+  | <color>                 |                                            |
+  | <date>                  |                                            |
+  | <datetime>              |                                            |
 
 ** 1. HTML Introduction
 *** 1.1 What is HTML?
@@ -1010,6 +1055,147 @@
     When used target with CSS, the <span> elemnt can be use/d to *sytle part of text*:
     <h1>My <span style="color:red">Important</span> Heading</h1>
     
+** 17. HTML Classes(类)
+   对同一类元素的样式进行设置，如city, note
+*** Classing Block Elements(块元素分类)
+    class attribute makes it possible to define equal style for "equal" <dev> elements
+    #+BEGIN_SRC html
+     <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+    div.cities {
+        background-color:black;
+        color:white;
+        margin:20px;
+        padding:20px;
+    }
+    </style>
+    </head>
+    <body>
+
+    <div class="cities">
+    <h2>London</h2>
+    <p>London is the capital city of England. It is the most populous city in the United Kingdom, with a metropolitan area of over 13 million inhabitants.</p>
+    </div>
+
+    <div class="cities">
+    <h2>Paris</h2>
+    <p>Paris is the capital and most populous city of France.</p>
+    </div>
+
+    <div class="cities">
+    <h2>Tokyo</h2>
+    <p>Tokyo is the capital of Japan, the center of the Greater Tokyo Area,
+    and the most populous metropolitan area in the world.</p>
+    </div>
+
+    </body>
+    </html>
+    #+END_SRC
+*** Classing inline Elements(内联元素类)
+    #+BEGIN_SRC html
+    <head>
+      <type>
+        span.note{
+                font-size:120%;
+                color:red;
+            }
+      </type>
+    </head>
+    <body>
+      <p>This is some <span class="note">important</span></p>
+    </body>
+    #+END_SRC
+
+** 18. HTML Layouts(布局)
+   Websites often display content in multiple columns(专栏) like a magazine or newspaper.
+*** Using <div> Elements
+*** Using HTML5
+    HTML5 offers new semantic elements that define different parts of web page:
+    <header>
+    <nav>
+    <section>   <aside>
+    <article>   <aside>
+    <footer>
+** 19. HTML Responsive Web Design(响应式的设计)
+*** What is Responsive Web Design?
+    Responsive Web Design make your web page look good on all devices(desktops, tables, and phones)
+    using CSS and HTML to resize(调整大小),hide(隐藏), shrink(收缩), enlarge(放大), 
+    or move the content to make it look good 
+    on any screed
+    #+BEGIN_SRC html
+    
+    #+END_SRC
+*** Create your Own Responsive Design
+*** Using W3.CSS
+** Forms(表单)
+   HTML forms are used to collect user input.
+   *form elements* are checkboxes,radio buttons,submit and more.
+*** <input>
+    #+BEGIN_SRC html
+    <form>
+      First name:<br>
+      <input type="text" name="firstname"><br>
+      Last name:<br>
+      <input type="text" name="lastname">
+
+      <input type="radio" name="gender" value="male" checked> Male<br>
+    </form>
+    #+END_SRC
+*** Grouping From Data With <fieldset>
+    The <fieldset> element groups related data in a form.
+    The <legend> element defines a caption for the <fieldset> element.
+    #+BEGIN_SRC html
+    <fieldset>
+      <legend>Personal information:</legend>
+      First name:<input type="text" name="fname" value="Mickey"><br>
+      <input type="submit" value="Submit" formmethod="post">
+    </fieldset>
+    #+END_SRC
+*** HTML Form Attributes
+    #+BEGIN_SRC html
+    <form action="action_page.php" method="post" target="_blank"
+          accept-charset="UTF-8" enctype="application/x-www-form-urlencoded"
+          autocomplete="off" novalidate>
+    </form>
+    #+END_SRC
+*** HTML Form Elements
+**** <select> Element(Drop-Down List)
+     #+BEGIN_SRC html
+     <select name="cars">
+       <option value="volvo">Volvo</option>
+       <option value="saab">Saab</option>
+       <option value="fiat">Fiat</option>
+       <option value="audi">Audi</option>
+     </select>
+     #+END_SRC
+**** <textarea>
+     #+BEGIN_SRC html
+     <textarea name="message" row="10" cols="30">
+       The Cat was plating the garden.
+       the second line.
+     </textarea>
+     #+END_SRC
+**** <button>
+     #+BEGIN_SRC html
+     <button type="button" onclick="alert('hello world')">Click Me</button>
+     #+END_SRC
+**** HTML5 Form Elements
+     - <datalist>
+       #+BEGIN_SRC html
+       <input list="browsers">
+       <datalist id="browsers">
+         <option value="Internet Explorer"></option>
+         <option value="Firefox"></option>
+         <option value="Chrome"></option>
+         <optoin value="Opera"></optoin>
+         <option value="Safrai"></option>
+       </datalist>
+       #+END_SRC
+     - <keygen>
+       
+     - <output>
 * 2 HTML 
 ** 2.1 标签和元素
  - 标签(tag)
@@ -1627,20 +1813,3 @@
  - 模板引擎
  - MVC模式
 
-* www进化论
-本文旨在向广场舞大妈(外行)了解网站原理；
-假设你是一个70年代的天才科学家，突然厌倦了看报纸，想自自己的电脑上看报纸；
-电脑上看报纸那怎么搞呢？
-报纸首先得有纸呀！
-于是吃包泡面功夫你做了张纸就叫浏览器(browser)。
-现在有纸了得有印刷机在上面印字呀！
-于是吃包泡面功夫你做了印刷机叫浏览器内核引擎。
-有了印刷机，但他不知道怎么排版！
-又吃包泡面，你发明了HTML(超文本标记语言)来告诉打印机怎么排版。
-但大妈很好学，很想知道HTML是怎么告诉打印机排版的。
-于是大妈默默的递给你一碗泡面，于是你感动了。
-一张报纸的内容，在电脑里叫一份文档(document)名字如index.html
-报纸的名称在文档里写作<head><title>钱江晚报</title></head>
-报纸里面有篇报道(element)西湖第一朵荷花开了，
-报道的(heading)大标题叫<h1>西湖第一朵荷花开了</h1>
-报道的内容(paragraph)叫段落<p>真每的荷花啊...</p>

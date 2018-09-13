@@ -1,0 +1,6 @@
+* asio
+** 架构
+   业务逻辑                   IO对象
+   service <----------------- io_object
+        \------ asio core <-----/
+                io_service

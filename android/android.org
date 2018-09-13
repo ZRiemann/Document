@@ -1,3 +1,478 @@
+* JNI
+  https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
+** 1. Introduction
+   JNI(JaveNativeInterface) allows JVM to interoperate with C/C++/assembly
+*** 1.1 JNI OverView(原生接口概览)
+   - Create, inspect, and update java objects(including arrays and strings).
+   - Call Java methods
+   - Catch and throw exceptions
+   - Load classes and obtain class information
+   - Perform runtime type checking
+*** Historical Background(历史背景)
+   JDK1.0/Netcape's JRI/MS-RNI
+*** JNI Approach
+** 2. Design OverView(设计概览)
+*** 2.1 JNI Functions and Pointers(函数与指针)
+      JNI Interface pointer 
+      Pointer(pre-threadJNI/data structure) 
+          \------> Pointer(an interface function)
+                      \-> Pointer(an interface function)
+                       ...
+*JNI Interface Pointer* is only valid in current thread.
+Native methods receive the JNI interface as an argument.
+#+BEGIN_SRC c
+extern "C" JNIEXPORT jstring JNICALL  Java_com_itc_erizo_MainActivity_stringFromJNI(
+        JNIEnv *env, /* 同一线程的env相同，不同线程的env不同*/
+        jobject /* this */) {
+}
+#+END_SRC
+
+*** 2.2 Compiling, Loading and Linking Native Methods
+    -D_REENTRANT/-D_POSIX_C_SOURCE
+    System.loadLibrary("xxx");
+    #+BEGIN_SRC java
+    package pkg;
+    class aaa{
+            native double f(int i, String s);      // 
+            static{
+                    System.loadLibrary("pkg_aaa"); // library name
+                    /* unix: libpkg_aaa.so
+                     ,* windows: pkg_aaa.so
+                     ,*/
+                    /*
+                     ,* RegisterNatives() function is particulary useful with
+                     ,* statically linked functions.
+                     ,*/
+            }
+    }
+    #+END_SRC
+*** 2.3 Resolve Native Method Names
+#+BEGIN_SRC c
+extern "C" JNIEXPORT jstring JNICALL  Java_com_itc_erizo_MainActivity_stringFromJNI(
+        JNIEnv *env, /* 同一线程的env相同，不同线程的env不同*/
+        jobject /* this */) {
+}
+#+END_SRC
+- prefix: Java_
+- 完整类名: com_itc_erizo_MainActivity_
+- 函数名: stringFromJNI
+- 重载方法: __<参数名缩写>
+
+Table 2-1 Unicode Character Translation
+Escape Sequence Denotes _0XXXX a Unicode character XXXX. Note that lower case is used
+
+- _0abcd as opposed to _0ABCD.
+- _1     the character “_”
+- _2     the character “;” in signatures
+- _3     the character “[“ in signatures
+
+*** 2.4 Native Method Arguments
+    - JNI interface pointer is the *first arguments(JNIEnv*)* to native methods.
+    - The *second argument* deffers depending on whether the native method is 
+      *static(Java class) or nonstatic(jobject*)*
+    - The *remaining arguments* correspond to regular java method arguments.
+    see *Chapter 3*
+#+BEGIN_SRC c
+jdouble Java_pkg_Cls_f__ILjava_lang_String_2 (
+     JNIEnv *env,        /* interface pointer */
+     jobject obj,        /* "this" pointer */
+     jint i,             /* argument #1 */
+     jstring s)          /* argument #2 */
+{
+     /* Obtain a C-copy of the Java string */
+     const char *str = (*env)->GetStringUTFChars(env, s, 0);
+
+     /* process the string */
+     ...
+
+     /* Now we are done with str */
+     (*env)->ReleaseStringUTFChars(env, s, str);
+
+     return ...
+}
+#+END_SRC
+- 使用env操作java对象
+
+*** 2.5 Referencing Java Objects(引用java对象)
+    Primitive types, such as integers, characters, and so on, are copied between Java and native code. (原始类型互通)
+     Arbitrary Java objects, on the other hand, are passed by reference.(引用java对象，
+由虚拟机跟踪防止被垃圾回收)
+**** Global and Local Reference(全局与局部引用)
+     局部应用函数内有效，全局引用保持到被显式释放。
+     所有JNI返回的Java对象都是局部引用。
+     对象不能在线程间共享。
+**** Implementing Local Reference
+**** Accessing Java Objects
+**** Accessing Primitive Arrays
+**** Accessing Fields and Methods
+     jmethodID mid = env->GetMethodID(cls,"f","ILjava/lang/String;)D");
+     jdouble result = env->CallDoubleMethod(obj, mid, 10, string);
+**** Reporting Programming Errors
+**** Java Exceptions
+     
+** 3. JNI Types and Data Structures(JNI 类型与数据结构)
+*** 3.1 Primitive Types(原始类型)
+    | Java    | Native   | description |
+    |---------+----------+-------------|
+    | boolean | jboolean | uint8_t     |
+    | byte    | jbyte    | int8_t      |
+    | char    | jchar    | uint16_t    |
+    | short   | jshort   | int16_t     |
+    | int     | jint     | int32_t     |
+    | long    | jlong    | int64_t     |
+    | float   | jfloat   | 32bits      |
+    | double  | double   | 64bits      |
+    | void    | void     |             |
+    |         |          |             | 
+*** 3.2 Reference Types  
+    jobject
+     +- jclass  ; java.lang.Class
+     +- jstring ; java.lang.Stirng
+     +- jarray  ; arrays
+     |   +- jobjectArray/booleanArray/... 
+     \- jthrowable ; java.lang.Throwable
+
+In C, all other JNI reference types are defined to be the same as jobject. For example:
+
+typedef jobject jclass; 
+In C++, JNI introduces a set of dummy classes to enforce the subtyping relationship. For example:
+
+class _jobject {}; 
+class _jclass : public _jobject {}; 
+... 
+typedef _jobject *jobject; 
+typedef _jclass *jclass; 
+*** Field and Method IDs
+    struct _jfieldID;              /* opaque structure */ 
+typedef struct _jfieldID *jfieldID;   /* field IDs */ 
+ 
+struct _jmethodID;              /* opaque structure */ 
+typedef struct _jmethodID *jmethodID; /* method IDs */ 
+The Value Type
+The jvalue union type is used as the element type in argument arrays. It is declared as follows:
+
+typedef union jvalue { 
+    jboolean z; 
+    jbyte    b; 
+    jchar    c; 
+    jshort   s; 
+    jint     i; 
+    jlong    j; 
+    jfloat   f; 
+    jdouble  d; 
+    jobject  l; 
+} jvalue; 
+
+*** Type Signatures
+Table 3-2 Java VM Type Signatures
+Type Signature
+Java Type
+Z boolean
+B byte
+C char
+S short
+I int
+J long
+F float
+D double
+L fully-qualified-class ; fully-qualified-class
+[ type type[]
+( arg-types ) ret-type method type
+For example, the Java method:
+
+long f (int n, String s, int[] arr); 
+has the following type signature:
+
+(ILjava/lang/String;[I)J 
+
+*** Modified UTF-8 Strings
+    
+** 4. JNI Functions(JNI函数)
+   https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/functions.html
+*** Interface Function Table
+    typedef const struct JNINativeInterface *JNIEnv;
+** 5. The Invocation API
+   #include <jni.h>       /* where everything is defined */
+   ...
+   JavaVM *jvm;       /* denotes a Java VM */
+   JNIEnv *env;       /* pointer to native method interface */
+   JavaVMInitArgs vm_args; /* JDK/JRE 6 VM initialization arguments */
+   JavaVMOption* options = new JavaVMOption[1];
+   options[0].optionString = "-Djava.class.path=/usr/lib/java";
+   vm_args.version = JNI_VERSION_1_6;
+   vm_args.nOptions = 1;
+   vm_args.options = options;
+   vm_args.ignoreUnrecognized = false;
+   /* load and initialize a Java VM, return a JNI interface
+     * pointer in env */
+   JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);
+   delete options;
+   /* invoke the Main.test method using the JNI */
+   jclass cls = env->FindClass("Main");
+   jmethodID mid = env->GetStaticMethodID(cls, "test", "(I)V");
+   env->CallStaticVoidMethod(cls, mid, 100);
+   /* We are done. */
+   jvm->DestroyJavaVM();
+
+** 6. Demo
+   #+BEGIN_SRC java
+   /**
+    ,* tstjni.java
+    ,*/
+   public class TstJni{
+           public native void nativeApi(); /* C++ 中定义*/
+           public int onJniCallBack(long x, long y){
+                   /* C++ 回调JAVA */
+                   return 1;
+           }
+
+           public native void asyncApi();
+           public int onAsync(int i){
+                   /* 其他线程回调 */
+                   return 1;
+           }
+
+           public interface OnSub{
+                   public int onCb(int i);
+           };
+           public native int nativeSub(String str, OnSub l);
+           /*
+            ,* tstjni.nativeSub("aaa", new OnSub(){
+            ,*    @Override
+            ,*    public int onCb(int i){return 0;}
+            ,* });
+            ,* tstjni.nativeSub("bbb", new OnSub(){
+            ,*    @Override
+            ,*    public int onCb(int i){return 1;}
+            ,* });
+            */
+   }
+   #+END_SRC
+   #+BEGIN_SRC C
+   #include <jni.h>
+
+   JNIEXPORT void JNICALL Java_pkt_path_nativeApi(JNIEnv *env, jobject thiz){
+           /* 获得Java类对象
+            ,*/
+           jclass tst_jni = env->GetOjbectClass(env, thiz); // tst_jni != 0
+           jmethodID jcb = env->GetMethodID(env, tst_jni, "onJniCallBack", "(JJ)I");
+           jint ret = env->CallIntMethos(env, thiz, jcb, 1, 2);
+   }
+
+   javaVM *g_vm;
+   jobject g_obj;
+   void proc_async(void *p);
+   JNIEXPORT void JNICALL Java_pkt_path_asyncApi(JNIEnv *env, jobject thiz){
+           env->GetJavaVM(env, &g_vm);
+           g_obj = env->NewGlobalRef(env, thiz);
+           pthread_create(NULL, NULL, proc_anync, NULL);
+   }
+   void proc_async(void *p){
+           JNIEnv *env;
+           int getEnvStat = g_vm->GetEnv(g_vm, (void**)&env, JNI_VERSION_1_6);
+           if(getEnvStat == JNI_EDETACHED){
+                   if(g_vm->AttachCurrentThread(g_vm, &env, NULL) != 0){return;}
+           }
+           jclass cls = env->GetObjectClass(env, g_obj);
+           jmethodID jcb = env->GetMethodID(env, tst_jni, "onAsync", "(I)I");
+           jint ret = env->CallIntMethos(env, thiz, jcb, 1);
+           g_vm->DetachCurrentThread(g_vm);
+   }
+
+   JNIEXPORT void JNICALL Java_xxx_nativeDownload(JNIEnv *env, jobject thiz, jstring jpath, jobject jcallback) {
+           jobject obj = env->GetGlobalRef(env, jcallback);
+           pthread_create(NULL, NULL, proc, obj);
+   }
+   #+END_SRC
+* developer.android.com
+  https://developer.android.com/guide/components/fundamentals?hl=zh-cn
+  中文版后缀 hl?=zh-cn
+** App Basic(应用开发基础)
+*** App fundamentals(应用基础知识 )
+    APK(Android AacKage) = AndroidSDk.build(data,source)
+    Security sandbox:
+    - multi-user Linux system in which each app is a different user(1app1user).
+    - By default, the system assigns each app a unique Linux user ID.
+      The system set permissions for all the files in an app so that the
+      user ID assigned to that app can access them(app用户控制文件访问权限)
+    - Each process has its own virtual machine(VM), so an app's code runs in 
+      isolation(隔离) from other apps;(每个app进程一个虚拟机)
+    - By default, every app runs in tis own Linux process. The Android system
+      starts the process when any of the app's components need to be executed,
+      and then shuts down the process when it's no longer needed or when the
+      system must recover memory for other apps.(app在自己的进程中运行,例外)
+
+    The Android system implements the /principle of least privilege/
+    最小权限法则. That is, each app, by default, has access only to the
+    components that it requires to do its work and no more.
+    This creates a very secure environment in which an app cannot access 
+    parts of the system for which it is not given permission. However, There 
+    are ways for an app to share data with other apps and for an app to access
+    system services(app 共享数据和系统服务方式)
+    - It's possible to arrange for two apps to share the same Linux user ID,
+      in which case they are able to access each other's file. To conserve 
+      (节约/保护)system resources, apps with the same user ID can also arrange
+      (安排)to run the same Linux process and share the same VM. The app mast 
+      also be signed with the same certificate(证书).
+      app共享用户ID,从而共享文件,在同一进程,VM,但必须使用相同证书
+    - An app can request permission to access device data such as the user's
+      contacts(通讯录), SMS, the mountable storage(SD card), camera, and Bluetooth.
+      app 可以请求设备访问权限.
+      The user has to expliitly grant these permissions.权限必须用户授权
+      https://developer.android.com/guide/topics/permissions/overview
+
+    *concepts*
+    - The core *framework components* that define your app.核心框架组件
+    - The *manifest* file in which you declare the component and the required
+      device features for your app.
+    - *Resources* thar are separate from the app code and that allow your app
+      to gracefully optimize its behavior for a variety of device configurations.
+      资源文件独立与代码
+**** App components(组件)
+     *App components* are the essential building blocks of a Android app
+     组件是app基础构建块. Each component is an *entry point* through which
+     the system or a user enter your app系统或app入口点.
+     
+     There are four different types of app components:
+     - Activities(活动,用户交互入口)
+       An *activity* is the entry point for /interacting/ with the user.
+       It represents a single screen with a user interface表现为单个屏幕.
+       email app
+
+** Android Studio
+*** Meet Android Studio
+**** Overview
+     *Android Studio* is the official Integrated Development Environment(IDE)
+     是官方集成开发环境
+***** Project structure
+      project -> modules(App/Library/Google App Engine)
+                   + source code files
+                   + resource files
+****** Application
+       - AndroidMainfest.xml
+       - java
+       - res
+****** Gradle Scripts(构建脚本)
+       
+**** Install Android Studio
+**** Migrate to Android Studio
+**** Configure Android Studio
+***** Find your configuration files
+      Windows: %USERPROFILE%\.<CONFIGURATION_FOLDER>/
+      Mac: ~/Library/Preferences/<CONFIGURATION_FOLDER>/
+      Linux: ~/.<CONFIGURATION_FOLDER>/
+
+      STUDIO_VM_OPTIONS: set the name and location of the .vmoptions file
+      STUDIO_PROPERTIES: set the name and location of the .properties file
+      STUDIO_JDK: set the JDK with which to run Studio
+***** Customize your VM options
+      Help > Edit Custom VM Options bin/
+***** Maximum heap size
+      Help > Edit Custom VM Options (studio.vmoptions) -Xmx2g
+      jps -lvm
+***** Export and import IDE settings(Settings.jar)
+***** Customize your IDE properties(idea.properties)
+***** Configure the IDE for low-memory machines
+***** Set JDK version
+      File > Project Struct > SDK Location > JDK location
+***** Set proxy settings(build.gradle)
+
+*** Workflow basics
+    1. Set up your workspace, create a project
+    2. Write your app
+    3. Build and run
+    4. Iterate (Debut/profile/Test)
+    5. Publish
+*** Manage your project
+**** Overview
+     *Project* source code, assets, test code, build configurations.
+***** Modules
+      *Modules* is a clllection of source files and build settings that allow
+                you to divide you project into discrete units of functionality.
+                代码、构建配置集合，将项目划分为功能单元模块。
+      *App module* 应用程序模块
+      *Library module* 库模块
+                Android Library(contain all file types)
+                Java Library(contain only Java source files)
+      *Google Cloud module*
+***** Project files
+      
+**** Create a project
+**** Add C and C++ code
+**** Create an Android library     
+** ndk
+*** Getting Started with the NDK(Native Development Kit)
+   *NDK* is a set of tools that allows you to use C/C++ code with Android, and
+   provides platform libraries.
+   *JNI* Java Native Interface
+   https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
+   *CMake/ndk-build* build tools;
+**** Download the NDK and Tools
+   *components* NDK,CMake,LLDB(debugger)
+   Tool > Android > SDK Manager
+**** Create or Import a Native Project
+    
+*** Concepts
+    优点，重用代码、提高性能
+**** How it Works
+     - ndk-build
+     - Android OS runs in the Dalvik Virtual Machine(DVM)
+**** Flow
+     1. java/C++业务逻辑分界
+     2. Create an Android app
+     3. if(native-only){declare the NativeActivity class}
+     4. Create an Android.mk descirbing the native library
+     5. Optionally, configing target ABIs,toolchain, release/debug mode ...
+     6. Place you native source under the project's jni directory.
+     7. Use ndk-build to compile ht native(.so, .a) libraries.
+     8. Build the Java component, producing the executable .dex file.
+     9. Package everything into an APK file, containing .so, .dex and others.
+
+
+**** Native Activities and Applications
+     *NativeActivities* allows your to write a completely native activity.
+     - *native_activity.h*
+     - *android_native_app_glue.h*
+**** Using the native_activity.h interface
+  
+*** JNI Tips
+**** Threads
+     AttachCurrentThread/AsDaemon()
+     ...
+     DetachCurrentThread()
+     exit
+**** jclass, jmethodID, jfieldID
+     FindClass();
+     GetFieldID()
+     GetIntField();
+**** Local and Global References
+     NewGlobalRef()/NewWeakGlobalRef()
+     IsSameObject()
+
+*** Building
+**** CMake
+***** Using CMake variables in Grandle
+      module-level build.gradle
+      android {
+      ...
+      defaultConfig {
+      ...
+      // This block is different from the one you use to link Gradle
+      // to your CMake build script.
+      externalNativeBuild {
+      cmake {
+      ...
+      // Use the following syntax when passing arguments to variables:
+      // arguments "-DVAR_NAME=ARGUMENT".
+      arguments "-DANDROID_ARM_NEON=TRUE",
+      // If you're passing multiple arguments to a variable, pass them together:
+      // arguments "-DVAR_NAME=ARG_1 ARG_2"
+      // The following line passes 'rtti' and 'exceptions' to 'ANDROID_CPP_FEATURES'.
+      "-DANDROID_CPP_FEATURES=rtti exceptions"
+      }
+      }
+      }
+
 * android studio
   http://www.cnblogs.com/whycxb/category/1001652.html
 ** 代码混淆
@@ -222,4 +697,5 @@
     public class MyService extends Service {...}
 ** 7. Notification(通知)
 ** 8. 文件操作
-   
+* poco
+** Standalone Toolchain
