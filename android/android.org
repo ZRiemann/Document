@@ -809,7 +809,508 @@ public void onConfigurationChanged(Configuration newConfig) {
         }
 
         #+END_SRC
+
+      LiveData 是一个可观察的数据持有者。 应用程序中的其他组件可以使用此> holder
+      监视对象的更改，而无需在它们之间创建明确且严格的依赖关系路径。 
+      LiveData组件还尊重应用程序组件的生命周期状态（如活动，片段和服务），
+      并包括清除逻辑以防止对象泄漏和过多的内存消耗。
+      相关库RxJava/Agera
+
+      #+BEGIN_SRC java
+      public class UserProfileViewModel extends ViewModel {
+          ...
+          //private User user;
+          private LiveData<User> user; 
+          public LiveData<User> getUser() {
+              return user;
+          }
+      }
+      #+END_SRC
       
+      #+BEGIN_SRC java
+      // UserProfileFragment
+      @Override
+      public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+          super.onActivityCreated(savedInstanceState);
+          viewModel.getUser().observe(this, user -> {
+            // Update UI.
+            // Every time the user profile data is updated,
+            // the onChanged() callback is invoked, and the UI is refreshed.
+          });
+      }
+      #+END_SRC
+      如果您熟悉使用可观察回调的其他库，您可能已经意识到我们没有覆盖片段的
+      onStop（）方法来停止观察数据。 LiveData不需要此步骤，因为它可识别生命周期，
+      这意味着除非片段处于活动状态，否则它不会调用onChanged（）回调;
+      也就是说，它已收到onStart（）但尚未收到onStop（））。
+      调用片段的onDestroy（）方法时，LiveData也会自动删除观察者。
+
+      + Fetch data(获取数据)
+        我们假设我们的后端提供REST API。 我们使用Retrofit库来访问我们的后端。
+        http://square.github.io/retrofit/
+        #+BEGIN_SRC java
+        public interface Webservice {
+            /**
+             ,* @GET declares an HTTP GET request
+             ,* @Path("user") annotation on the userId parameter marks it as a
+             ,* replacement for the {user} placeholder in the @GET path
+             ,*/
+            @GET("/users/{user}")
+            Call<User> getUser(@Path("user") String userId);
+        }
+        #+END_SRC
+        ViewModel delegates the data-fetching process to a new module, a *repository*.
+
+        *Repository* 存储库模块处理数据操作。
+        它们提供了一个干净的API，以便应用程序的其余部分可以轻松地检索这些数据。
+        他们知道从何处获取数据以及在更新数据时要进行的API调用。
+        您可以将存储库视为不同数据源之间的调解器，例如持久性模型，Web服务和高速缓存。
+        #+BEGIN_SRC java
+        public class UserRepository {
+            private Webservice webservice;
+            // ...
+            public LiveData<User> getUser(int userId) {
+                // This isn't an optimal implementation. We'll fix it later.
+                final MutableLiveData<User> data = new MutableLiveData<>();
+                webservice.getUser(userId).enqueue(new Callback<User>() {
+                    @Override
+                    public void onResponse(Call<User> call, Response<User> response) {
+                        data.setValue(response.body());
+                    }
+
+                    // Error case is left out for brevity.
+                });
+                return data;
+            }
+        }
+        #+END_SRC
+        即使存储库模块看起来不必要，它也有一个重要的目的：
+        它从应用程序的其余部分抽象出数据源。   现在，
+        我们的UserProfileViewModel不知道如何获取数据，
+        因此我们可以为视图模型提供从几个不同的数据获取实现获得的数据。
+      + Manage dependencies between components(管理数据组件依赖)
+        您可以使用以下设计模式来解决此问题：
+        依赖注入（DI）：依赖注入允许类在不构造它们的情况下定义它们的依赖关系。
+        在运行时，另一个类负责提供这些依赖项。 
+        我们建议使用Dagger 2库在Android应用程序中实现依赖注入。 
+        Dagger 2通过遍历依赖树自动构造对象，并为依赖关系提供编译时保证。
+        服务定位器：服务定位器模式提供了一个注册表，其中类可以获取它们的依赖关系而不是构造它们。
+        实现服务注册表比使用DI更容易，因此如果您不熟悉DI，请改用服务定位器模式。
+        
+        Dagger2 to manage the Webservice object's
+      + Connect ViewModel and repository(连接ViewModel和仓库)
+        #+BEGIN_SRC java
+        public class UserProfileViewModel extends ViewModel {
+            private LiveData<User> user;
+            private UserRepository userRepo;
+
+            // Instructs Dagger 2 to provide the UserRepository parameter.
+            @Inject
+            public UserProfileViewModel(UserRepository userRepo) {
+                this.userRepo = userRepo;
+            }
+
+            public void init(int userId) {
+                if (this.user != null) {
+                    // ViewModel is created on a per-Fragment basis, so the userId
+                    // doesn't change.
+                    return;
+                }
+                user = userRepo.getUser(userId);
+            }
+
+            public LiveData<User> getUser() {
+                return this.user;
+            }
+        }
+        #+END_SRC
+      + Cache data
+        后端数据需要缓存
+        为了解决这些缺点，我们向UserRepository添加了一个新的数据源，它将User对象缓存在内存中：
+        #+BEGIN_SRC java
+        // Informs Dagger that this class should be constructed only once.
+        @Singleton
+        public class UserRepository {
+            private Webservice webservice;
+
+            // Simple in-memory cache. Details omitted for brevity.
+            private UserCache userCache;
+
+            public LiveData<User> getUser(int userId) {
+                LiveData<User> cached = userCache.get(userId);
+                if (cached != null) {
+                    return cached;
+                }
+
+                final MutableLiveData<User> data = new MutableLiveData<>();
+                userCache.put(userId, data);
+
+                // This implementation is still suboptimal but better than before.
+                // A complete implementation also handles error cases.
+                webservice.getUser(userId).enqueue(new Callback<User>() {
+                    @Override
+                    public void onResponse(Call<User> call, Response<User> response) {
+                        data.setValue(response.body());
+                    }
+                });
+                return data;
+            }
+        }
+        #+END_SRC
+      + Persist data
+        前面解决了数据缓存，但如果关闭进程后开启如何处理数据？
+        *Room* library
+        Room是一个对象映射库，提供本地数据持久性和最少的样板代码。
+        在编译时，它根据您的数据模式验证每个查询，
+        因此损坏的SQL查询会导致编译时错误而不是运行时失败。
+        Room抽象了使用原始SQL表和查询的一些底层实现细节。
+        它还允许您观察数据库数据的更改，包括集合和连接查询，使用LiveData对象公开此类更改。
+        它甚至明确定义了解决常见线程问题的执行约束，例如访问主线程上的存储。
+        如果您的应用已经使用了其他持久性解决方案，例如SQLite对象关系映射（ORM），
+        则无需使用Room替换现有解决方案。
+        但是，如果您正在编写新应用或重构现有应用，我们建议您使用Room来保留应用的数据。
+        这样，您就可以利用库的抽象和查询验证功能。
+        #+BEGIN_SRC java
+        @Entity
+        class User {
+          @PrimaryKey
+          private int id;
+          private String name;
+          private String lastName;
+
+          // Getters and setters for fields.
+        }
+
+        @Database(entities = {User.class}, version = 1)
+        public abstract class UserDatabase extends RoomDatabase {
+        }
+
+        @Dao
+        public interface UserDao {
+            @Insert(onConflict = REPLACE)
+            void save(User user);
+            @Query("SELECT * FROM user WHERE id = :userId")
+            LiveData<User> load(int userId);
+        }
+
+        @Singleton
+        public class UserRepository {
+            private final Webservice webservice;
+            private final UserDao userDao;
+            private final Executor executor;
+
+            @Inject
+            public UserRepository(Webservice webservice, UserDao userDao, Executor executor) {
+                this.webservice = webservice;
+                this.userDao = userDao;
+                this.executor = executor;
+            }
+
+            public LiveData<User> getUser(String userId) {
+                refreshUser(userId);
+                // Returns a LiveData object directly from the database.
+                return userDao.load(userId);
+            }
+
+            private void refreshUser(final String userId) {
+                // Runs in a background thread.
+                executor.execute(() -> {
+                    // Check if user data was fetched recently.
+                    boolean userExists = userDao.hasUser(FRESH_TIMEOUT);
+                    if (!userExists) {
+                        // Refreshes the data.
+                        Response<User> response = webservice.getUser(userId).execute();
+
+                        // Check for errors here.
+
+                        // Updates the database. The LiveData object automatically
+                        // refreshes, so we don't need to do anything else here.
+                        userDao.save(response.body());
+                    }
+                });
+            }
+        }
+        #+END_SRC
+      + Single source for truth
+      + Show in-progress operations
+        https://github.com/googlesamples/android-architecture-components/blob/88747993139224a4bb6dbe985adf652d557de621/GithubBrowserSample/app/src/main/java/com/android/example/github/repository/NetworkBoundResource.kt
+      + Test each component
+        - User interface and interactions
+          https://developer.android.com/training/testing/unit-testing/instrumented-unit-tests?hl=zh-cn
+
+          https://developer.android.com/training/testing/ui-testing/espresso-testing?hl=zh-cn
+        - ViewModel
+          using JUnit test.
+          https://developer.android.com/training/testing/unit-testing/local-unit-tests?hl=zh-cn
+        - UserDao
+          create an in-memory database to ensure that the test doesn't have any side effects,
+          such as changing the database files on disk.(使用内存数据库测试)
+          注意：Room允许指定数据库实现，因此可以通过提供SupportSQLiteOpenHelper
+          的JUnit实现来测试DAO。 但是，不建议使用此方法，
+          因为设备上运行的SQLite版本可能与开发计算机上的SQLite版本不同。
+        - Webservice
+          在这些测试中，避免向后端进行网络呼叫。
+          对于所有测试，尤其是基于Web的测试，独立于外部世界非常重要。
+          包括MockWebServer在内的几个库可以帮助您为这些测试创建虚假的本地服务器。
+          https://github.com/square/okhttp/tree/master/mockwebserver
+        - Testing Artifacts
+          测试工件：Architecture Components提供了一个maven工件来控制其后台线程。
+          android.arch.core：core-testing工件包含以下JUnit规则：
+          InstantTaskExecutorRule：使用此规则立即执行调用线程上的任何后台操作。
+          CountingTaskExecutorRule：使用此规则等待Architecture Components的后台操作。
+          您还可以将此规则与Espresso关联为空闲资源。
+      + Best practices(实践)
+        - 避免将应用的入口点（如活动，服务和广播接收器）指定为数据源。
+        - 在应用的各个模块之间创建明确定义的责任范围。
+        - 从每个模块尽可能少地暴露。
+        - 考虑如何使每个模块独立可测试。
+        - 专注于您应用的独特核心，以便从其他应用中脱颖而出。
+        - 保持尽可能多的相关和新鲜数据。
+        - 将一个数据源指定为单一事实来源。
+      + Addendum:exposing network status(暴露网络状态)
+        Using a *Resource* class to expose network status.
+        *Resource* class that encapsulate both the data and its state.
+        #+BEGIN_SRC java
+        // A generic class that contains data and status about loading this data.
+        public class Resource<T> {
+            @NonNull public final Status status;
+            @Nullable public final T data;
+            @Nullable public final String message;
+            private Resource(@NonNull Status status, @Nullable T data,
+                    @Nullable String message) {
+                this.status = status;
+                this.data = data;
+                this.message = message;
+            }
+
+            public static <T> Resource<T> success(@NonNull T data) {
+                return new Resource<>(Status.SUCCESS, data, null);
+            }
+
+            public static <T> Resource<T> error(String msg, @Nullable T data) {
+                return new Resource<>(Status.ERROR, data, msg);
+            }
+
+            public static <T> Resource<T> loading(@Nullable T data) {
+                return new Resource<>(Status.LOADING, data, null);
+            }
+
+            public enum Status { SUCCESS, ERROR, LOADING }
+        }
+
+        // ResultType: Type for the Resource data.
+        // RequestType: Type for the API response.
+        public abstract class NetworkBoundResource<ResultType, RequestType> {
+            // Called to save the result of the API response into the database.
+            @WorkerThread
+            protected abstract void saveCallResult(@NonNull RequestType item);
+
+            // Called with the data in the database to decide whether to fetch
+            // potentially updated data from the network.
+            @MainThread
+            protected abstract boolean shouldFetch(@Nullable ResultType data);
+
+            // Called to get the cached data from the database.
+            @NonNull @MainThread
+            protected abstract LiveData<ResultType> loadFromDb();
+
+            // Called to create the API call.
+            @NonNull @MainThread
+            protected abstract LiveData<ApiResponse<RequestType>> createCall();
+
+            // Called when the fetch fails. The child class may want to reset components
+            // like rate limiter.
+            @MainThread
+            protected void onFetchFailed();
+
+            // Returns a LiveData object that represents the resource that's implemented
+            // in the base class.
+            public final LiveData<Resource<ResultType>> getAsLiveData();
+        }
+
+        class UserRepository {
+            Webservice webservice;
+            UserDao userDao;
+
+            public LiveData<Resource<User>> loadUser(final int userId) {
+                return new NetworkBoundResource<User,User>() {
+                    @Override
+                    protected void saveCallResult(@NonNull User item) {
+                        userDao.insert(item);
+                    }
+
+                    @Override
+                    protected boolean shouldFetch(@Nullable User data) {
+                        return rateLimiter.canFetch(userId)
+                                && (data == null || !isFresh(data));
+                    }
+
+                    @NonNull @Override
+                    protected LiveData<User> loadFromDb() {
+                        return userDao.load(userId);
+                    }
+
+                    @NonNull @Override
+                    protected LiveData<ApiResponse<User>> createCall() {
+                        return webservice.getUser(userId);
+                    }
+                }.getAsLiveData();
+            }
+        }
+        #+END_SRC
+****** Activity-lifecycle concepts
+- callbacks
+  + onCreate() 只调用一次
+  + onStart()
+  + onResume()
+  + onPause()
+  + onStop()
+  + onDestroy()
+- Activity state and ejectin from memory
+  |------------+-------------------------+--------------|
+  | Likelyhood | Process sate            | Actity state |
+  |------------+-------------------------+--------------|
+  | Least      | Foreground              | Created      |
+  |            |                         | Started      |
+  |            |                         | Resumed      |
+  | More       | Background(lost focos)  | Paused       |
+  | Most       | Background(not visible) | Stoped       |
+  |            | Empty                   | Destroyed    |
+  |------------+-------------------------+--------------|
+- Saving and restoring transient(瞬态) UI state(保存与恢复)
+  ViewMode + onSaveInstanceState()
+- Instance state
+  Bundle 简单的恢复
+  ViewMode + onSaveInstanceState() 恢复复杂数据
+- Save simple, lightweight UI state using onSaveInstanceState()
+  onSaveInstanceState()默认实现图层瞬间状态，如EditText/ListView滚动位置
+  复杂点的需要 Bundle
+  #+BEGIN_SRC java
+  static final String STATE_SCORE = "playerScore";
+  static final String STATE_LEVEL = "playerLevel";
+  // ...
+
+
+  @Override
+  public void onSaveInstanceState(Bundle savedInstanceState) {
+      // Save the user's current game state
+      savedInstanceState.putInt(STATE_SCORE, mCurrentScore);
+      savedInstanceState.putInt(STATE_LEVEL, mCurrentLevel);
+
+      // Always call the superclass so it can save the view hierarchy state
+      super.onSaveInstanceState(savedInstanceState);
+  }
+  #+END_SRC
+- Restore activity UI state using saved instance state
+  onCreate()/onRestoreInstancceSate() 接收相同的绑定数据
+  一定要检测onCreate()参数，判断是新活动还是有恢复数据的活动
+  #+BEGIN_SRC java
+  override fun onCreate(savedInstanceState: Bundle?) {
+      super.onCreate(savedInstanceState) // Always call the superclass first
+
+      // Check whether we're recreating a previously destroyed instance
+      if (savedInstanceState != null) {
+          with(savedInstanceState) {
+              // Restore value of members from saved state
+              currentScore = getInt(STATE_SCORE)
+              currentLevel = getInt(STATE_LEVEL)
+          }
+      } else {
+          // Probably initialize members with default values for a new instance
+      }
+      // ...
+  }
+  #+END_SRC
+  也可以不在onCreate()中恢复数据，在onStart()后的onRestoreInstanceState()中实现
+  可以避免每次都要在onCreate()时判断是否有恢复数据。
+  #+BEGIN_SRC java
+  public void onRestoreInstanceState(Bundle savedInstanceState) {
+      // Always call the superclass so it can restore the view hierarchy
+      super.onRestoreInstanceState(savedInstanceState);
+
+      // Restore state members from saved instance
+      mCurrentScore = savedInstanceState.getInt(STATE_SCORE);
+      mCurrentLevel = savedInstanceState.getInt(STATE_LEVEL);
+  }
+  #+END_SRC
+- Navigating between activities
+  startActivity()/startActivityForResult()/Intent;
+- Coordinating activities(协调活动)
+  生命周期回调的顺序是明确定义的，特别是当两个活动在同一个进程（app）
+  中而另一个正在启动另一个时。 以下是活动A启动活动B时发生的操作顺序：
+  1. Activity A的onPause（）方法执行。
+  2. 活动B的onCreate（），onStart（）和onResume（）方法按顺序执行。 
+    （活动B现在具有用户关注点。）
+  3. 然后，如果活动A在屏幕上不再可见，则执行onStop（）方法。
+  这种可预测的生命周期回调序列允许您管理从一个活动到另一个活动的信息转换。
+***** Activity state changes(状态转换)
+****** Configuration change occors(发生配置变更)
+       There are a number of events that can trigger a configuration change. 
+       Perhaps the most prominent(突出的) example is a change between 
+       portrait(纵向/肖像画) and landscape(横向/山水画) orientations. 
+       Other cases that can cause configuration changes include changes to 
+       language or input device.
+       发生配置更改时，将销毁并重新创建活动。
+       原始活动实例将触发onPause（），onStop（）和onDestroy（）回调。
+       将创建一个新的活动实例，并触发onCreate（），onStart（）和onResume（）回调。
+
+****** Handling multi-window cases(对窗口)
+       https://developer.android.com/guide/topics/ui/multi-window?hl=zh-cn
+****** Activity or dialog appears in foreground(活动或窗口前端显示)
+       新活动部分覆盖老活动
+       非覆盖的活动回调onPause()，重新获得焦点后回调onResume()
+       新活动全部覆盖老活动
+       onPause()->onStop(), onStart()->onResume()
+****** User taps Back button(用户点击后退按钮)
+       onPause()->onStop()->onDestroy()
+       不会回调onSaveInstanceState()
+       但回调onBackPressed() 可以在其中实现确认退出对话框。
+****** System kills app process(系统杀死app进程)
+       使用ViewModel缓存数据
+***** Task and back stack(任务与后台堆栈)
+      设备主屏幕是大多数任务的起始位置。 当用户触摸应用程序启动器中的图标
+      （或主屏幕上的快捷方式）时，该应用程序的任务将进入前台。
+      如果应用程序不存在任务（最近未使用该应用程序），
+      则会创建一个新任务，该应用程序的“主”活动将作为堆栈中的根活动打开。
+****** Managing Tasks
+       In this regard, the principal <activity> attributes you can use are:
+
+       taskAffinity
+       launchMode
+       allowTaskReparenting
+       clearTaskOnLaunch
+       alwaysRetainTaskState
+       finishOnTaskLaunch
+       And the principal intent flags you can use are:
+       
+       FLAG_ACTIVITY_NEW_TASK
+       FLAG_ACTIVITY_CLEAR_TOP
+       FLAG_ACTIVITY_SINGLE_TOP
+       In the following sections, you'll see how you can use these manifest attributes 
+       and intent flags to define how activities are associated with tasks 
+       and how they behave in the back stack.
+****** Defining launch modes
+       - Using the manifest file(高优先级)
+         <activity launchMode="standard">
+         + standard (default)
+           默认。 系统在启动它的任务中创建活动的新实例，并将意图路由到该实例。
+           活动可以多次实例化，每个实例可以属于不同的任务，一个任务可以有多个实例。
+         + "singleTop"
+           例如，假设任务的后向堆栈由根活动A组成，活动B，C和D位于顶部（堆栈为A-B-C-D; D位于顶部）。
+           意图到达类型D的活动。如果D具有默认的“标准”启动模式，则启动该类的新实例并且堆栈变为A-B-C-D-D。
+           但是，如果D的启动模式是“singleTop”，则现有的D实例通过onNewIntent（）接收意图，
+           因为它位于堆栈的顶部 - 堆栈仍然是A-B-C-D。
+           但是，如果意图到达类型B的活动，则即使其启动模式为“singleTop”，也会将新的B实例添加到堆栈中。
+         + singleTask
+           系统创建新任务并在新任务的根目录下实例化活动。 但是，如果活动的实例已存在于单独的任务中，
+           则系统会通过调用其onNewIntent（）方法将意图路由到现有实例，而不是创建新实例。 
+           一次只能存在一个活动实例。
+          注意：虽然活动在新任务中启动，但“后退”按钮仍会将用户返回到上一个活动。
+         + "singleInstance"
+           与“singleTask”相同，但系统不会在持有实例的任务中启动任何其他活动。 
+           活动始终是其任务的唯一成员; 任何由此开始的活动都在一个单独的任务中打开。
+           task now
+       - Using Intent flags(低优先级)
 **** Fragment(片段）
      Fragment 表示 Activity 中的行为或用户界面部分。
      您可以将多个片段组合在一个 Activity 中来构建多窗格 UI，以及在多个 Activity 中重复使用某个片段。
