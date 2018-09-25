@@ -67,3 +67,757 @@
   http://tools.ietf.org/html/draft-uberti-rtcweb-jsep-02
   http://tools.ietf.org/html/rfc5245 ; proposed standard for ICE
   http://tools.ietf.org/html/draft-ietf-rtcweb-use-cases-and-requirements-10
+* codelab
+  https://codelabs.developers.google.com/codelabs/webrtc-web/#0
+** Introduction
+   WebRTC project to enable RealTime Communication(RTC) of audio,video,data in web and native apps.
+   JavaScript APIs
+   - getUserMedio() ; capture audio and video
+   - MedioRecorder() ; record audio and video
+   - RTCPeerConnection() ; stream audio and video between users
+   - RTCDataChannel ; stream data between users
+*** Where can I use WebRTC?
+   Firefox/Opera/Chrome
+   Android
+   native apps on iOS and Android.
+*** What is signaling(信令)?
+   RTCPConnection to communicate streaming data between browsers.
+   Signaling methods and protocols are *not specified* by WebRTC.
+   - Socket.IO/WebSockets
+   - WebSync/SignalR
+   - PeerServer/SignalMaster
+   - PHP/MySQL
+   - XMPP/SIP
+   数据流走RTCPeerConnection,
+   控制流走自定义协议方法，如Socket.IO
+*** What are STUN and TURN?
+   WebRTC 被设计为点对点工作，必须解决现实网络的NAT(Network Address Translator)网关和防火墙。
+   WebRTC API使用STUN服务器获取计算机的IP地址，
+   并使用TURN服务器作为中继服务器，以防对等通信失败。
+*** Getting Started with WebRTC
+    https://www.html5rocks.com/en/tutorials/webrtc/basics/
+**** Real-time communication without plugings(无插件时通信)
+     一切设备使用统一平台通信。
+    - getUserMedia() https://simpl.info/getusermedia/
+      MediaDevices.getUserMedia()
+      https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+      https://www.html5rocks.com/en/tutorials/getusermedia/intro/
+      #+BEGIN_SRC js
+      function hasGetUserMedia() {
+        return !!(navigator.mediaDevices &&
+          navigator.mediaDevices.getUserMedia);
+      }
+
+      if (hasGetUserMedia()) {
+        // Good to go!
+      } else {
+        alert('getUserMedia() is not supported by your browser');
+      }
+      #+END_SRC
+      #+BEGIN_SRC html
+      <!-- Gaining access to an input device -->
+      <video autoplay></video>
+
+      <script>
+      const constraints = {
+        video: true
+      };
+
+      const video = document.querySelector('video');
+
+      navigator.mediaDevices.getUserMedia(constraints).
+        then((stream) => {video.srcObject = stream});
+      </script>
+      #+END_SRC
+    - RTCPeerConnection
+      https://simpl.info/rtcpeerconnection/
+    - https://appr.tc
+      https://webrtc.github.io/samples/
+**** Where are we now?
+     WebRTC implements three APIs:
+     - MediaStream(aka getUserMedia)
+     - RTCPeerConnection
+     - RTCDataChannel
+
+     two specs:
+     - WebRTC https://w3c.github.io/webrtc-pc/
+     - getUserMedia https://www.w3.org/TR/mediacapture-streams/
+
+     three APIs
+     - getUserMedia
+     - RTCPeerConnection
+     - RTCDataChannel
+**** My first WebRTC
+     工作流程
+     - 获取音视频数据和其他数据
+     - 获取网络信息
+     - 协调信令通信以报告错误并启动或关闭会话。
+     - 交换有关媒体和客户端功能的信息，例如分辨率和编解码器。
+     - 传输流式音频，视频或数据。
+     为了获取和传递流数据，WebRTC实现了以下API：
+     - MediaStream：可以访问数据流，例如来自用户的摄像头和麦克风。
+       https://dvcs.w3.org/hg/audio/raw-file/tip/streams/StreamProcessing.html
+     - RTCPeerConnection：音频或视频呼叫，具有加密和带宽管理功能。
+       http://w3c.github.io/webrtc-pc/#rtcpeerconnection-interface
+     - RTCDataChannel：通用数据的对等通信。
+       http://w3c.github.io/webrtc-pc/#rtcdatachannel
+**** MediaStream(getUserMedia)
+     https://w3c.github.io/mediacapture-main/getusermedia.html
+     #+BEGIN_SRC js
+     /*
+      ,*  Copyright (c) 2015 The WebRTC project authors. All Rights Reserved.
+      ,*
+      ,*  Use of this source code is governed by a BSD-style license
+      ,*  that can be found in the LICENSE file in the root of the source
+      ,*  tree.
+      ,*/
+     'use strict';
+
+     // Put variables in global scope to make them available to the browser console.
+     /*
+      ,* getUserMedia() 约束参数，制定打开模式
+      ,* 音频、视频、分辨率...
+      ,*/
+     const constraints = window.constraints = {
+       audio: false,
+       video: true
+     };
+
+     function handleSuccess(stream) {
+         // 获得流播放窗口
+         const video = document.querySelector('video');
+         // 获取流轨道信息
+         const videoTracks = stream.getVideoTracks();
+         console.log('Got stream with constraints:', constraints);
+         console.log(`Using video device: ${videoTracks[0].label}`);
+         window.stream = stream; // make variable available to browser console
+         // 将流赋值给窗口
+         video.srcObject = stream;
+     }
+
+     function handleError(error) {
+       if (error.name === 'ConstraintNotSatisfiedError') {
+         let v = constraints.video;
+         errorMsg(`The resolution ${v.width.exact}x${v.height.exact} px is not supported by your device.`);
+       } else if (error.name === 'PermissionDeniedError') {
+         errorMsg('Permissions have not been granted to use your camera and ' +
+           'microphone, you need to allow the page access to your devices in ' +
+           'order for the demo to work.');
+       }
+       errorMsg(`getUserMedia error: ${error.name}`, error);
+     }
+
+     function errorMsg(msg, error) {
+       const errorElement = document.querySelector('#errorMsg');
+       errorElement.innerHTML += `<p>${msg}</p>`;
+       if (typeof error !== 'undefined') {
+         console.error(error);
+       }
+     }
+
+     async function init(e) {
+         try {
+             // 打开设备
+             const stream = await navigator.mediaDevices.getUserMedia(constraints);
+             // 处理数据流
+             handleSuccess(stream);
+             e.target.disabled = true;
+       } catch (e) {
+         handleError(e);
+       }
+     }
+     #+END_SRC
+     每个MediaStream都有一个标签，如：Xk7EuLhsuHKbnjLWkW4yYGNJJ8ONsgwHBvLQ
+     getAudioTracks（）和getVideoTracks（）方法返回一组MediaStreamTracks。
+     每个MediaStreamTrack都有一种（“视频”或“音频”）和
+     一个标签（类似“FaceTime HD Camera（内置）”），代表一个或多个音频或视频通道。
+     例如，聊天应用程序从前置摄像头，后置摄像头，麦克风和“屏幕共享”应用程序获取流。
+     
+     可以通过设置vedio.srcObject属性将MediaStream附加到视频元素。
+
+     当您不再使用曲目时，请务必调用track.stop（）以便关闭摄像机。
+***** Constraints(约束)
+      约束可用于为getUserMedia（）设置视频分辨率的值。
+***** Screen and tab capture
+      Chrome应用还可以通过chrome.tabCapture和chrome.desktopCapture
+      API共享单个浏览器标签或整个桌面的实时“视频”。 
+      （HTML5 Rocks更新文章Screensharing with WebRTC中有一个演示和更多信息。几年前，但仍然很有趣。）
+
+**** Signaling: session control, network and media information
+     - SIP/XMPP/XHR
+     - Socket.io/NodeServer
+     信令传输3类信息：
+     - 会话控制：initialize or close communication and report errors.
+     - 网络配置：IP:port
+     - 媒体能力：编解码/分辨率
+     在点对点流传输开始之前，必须已成功完成通过信令交换信息。
+     #+BEGIN_SRC js
+     // handles JSON.stringify/parse
+     const signaling = new SignalingChannel();
+     const constraints = {audio: true, video: true};
+     const configuration = {iceServers: [{urls: 'stuns:stun.example.org'}]};
+     const pc = new RTCPeerConnection(configuration);
+
+     // send any ice candidates to the other peer
+     pc.onicecandidate = ({candidate}) => signaling.send({candidate});
+
+     // let the "negotiationneeded" event trigger offer generation
+     pc.onnegotiationneeded = async () => {
+       try {
+         await pc.setLocalDescription(await pc.createOffer());
+         // send the offer to the other peer
+         signaling.send({desc: pc.localDescription});
+       } catch (err) {
+         console.error(err);
+       }
+     };
+
+     // once remote track media arrives, show it in remote video element
+     pc.ontrack = (event) => {
+       // don't set srcObject again if it is already set.
+       if (remoteView.srcObject) return;
+       remoteView.srcObject = event.streams[0];
+     };
+
+     // call start() to initiate
+     async function start() {
+       try {
+         // get local stream, show it in self-view and add it to be sent
+         const stream =
+           await navigator.mediaDevices.getUserMedia(constraints);
+         stream.getTracks().forEach((track) =>
+           pc.addTrack(track, stream));
+         selfView.srcObject = stream;
+       } catch (err) {
+         console.error(err);
+       }
+     }
+
+     signaling.onmessage = async ({desc, candidate}) => {
+       try {
+         if (desc) {
+           // if we get an offer, we need to reply with an answer
+           if (desc.type === 'offer') {
+             await pc.setRemoteDescription(desc);
+             const stream =
+               await navigator.mediaDevices.getUserMedia(constraints);
+             stream.getTracks().forEach((track) =>
+               pc.addTrack(track, stream));
+             await pc.setLocalDescription(await pc.createAnswer());
+             signaling.send({desc: pc.localDescription});
+           } else if (desc.type === 'answer') {
+             await pc.setRemoteDescription(desc);
+           } else {
+             console.log('Unsupported SDP type.');
+           }
+         } else if (candidate) {
+           await pc.addIceCandidate(candidate);
+         }
+       } catch (err) {
+         console.error(err);
+       }
+     };
+     #+END_SRC
+     - onicecandidate() --> addIceCandidate()
+     - createOffer() --> setLocalDescription()-->send()
+       -->onmessage(setRemoteDescription(desc))--> createAnswer()
+       -->send()-->onmessage(setRemoteDescription(desc));
+     确保通过在不再需要时调用close（）来允许RTCPeerConnection被垃圾收集。
+     否则线程和连接将保持活动状态。 WebRTC可能会泄漏大量资源！
+     
+**** RTCPeerConnection
+***** RTCPeerConnection without servers
+****** Caller(Offer)
+      #+BEGIN_SRC js
+      /* 1. 创建一个新的RTCPeerConnection并从getUserMedia（）添加流：
+       ,*/
+      // servers is an optional config file (see TURN and STUN discussion below)
+      pc1 = new RTCPeerConnection(servers);
+      // ...
+      localStream.getTracks().forEach((track) => {
+        pc1.addTrack(track, localStream);
+      });
+
+      /* 2.  
+       ,*/
+      pc1.setLocalDescription(desc).then(() => {
+            onSetLocalSuccess(pc1);
+          },
+          onSetSessionDescriptionError
+        );
+        trace('pc2 setRemoteDescription start');
+        pc2.setRemoteDescription(desc).then(() => {
+            onSetRemoteSuccess(pc2);
+          },
+          onSetSessionDescriptionError
+                                           );
+      #+END_SRC
+****** Callee(answer)
+      #+BEGIN_SRC js
+      pc2 = new RTCPeerConnection(servers);
+      pc2.ontrack = gotRemoteStream;
+      //...
+      function gotRemoteStream(e){
+        vid2.srcObject = e.stream;
+      }
+      #+END_SRC
+***** RTCPeerConnection plus servers
+      
+**** RTCDataChannel
+     除音频和视频外，WebRTC还支持其他类型数据的实时通信。
+     RTCDataChannel API支持任意数据的对等交换，具有低延迟和高吞吐量。
+     https://webrtc.github.io/samples/#datachannel
+
+     语法有意类似于WebSocket，带有send（）方法和消息事件：
+     #+BEGIN_SRC js
+     const localConnection = new RTCPeerConnection(servers);
+     const remoteConnection = new RTCPeerConnection(servers);
+     const sendChannel =
+       localConnection.createDataChannel('sendDataChannel');
+
+     // ...
+
+     remoteConnection.ondatachannel = (event) => {
+       receiveChannel = event.channel;
+       receiveChannel.onmessage = onReceiveMessage;
+       receiveChannel.onopen = onReceiveChannelStateChange;
+       receiveChannel.onclose = onReceiveChannelStateChange;
+     };
+
+     function onReceiveMessage(event) {
+       document.querySelector("textarea#send").value = event.data;
+     }
+
+     document.querySelector("button#send").onclick = () => {
+       var data = document.querySelector("textarea#send").value;
+       sendChannel.send(data);
+     };
+     #+END_SRC
+     https://github.com/Peer5/ShareFest
+     https://techcrunch.com/2013/12/17/yahoo-acquires-peercdn/
+     
+*** WebRTC in the real world: STUN/TURN and signaling
+    https://www.html5rocks.com/en/tutorials/webrtc/infrastructure/
+    - 客户端交换元数据以协调通信：这称为信令。
+    - 应对网络地址转换器（NAT）和防火墙。
+    signaling service/STUN+TURN servers.
+**** What is signaling?
+     信令协同通信过程如：
+     - Session control messages used to open of close communication.会话控制
+     - Error messages. 错误消息
+     - 媒体元数据：编解码设置、带宽、媒体类型
+     - 密钥数据，用于建立安全连接
+     - 网络数据，如主机<IP>:<port>
+     WebRTC 不提供信令传输机制！ *必须自建*
+**** why is signaling not defined by WebRTC?
+     为了避免冗余并最大限度地兼容已有技术，WebRTC标准未规定信令方法和协议。
+     https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-03#section-1.1
+     完全控制媒体层面，但信令层面留给应用。基本原理是不同的应用程序可能更喜欢使用不同的协议，
+     例如现有的SIP或Jingle呼叫信令协议，或者特定应用程序定制的东西，可能用于新的用例。
+     
+     JSEP的体系结构还避免了浏览器必须保存状态：即用作信令状态机。
+     例如，如果每次重新加载页面时信令数据丢失，则这将是有问题的。相反，信令状态可以保存在服务器上。
+     (offer)                                           (answer)
+     Caller                                            Callee
+      |                                                   |
+     Browser  <---------------Media------------------> Browser
+      |                       WebRTC                      |
+     -+----------------(SDP)SessionDescriptionProtocol----+-----
+      |                       App                         |
+     App  <--------signaling (server)----------------->  App
+
+     SDP(SessionDescriptionProtocol) format:
+     https://datatracker.ietf.org/doc/draft-nandakumar-rtcweb-sdp/?include_text=1
+     #+BEGIN_SRC java
+     v=0
+     o=- 7614219274584779017 2 IN IP4 127.0.0.1
+     s=-
+     t=0 0
+     a=group:BUNDLE audio video
+     a=msid-semantic: WMS
+     m=audio 1 RTP/SAVPF 111 103 104 0 8 107 106 105 13 126
+     c=IN IP4 0.0.0.0
+     a=rtcp:1 IN IP4 0.0.0.0
+     a=ice-ufrag:W2TGCZw2NZHuwlnf
+     a=ice-pwd:xdQEccP40E+P0L5qTyzDgfmW
+     a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+     a=mid:audio
+     a=rtcp-mux
+     a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:9c1AHz27dZ9xPI91YNfSlI67/EMkjHHIHORiClQe
+     a=rtpmap:111 opus/48000/2
+     …
+     #+END_SRC
+**** RTCPeerConnection + signaling: offer(发起者), answer(应答者) and candidate(候选人)
+     RTCPeerConnection是WebRTC应用程序用于在对等体之间创建连接并传送音频和视频的API。
+     要初始化此过程，RTCPeerConnection有两个任务：
+     - 确定本地媒体条件，例如分辨率和编解码器功能。发起(offer)和回答(answer)的元数据。
+     - 获取应用程序主机的潜在(pertential)网络地址，称为候选者(candidates)。
+     一旦确定了本地数据，就必须通过与远程对等体的信令机制进行交换。
+     如同爱丽丝试图打电话给夏娃：
+     1. Alice创建了一个RTCPeerConnection对象;
+     2. Alice使用RTCPeerConnection createOffer()方法创建offer（SDP会话描述）;
+     3. Alice用他的调用offer.setLocalDescription();
+     4. Alice对offer进行字符串化，并使用信号机制将其发送给Eve;
+     5. Eve使用Alice.offer.setRemoteDescription（），以便她的RTCPeerConnection知道Alice的设置;
+     6. Eve调用createAnswer（），并为此成功回调传递本地会话描述：Eve.answer;
+     7. Eve通过调用setLocalDescription(answer)将她的answer设置为本地描述;
+     8. Eve然后使用信令机制将她的字符串answer发送给Alice;
+     9. Alice使用setRemoteDescription（）将Eve的答案设置为远程会话描述;
+        Alice                                     Eve
+        (peerConn)                                (peerConn)
+        offer = peerConn.createOffer()              |
+        offer.setLocalDecription()                  |
+        signal.send(offer, eve) ---------------> offer.setRemoteDescription(Alice, offer)
+             |                                   answer = peerConn.createAnswer()
+             |                                   answer.setLocalDescription()
+        answer.setRemoteDescription() <--------- signal.send(answer, alice)
+
+     Alice和Eve还需要交换网络信息。“查找候选者”一词是指使用ICE框架查找网络接口和端口的过程。
+     ICE(Interactive Connectivity Establishment)
+     1. Alice使用onicecandidate处理程序创建RTCPeerConnection对象。
+     2. 当网络候选者可用时，将调用该处理程序。
+     3. 在处理程序中，Alice通过其信令通道将字符串化的候选数据发送给Eve。
+     4. 当Eve从Alice获取候选消息时，她调用addIceCandidate（），将候选者添加到远程对等描述中。
+        https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-03#section-3.4.1
+        
+**** Coding WebRTC for signaling
+     SignalingChannel
+     #+BEGIN_SRC javascript
+     // handles JSON.stringify/parse
+     const signaling = new SignalingChannel();
+     const constraints = {audio: true, video: true};
+     const configuration = {iceServers: [{urls: 'stuns:stun.example.org'}]};
+     const pc = new RTCPeerConnection(configuration);
+
+     // send any ice candidates to the other peer
+     pc.onicecandidate = ({candidate}) => signaling.send({candidate});
+
+     // let the "negotiationneeded" event trigger offer generation
+     pc.onnegotiationneeded = async () => {
+       try {
+         await pc.setLocalDescription(await pc.createOffer());
+         // send the offer to the other peer
+         signaling.send({desc: pc.localDescription});
+       } catch (err) {
+         console.error(err);
+       }
+     };
+
+     // once remote track media arrives, show it in remote video element
+     pc.ontrack = (event) => {
+       // don't set srcObject again if it is already set.
+       if (remoteView.srcObject) return;
+       remoteView.srcObject = event.streams[0];
+     };
+
+     // call start() to initiate
+     async function start() {
+       try {
+         // get local stream, show it in self-view and add it to be sent
+         const stream =
+           await navigator.mediaDevices.getUserMedia(constraints);
+         stream.getTracks().forEach((track) =>
+           pc.addTrack(track, stream));
+         selfView.srcObject = stream;
+       } catch (err) {
+         console.error(err);
+       }
+     }
+
+     signaling.onmessage = async ({desc, candidate}) => {
+       try {
+         if (desc) {
+           // if we get an offer, we need to reply with an answer
+           if (desc.type === 'offer') {
+             await pc.setRemoteDescription(desc);
+             const stream =
+               await navigator.mediaDevices.getUserMedia(constraints);
+             stream.getTracks().forEach((track) =>
+               pc.addTrack(track, stream));
+             await pc.setLocalDescription(await pc.createAnswer());
+             signaling.send({desc: pc.localDescription});
+           } else if (desc.type === 'answer') {
+             await pc.setRemoteDescription(desc);
+           } else {
+             console.log('Unsupported SDP type.');
+           }
+         } else if (candidate) {
+           await pc.addIceCandidate(candidate);
+         }
+       } catch (err) {
+         console.error(err);
+       }
+     };
+     #+END_SRC
+**** Peer discovery
+     WebRTC应用程序需要一种方法让客户向对方发出他们想要开始或加入呼叫的信号。
+     WebRTC没有定义同行发现机制，我们不会在这里讨论选项。
+**** How can I build a signaling service?
+     用于交换会话元数据的信令机制也可用于传送应用数据。这只是一个消息服务！
+**** Pushing message from the server to the client
+     WebSocket是一种更自然的解决方案，专为全双工客户端,
+     服务器通信而设计（消息可以同时在两个方向上流动）。
+**** Scaling signaling(扩展信令)
+     eXtensible Messaging and Presence Protocol (XMPP), 
+     Open source libraries such as ZeroMQ (as used by TokBox for their Rumour service) and OpenMQ.
+     ...
+**** Building a signaling service with Socket.io on Node
+     #+BEGIN_SRC html
+     <!DOCTYPE html>
+     <html>
+       <head>
+         <title>WebRTC client</title>
+       </head>
+       <body>
+         <script src='/socket.io/socket.io.js'></script>
+         <script src='js/main.js'></script>
+       </body>
+     </html>
+     #+END_SRC
+     #+BEGIN_SRC js
+     // main.js
+     const isInitiator;
+
+     room = prompt('Enter room name:');
+
+     const socket = io.connect();
+
+     if (room !== '') {
+       console.log('Joining room ' + room);
+       socket.emit('create or join', room);
+     }
+
+     socket.on('full', (room) => {
+       console.log('Room ' + room + ' is full');
+     });
+
+     socket.on('empty', (room) => {
+       isInitiator = true;
+       console.log('Room ' + room + ' is empty');
+     });
+
+     socket.on('join', (room) => {
+       console.log('Making request to join room ' + room);
+       console.log('You are the initiator!');
+     });
+
+     socket.on('log', (array) => {
+       console.log.apply(console, array);
+     });
+     #+END_SRC
+     #+BEGIN_SRC js
+     // servie.js
+     const static = require('node-static');
+     const http = require('http');
+     const file = new(static.Server)();
+     const app = http.createServer(function (req, res) {
+       file.serve(req, res);
+     }).listen(2013);
+
+     const io = require('socket.io').listen(app);
+
+     io.sockets.on('connection', (socket) => {
+
+       // convenience function to log server messages to the client
+       function log(){
+         const array = ['>>> Message from server: '];
+         for (const i = 0; i < arguments.length; i++) {
+           array.push(arguments[i]);
+         }
+           socket.emit('log', array);
+       }
+
+       socket.on('message', (message) => {
+         log('Got message:', message);
+         // for a real app, would be room only (not broadcast)
+         socket.broadcast.emit('message', message);
+       });
+
+       socket.on('create or join', (room) => {
+         const numClients = io.sockets.clients(room).length;
+
+         log('Room ' + room + ' has ' + numClients + ' client(s)');
+         log('Request to create or join room ' + room);
+
+         if (numClients === 0){
+           socket.join(room);
+           socket.emit('created', room);
+         } else if (numClients === 1) {
+           io.sockets.in(room).emit('join', room);
+           socket.join(room);
+           socket.emit('joined', room);
+         } else { // max two clients
+           socket.emit('full', room);
+         }
+         socket.emit('emit(): client ' + socket.id +
+           ' joined room ' + room);
+         socket.broadcast.emit('broadcast(): client ' + socket.id +
+           ' joined room ' + room);
+
+       });
+
+     });
+     #+END_SRC
+**** Signalling gotchas(陷阱)
+     - 在调用setLocalDescription（）之前，RTCPeerConnection不会开始收集候选者：
+       这是JSEP IETF草案中的强制要求。
+     - 利用Trickle ICE（见上文）：候选人到达后立即调用addIceCandidate（）。
+**** Readymade signaling servers(现有信令服务)
+     signaling servers:
+     - https://github.com/webRTC-io/webRTC.io
+     - https://github.com/priologic/easyrtc
+     - https://github.com/andyet/signalmaster
+
+     WebRTC platform:
+     - OpenTok https://tokbox.com/developer/
+     - Asterisk https://wiki.asterisk.org/wiki/display/AST/Asterisk+WebRTC+Support
+**** Signalig security
+     https://www.ietf.org/proceedings/82/slides/rtcweb-13.pdf
+**** After signaling: using ICE to cope with NATs and firewalls
+     要实现此目的，您的应用程序必须将ICE服务器URL传递给RTCPeerConnection，如下所述。
+     ICE试图找到连接对等体的最佳途径。它并行尝试所有可能性，并选择最有效的选项。
+     ICE首先尝试使用从设备的操作系统和网卡获得的主机地址建立连接;
+     如果失败（它将用于NAT后面的设备）ICE使用STUN服务器获取外部地址，
+     如果失败，则通过TURN中继服务器路由流量。
+     STUN服务器用于获取外部网络地址。如果直接（对等）连接失败，则TURN服务器用于中继流量。
+     ICE还应对NAT设置的复杂性：实际上，NAT'打孔'可能需要的不仅仅是公共IP：端口地址。
+     #+BEGIN_SRC js
+     {
+       'iceServers': [
+         {
+           'urls': 'stun:stun.l.google.com:19302'
+         },
+         {
+           'urls': 'turn:192.158.29.39:3478?transport=udp',
+           'credential': 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
+           'username': '28224511:1379330808'
+         },
+         {
+           'urls': 'turn:192.158.29.39:3478?transport=tcp',
+           'credential': 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
+           'username': '28224511:1379330808'
+         }
+       ]
+     }
+     #+END_SRC
+**** STUN
+     Session Traversal Utilities for NAT（STUN）是一组标准化方法，包括网络协议，
+     用于在实时语音，视频，消息传递和其他交互式通信的应用中遍历网络地址转换器（NAT）网关。
+
+     STUN服务器位于公共互联网上并且有一个简单的任务：检查传入请求的IP：端口地址
+     （来自在NAT后面运行的应用程序）并将该地址作为响应发回。
+**** TURN
+     RTCPeerConnection尝试通过UDP建立对等体之间的直接通信。
+     如果失败，RTCPeerConnection将转向TCP。
+     如果失败，可以将TURN服务器用作回退，在端点之间中继数据。
+**** Deploying STUN and TURN servers
+     https://code.google.com/archive/p/rfc5766-turn-server/
+     https://github.com/coturn/rfc5766-turn-server/
+**** Multipoint Control Unit(MCU)
+     有几种开源MCU软件可供选择。
+     例如，Licode（以前称为Lynckia）为WebRTC生产开源MCU; 
+     OpenTok有Mantis。
+**** Beyond browsers: VoIP, telephones and messaging
+     SIP(Session Initiation Protocol)
+     PSTN(Public switched telephone network)
+
+     Jingle是可扩展消息和存在协议（XMPP）的扩展，它为诸如IP语音（VoIP）或
+     视频会议通信之类的多媒体交互添加了对等（P2P）会话控制（信令）。
+     它由Google和XMPP标准基金会设计。使用实时传输协议（RTP）传送多媒体流。
+     如果需要，使用交互式连接建立（ICE）辅助NAT遍历。
+
+     当前的WebRTC实现基于C ++ libjingle库，这是最初为Google Talk开发的Jingle实现。
+*** WebRTC安全吗(Secure)？
+   所有WebRTC组件都必须进行加密，并且其JavaScript API只能用于安全来源（HTTPS或localhost）。
+   WebRTC标准没有定义信令机制，因此您需要确保使用安全协议。
+** Overview
+*** 学习内容
+    从您的网络摄像头获取视频 
+    Stream视频与RTCPeerConnection 
+    流数据与RTCDataChannel 
+    设置信令服务以交换消息 
+    组合对等连接和信令 
+    拍照并通过数据通道共享
+*** 前提
+    Chrom47+
+    
+* NativeCode
+** Android
+*** Prebuild libraries
+    最简单的入门方法是使用JCenter提供的官方预建库。这些库是从树的末端编译而来，仅用于开发目的。
+    implementation 'org.webrtc:google-webrtc:1.0.+'
+*** Native APIs
+**** Block Diagram(框图)
+ - Stream
+   + MediaStream
+     - Track(video)
+     - Track(audio)
+     - ...
+ - PeerConnection
+   PeerConnectionFactoryInterface = CreatePeerConnectionFactory();
+   PeerConnectionObserver; callbacks
+   PeerConnectionInterface = PeerConnectionFactoryInterface->CreatePeerConnection();
+   LocalMediaStreamInterface = PeerConnectionFactoryInterface->CreateLocalMediaStream();
+   LocalVideo/AudioTrackInterface = 
+     PeerConnectionFactoryInterface->CreateVideo/AudioTrackInterface();
+   LocalMediaStream->AddTrack(LocalVedio/Audio/Track);
+   PeerConnection->AddStream(LocalMediaStream);
+   PeerConnection->xxCallbacks(PeerConnectionObserver);
+**** Calling Sequences(调用序列)
+***** Set up a call(设置调用)
+                                                 (PeerConnectionObserver)
+      Remote-peer      PeerConnectionFactory         Application                 PeerConnection
+          |                     |                CreatePeerConnectionFactory()         |
+          |                     |<--CreatePeerConnection ----|                         |
+          |                     |<--CreateLocalMediaStream --|                         |
+          |                     |<--CreateLocalVideoTrack ---|                         |
+          |                     |<--(Add tracks to stream) --|                         |
+          |                     |                            |-AddStream()------------>|
+          |                                                  |-CommitStreamChanges()-->|
+          |                                                  |<-OnSignalingMessage-----|
+          |<-Send offer to the remote peer ------------------|                         |
+          |--Get answer from the remote peer --------------->|                         |--|
+          |                                                  |--ProcessSignalingMessage-> |
+          |                                                  |                            |
+          |<<================================Media======================================> |
+          |                                                  |<-OnAddStream---------------|
+***** Receive a Call
+                                                 (PeerConnectionObserver)
+      Remote-peer      PeerConnectionFactory         Application                 PeerConnection
+          |                     |                         |                            |
+          |---------------------+-offer------------------>|                            |
+          |                     |                 CreatePeerConnectionFactory()        |
+          |                     |<-CreatePeerConnection---|                            |
+          |                     |                         |--ProcessSignalingMessage-->|
+          |                     |                         |<-OnAddStream---------------|
+          |                     |<-CreateLocalMediaStream-|                            |
+          |                     | ...                     |                            |
+          |                     |                         |--AddStream---------------->|
+          |                                               |--CommitStreamChanges------>|
+          |                                               |--OnSignalingMessage------->|
+          |<--Send answer to the remote peer -------------|                            |
+          |<------------------------Media-----------------+----------------------------|
+          |                                               |                            |
+***** Close Down a Call
+      Remote-peer      PeerConnectionFactory         Application                 PeerConnection
+          |                                               |--Close()------------------>|
+          |                                               |<--OnStateChange()----------|
+          |                                               |<--OnRemoteStream()---------|
+          |                                               |<--OnSignalingMessage(down)-|
+          |<--Send Shutdown to the remote peer------------|                            |
+          |--->Get Ok form the remote peer -------------->|                            |
+          |                                               |--ProceSignalingMessage OK->|
+          |                                               |<--OnStateChange(closed)----|
+          |                                               |                            |
+**** Threading Model
+     WebRTC Native API使用两个全局可用线程:WebRTC Native API使用两个全局可用线程
+     根据PeerConnection工厂的创建方式，应用程序可以提供这两个线程，也可以只在内部创建它们。
+     对Stream API和PeerConnection API的调用将代理到信令线程，这意味着应用程序可以从任何线程调用这些API。
+     所有回调都将在信令线程上进行。应用程序应尽快返回回调，以避免阻塞信令线程。
+     资源密集型流程应该发布到不同的线程。
+     - Stream APIs 
+       https://webrtc.googlesource.com/src/+/master/api/mediastreaminterface.h
+     - PeerConnection APIs 
+       https://webrtc.googlesource.com/src/+/master/api/peerconnectioninterface.h
+     
+* OpenTok

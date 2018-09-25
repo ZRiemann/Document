@@ -284,10 +284,11 @@ has the following type signature:
            pthread_create(NULL, NULL, proc, obj);
    }
    #+END_SRC
-* developer.android.com
+* developer.android.com/guide
   https://developer.android.com/guide/components/fundamentals?hl=zh-cn
   中文版后缀 hl?=zh-cn
 ** App Basic(应用开发基础)
+*** Build your first app(第一个App)
 *** App fundamentals(应用基础知识 )
     APK(Android AacKage) = AndroidSDk.build(data,source)
     Security sandbox:
@@ -742,9 +743,50 @@ public void onConfigurationChanged(Configuration newConfig) {
 此属性为 API 级别 19 中新增属性。
 
 *** App permissions(App权限)
+**** Request app permission
+***** Check for permiision
+      #+BEGIN_SRC java
+      if (ContextCompat.checkSelfPermission(thisActivity, Manifest.permission.WRITE_CALENDAR)
+              != PackageManager.PERMISSION_GRANTED) {
+          // Permission is not granted
+      }else{
+              // requestPermissions()
+      }
+      #+END_SRC
+      #+BEGIN_SRC java
+      // Here, thisActivity is the current activity
+      if (ContextCompat.checkSelfPermission(thisActivity,
+              Manifest.permission.READ_CONTACTS)
+              != PackageManager.PERMISSION_GRANTED) {
 
-** Core topics(核心提示)
-*** Activities
+          // Permission is not granted
+          // Should we show an explanation?
+          if (ActivityCompat.shouldShowRequestPermissionRationale(thisActivity,
+                  Manifest.permission.READ_CONTACTS)) {
+              // Show an explanation to the user *asynchronously* -- don't block
+              // this thread waiting for the user's response! After the user
+              // sees the explanation, try again to request the permission.
+          } else {
+              // No explanation needed; request the permission
+              ActivityCompat.requestPermissions(thisActivity,
+                      new String[]{Manifest.permission.READ_CONTACTS},
+                      MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+
+              // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+              // app-defined int constant. The callback method gets the
+              // result of the request.
+          }
+      } else {
+          // Permission has already been granted
+      }
+      #+END_SRC
+      If the app has the permission, the method returns PERMISSION_GRANTED, 
+      and the app can proceed with the operation. 
+      If the app does not have the permission, 
+      the method returns PERMISSION_DENIED, 
+      and the app has to explicitly ask the user for permission.
+** Core topics(核心主题)
+*** Activities(活动)
 **** Concept(基本概念)
 ***** The activity lifecycle(生命周期)
 ****** Guide to app atchitecture(app架构指导)
@@ -1309,8 +1351,71 @@ public void onConfigurationChanged(Configuration newConfig) {
          + "singleInstance"
            与“singleTask”相同，但系统不会在持有实例的任务中启动任何其他活动。 
            活动始终是其任务的唯一成员; 任何由此开始的活动都在一个单独的任务中打开。
-           task now
+           
        - Using Intent flags(低优先级)
+         + FLAG_ACTIVITY_NEW_TASK onNewIntent()
+         + FLAG_ACTIVITY_SINGLE_TOP
+         + FLAG_ACTIVITY_CLEAR_TOP
+         + 
+****** Handling affinities
+       您可以使用<activity>元素的taskAffinity属性修改任何给定活动的亲和力。
+       - FLAG_ACTIVITY_NEW_TASK 优先匹配taskAffinity,如果没有就开新的task
+****** Clearing the back stack
+       默认情况长时间离开app，堆栈会被销毁只保留根活动
+       activity attributes
+       - alwaysRetainTaskState 保留所有任务堆栈
+       - clearTaskOnLaunch 总是清除堆栈，与alwaysRetainTaskState相反
+       - finishOnTaskLaunch 活动仍然是当前会话的任务的一部分。 如果用户离开然后返回任务，它将不再存在。
+****** Starting a task
+       您可以将活动设置为任务的入口点，方法是为其指定一个过滤器，
+       其中“android.intent.action.MAIN”作为指定的操作，
+       “android.intent.category.LAUNCHER”作为指定的类别。
+       #+BEGIN_SRC xml
+       <activity ... >
+           <intent-filter ... >
+               <action android:name="android.intent.action.MAIN" />
+               <category android:name="android.intent.category.LAUNCHER" />
+           </intent-filter>
+           ...
+       </activity>
+       #+END_SRC
+       
+***** Processes and Application Lifecycle(进程及进程生命周期)
+      进程生命周期错误的一个常见示例是BroadcastReceiver，
+      它在BroadcastReceiver.onReceive（）方法中接收Intent时启动一个线程，
+      然后从该函数返回。 一旦返回，系统会认为BroadcastReceiver不再处于活动状态，
+      因此不再需要其托管进程（除非其他应用程序组件处于活动状态）。
+      因此，系统可能随时终止进程以回收内存，
+      并且这样做会终止在进程中运行的生成的线程。
+      此问题的解决方案通常是从BroadcastReceiver安排JobService，
+      以便系统知道在该过程中仍有活动的工作。
+
+      importance hierarchy
+      1. *Foreground process*
+         - 屏幕顶层活动
+         - 正在执行BroadcastReceiver().onReceive()
+         - 正在执行Service.onCreate()/onStart()/onDestroy()
+      2. *Visible process*
+         - Activity.onPause()
+         - Sercice.startForeground()
+         - 它正在托管系统用于用户知道的特定功能的服务，例如动态壁纸，输入法服务等。
+      3. *Service process*
+      4. *Cached process*
+
+***** Parcelables and boundles(包与捆)
+      Parcel 不提供序列化机制。
+****** Sending data between activities(活动间发送数据)
+       使用putExtra(string, string)
+       #+BEGIN_SRC java
+       Intent intent = new Intent(this, MyActivity.class);
+       intent.putExtra("media_id", "a1b2c3");
+       // ...
+       startActivity(intent);
+       #+END_SRC
+       
+****** Sending data between processes
+       Binder事务缓冲区具有有限的固定大小，当前为1MB，由进程正在进行的所有事务共享。
+
 **** Fragment(片段）
      Fragment 表示 Activity 中的行为或用户界面部分。
      您可以将多个片段组合在一个 Activity 中来构建多窗格 UI，以及在多个 Activity 中重复使用某个片段。
@@ -1943,7 +2048,7 @@ public void onConfigurationChanged(Configuration newConfig) {
           startActivity(chooser);
       }
       #+END_SRC
-**** Getting a result from an activity(获得activity返回值)
+***** Getting a result from an activity(获得activity返回值)
 ***** 启动Activyty
      启动并不一定是单向的另一个 Activity。您还可以启动另一个 Activity 并 接收返回的结果。
      要接收结果，请调用 startActivityForResult()（而不是 startActivity()）。
@@ -2025,7 +2130,7 @@ public void onConfigurationChanged(Configuration newConfig) {
        }
        #+END_SRC
 
-**** Allowing other apps to start your activity(允许其他app启动你的activity)
+***** Allowing other apps to start your activity(允许其他app启动你的activity)
      如果您构建一款可与用户的好友分享消息或照片的社交应用，您最关注的是支持 ACTION_SEND Intent 
      以便用户可以从另一应用发起“共享”操作并且启动您的应用执行该操作。 
 
@@ -2120,8 +2225,828 @@ public void onConfigurationChanged(Configuration newConfig) {
       finish();
       #+END_SRC
       
-** Android Studio
-*** Meet Android Studio
+**** Handing app links(TODO)
+**** Loaders(加载器)
+     *使用ViewModel代替*
+     
+     可用于每个 Activity 和 Fragment。
+     支持异步加载数据。
+     监控其数据源并在内容变化时传递新结果。
+     在某一配置更改后重建加载器时，会自动重新连接上一个加载器的游标。 
+     因此，它们无需重新查询其数据。
+
+     | class/interface               | description                   |
+     |-------------------------------+-------------------------------|
+     | LoaderManager                 | 管理Loader实例                |
+     | LoaserManager.LoaderCallbacks | onCreateLoader()              |
+     | Loader                        | 执行异步数据加载，Cursoroader |
+     | AsyncTaskLoader               | 用于AsyncTask                 |
+     | CursorLoader                  |                               |
+     |-------------------------------+-------------------------------|
+***** 在应用中使用加载器
+      使用加载器的应用通常包括：
+      Activity 或 Fragment。
+      LoaderManager 的实例。
+      
+      一个 CursorLoader，用于加载由 ContentProvider 支持的数据。
+      您也可以实现自己的 Loader 或 AsyncTaskLoader 子类，从其他源中加载数据。
+      
+      一个 LoaderManager.LoaderCallbacks 实现。您可以使用它来创建新加载器，
+      并管理对现有加载器的引用。
+      
+      一种显示加载器数据的方法，如 SimpleCursorAdapter。
+      使用 CursorLoader 时的数据源，如 ContentProvider。
+***** 启动加载器
+      #+BEGIN_SRC java
+      // onCreate()/onActivityCreated()
+      // Prepare the loader.  Either re-connect with an existing one,
+      // or start a new one.
+      getLoaderManager().initLoader(0, null, this);
+      #+END_SRC
+      如果 ID 指定的加载器已存在，则将重复使用上次创建的加载器。
+      如果 ID 指定的加载器不存在，则 initLoader() 将触发 LoaderManager.LoaderCallbacks 方法
+      onCreateLoader()。在此方法中，您可以实现代码以实例化并返回新加载器。
+      onLoadFinished()
+      restartLoader()
+***** 示例
+      #+BEGIN_SRC java
+      public static class CursorLoaderListFragment extends ListFragment
+              implements OnQueryTextListener, LoaderManager.LoaderCallbacks<Cursor> {
+
+          // This is the Adapter being used to display the list's data.
+          SimpleCursorAdapter mAdapter;
+
+          // If non-null, this is the current filter the user has provided.
+          String mCurFilter;
+
+          @Override public void onActivityCreated(Bundle savedInstanceState) {
+              super.onActivityCreated(savedInstanceState);
+
+              // Give some text to display if there is no data.  In a real
+              // application this would come from a resource.
+              setEmptyText("No phone numbers");
+
+              // We have a menu item to show in action bar.
+              setHasOptionsMenu(true);
+
+              // Create an empty adapter we will use to display the loaded data.
+              mAdapter = new SimpleCursorAdapter(getActivity(),
+                      android.R.layout.simple_list_item_2, null,
+                      new String[] { Contacts.DISPLAY_NAME, Contacts.CONTACT_STATUS },
+                      new int[] { android.R.id.text1, android.R.id.text2 }, 0);
+              setListAdapter(mAdapter);
+
+              // Prepare the loader.  Either re-connect with an existing one,
+              // or start a new one.
+              getLoaderManager().initLoader(0, null, this);
+          }
+
+          @Override public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+              // Place an action bar item for searching.
+              MenuItem item = menu.add("Search");
+              item.setIcon(android.R.drawable.ic_menu_search);
+              item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+              SearchView sv = new SearchView(getActivity());
+              sv.setOnQueryTextListener(this);
+              item.setActionView(sv);
+          }
+
+          public boolean onQueryTextChange(String newText) {
+              // Called when the action bar search text has changed.  Update
+              // the search filter, and restart the loader to do a new query
+              // with this filter.
+              mCurFilter = !TextUtils.isEmpty(newText) ? newText : null;
+              getLoaderManager().restartLoader(0, null, this);
+              return true;
+          }
+
+          @Override public boolean onQueryTextSubmit(String query) {
+              // Don't care about this.
+              return true;
+          }
+
+          @Override public void onListItemClick(ListView l, View v, int position, long id) {
+              // Insert desired behavior here.
+              Log.i("FragmentComplexList", "Item clicked: " + id);
+          }
+
+          // These are the Contacts rows that we will retrieve.
+          static final String[] CONTACTS_SUMMARY_PROJECTION = new String[] {
+              Contacts._ID,
+              Contacts.DISPLAY_NAME,
+              Contacts.CONTACT_STATUS,
+              Contacts.CONTACT_PRESENCE,
+              Contacts.PHOTO_ID,
+              Contacts.LOOKUP_KEY,
+          };
+          public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+              // This is called when a new Loader needs to be created.  This
+              // sample only has one Loader, so we don't care about the ID.
+              // First, pick the base URI to use depending on whether we are
+              // currently filtering.
+              Uri baseUri;
+              if (mCurFilter != null) {
+                  baseUri = Uri.withAppendedPath(Contacts.CONTENT_FILTER_URI,
+                          Uri.encode(mCurFilter));
+              } else {
+                  baseUri = Contacts.CONTENT_URI;
+              }
+
+              // Now create and return a CursorLoader that will take care of
+              // creating a Cursor for the data being displayed.
+              String select = "((" + Contacts.DISPLAY_NAME + " NOTNULL) AND ("
+                      + Contacts.HAS_PHONE_NUMBER + "=1) AND ("
+                      + Contacts.DISPLAY_NAME + " != '' ))";
+              return new CursorLoader(getActivity(), baseUri,
+                      CONTACTS_SUMMARY_PROJECTION, select, null,
+                      Contacts.DISPLAY_NAME + " COLLATE LOCALIZED ASC");
+          }
+
+          public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+              // Swap the new cursor in.  (The framework will take care of closing the
+              // old cursor once we return.)
+              mAdapter.swapCursor(data);
+          }
+
+          public void onLoaderReset(Loader<Cursor> loader) {
+              // This is called when the last Cursor provided to onLoadFinished()
+              // above is about to be closed.  We need to make sure we are no
+              // longer using it.
+              mAdapter.swapCursor(null);
+          }
+      }
+      #+END_SRC
+**** RecentsScreen(当前屏幕)
+     “最近”屏幕（也称为“概述”屏幕，最近的任务列表或最近的应用程序）是一个系统级UI，
+     列出最近访问的活动和任务。 用户可以浏览列表并选择要恢复的任务，
+     或者用户可以通过将其擦除来从列表中删除任务。 Android 5.0（API级别21）引入了以文档为中心的模型，
+     其中包含不同文档的同一活动的多个实例可能在“最近”屏幕中显示为任务。
+     例如，Google云端硬盘可能会为多个Google文档中的每个文档执行任务。 
+     每个文档在“最近”屏幕中显示为任务。
+***** Adding Tasks to the Recent Screen
+****** Using the intent flag to add task
+       #+BEGIN_SRC java
+       public void createNewDocument(View view) {
+             final Intent newDocumentIntent = newDocumentIntent();
+             if (useMultipleTasks) {
+                 newDocumentIntent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+             }
+             startActivity(newDocumentIntent);
+         }
+
+         private Intent newDocumentIntent() {
+             boolean useMultipleTasks = mCheckbox.isChecked();
+             final Intent newDocumentIntent = new Intent(this, NewDocumentActivity.class);
+             newDocumentIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+             newDocumentIntent.putExtra(KEY_EXTRA_NEW_DOCUMENT_COUNTER, mDocumentCounter++);
+             return newDocumentIntent;
+         }
+
+       }
+       #+END_SRC
+       
+****** Using the activity attribute to add a task
+       adnroid:documentLaunchModd
+       - intoExisting
+       - always
+       - none
+       - never
+****** Removing Tasks
+       #+BEGIN_SRC java
+       public void onRemoveFromRecents(View view) {
+           // The document is no longer needed; remove its task.
+           finishAndRemoveTask();
+       }
+       #+END_SRC
+**** App shortcuts(快捷方式)
+**** App widgets(小窗口)
+*** Architecture Components(框架组件)
+**** OverView
+***** overview
+      轻松管理应用程序的生命周期。 新的生命周期感知组件可帮助您管理活动和碎片生命周期。
+      生存配置更改，避免内存泄漏并轻松将数据加载到UI中。
+      使用LiveData构建数据对象，以便在基础数据库更改时通知视图。
+      ViewModel存储在应用程序轮换中未销毁的UI相关数据。
+      Room是一个SQLite对象映射库。 使用它来避免样板代码并轻松地将SQLite表数据转换为Java对象。
+      Room提供SQLite语句的编译时检查，可以返回RxJava，Flowable和LiveData observable。
+***** Latest news and videos
+      https://github.com/googlesamples/android-sunflower
+      https://codelabs.developers.google.com
+      https://codelabs.developers.google.com/codelabs/android-room-with-a-view/?hl=zh-cn#
+**** Adding Components to your project
+***** Add the Google Maven(内行/专家) repository(库)
+      your project/build.gradle google()
+      #+BEGIN_SRC java
+      allprojects {
+          repositories {
+              jcenter()
+              google()
+          }
+      }
+      #+END_SRC
+***** Declare dependencies(声明依赖)
+****** AndroidX
+       https://developer.android.com/topic/libraries/support-library/androidx-overview?hl=zh-cn
+****** Kontlin
+****** Livecycle
+       Dependencies for *Lifecycle*, including *LiveData* and *ViewModel*.
+       #+BEGIN_SRC java
+       dependencies {
+           def lifecycle_version = "1.1.1"
+
+           // ViewModel and LiveData
+           implementation "android.arch.lifecycle:extensions:$lifecycle_version"
+           // alternatively - just ViewModel
+           implementation "android.arch.lifecycle:viewmodel:$lifecycle_version" // use -ktx for Kotlin
+           // alternatively - just LiveData
+           implementation "android.arch.lifecycle:livedata:$lifecycle_version"
+           // alternatively - Lifecycles only (no ViewModel or LiveData).
+           //     Support library depends on this lightweight import
+           implementation "android.arch.lifecycle:runtime:$lifecycle_version"
+
+           annotationProcessor "android.arch.lifecycle:compiler:$lifecycle_version" // use kapt for Kotlin
+           // alternately - if using Java8, use the following instead of compiler
+           implementation "android.arch.lifecycle:common-java8:$lifecycle_version"
+
+           // optional - ReactiveStreams support for LiveData
+           implementation "android.arch.lifecycle:reactivestreams:$lifecycle_version"
+
+           // optional - Test helpers for LiveData
+           testImplementation "android.arch.core:core-testing:$lifecycle_version"
+       }
+
+       dependencies {
+           def lifecycle_version = "2.0.0-beta01"
+
+           // ViewModel and LiveData
+           implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
+           // alternatively - just ViewModel
+           implementation "androidx.lifecycle:lifecycle-viewmodel:$lifecycle_version" // use -ktx for Kotlin
+           // alternatively - just LiveData
+           implementation "androidx.lifecycle:lifecycle-livedata:$lifecycle_version"
+           // alternatively - Lifecycles only (no ViewModel or LiveData). Some UI
+           //     AndroidX libraries use this lightweight import for Lifecycle
+           implementation "androidx.lifecycle:lifecycle-runtime:$lifecycle_version"
+
+           annotationProcessor "androidx.lifecycle:lifecycle-compiler:$lifecycle_version" // use kapt for Kotlin
+           // alternately - if using Java8, use the following instead of lifecycle-compiler
+           implementation "androidx.lifecycle:lifecycle-common-java8:$lifecycle_version"
+
+           // optional - ReactiveStreams support for LiveData
+           implementation "androidx.lifecycle:lifecycle-reactivestreams:$lifecycle_version" // use -ktx for Kotlin
+
+           // optional - Test helpers for LiveData
+           testImplementation "androidx.arch.core:core-testing:$lifecycle_version"
+       }
+       #+END_SRC
+****** Room
+       Dependencies for *Room*, including testing Room migrations and Room RxJava
+       #+BEGIN_SRC java
+       dependencies {
+           def room_version = "1.1.1"
+
+           implementation "android.arch.persistence.room:runtime:$room_version"
+           annotationProcessor "android.arch.persistence.room:compiler:$room_version" // use kapt for Kotlin
+
+           // optional - RxJava support for Room
+           implementation "android.arch.persistence.room:rxjava2:$room_version"
+
+           // optional - Guava support for Room, including Optional and ListenableFuture
+           implementation "android.arch.persistence.room:guava:$room_version"
+
+           // Test helpers
+           testImplementation "android.arch.persistence.room:testing:$room_version"
+       }
+       dependencies {
+           def room_version = "2.0.0-beta01"
+
+           implementation "androidx.room:room-runtime:$room_version"
+           annotationProcessor "androidx.room:room-compiler:$room_version" // use kapt for Kotlin
+
+           // optional - RxJava support for Room
+           implementation "androidx.room:room-rxjava2:$room_version"
+
+           // optional - Guava support for Room, including Optional and ListenableFuture
+           implementation "androidx.room:room-guava:$room_version"
+
+           // Test helpers
+           testImplementation "androidx.room:room-testing:$room_version"
+       }
+       #+END_SRC
+****** Paging
+       #+BEGIN_SRC java
+       dependencies {
+           def paging_version = "1.0.0"
+
+           implementation "android.arch.paging:runtime:$paging_version"
+
+           // alternatively - without Android dependencies for testing
+           testImplementation "android.arch.paging:common:$paging_version"
+
+           // optional - RxJava support, currently in release candidate
+           implementation "android.arch.paging:rxjava2:1.0.0-rc1"
+       }
+       dependencies {
+           def paging_version = "2.0.0-beta01"
+
+           implementation "androidx.paging:paging-runtime:$paging_version"
+
+           // alternatively - without Android dependencies for testing
+           testImplementation "androidx.paging:paging-common:$paging_version"
+
+           // optional - RxJava support
+           implementation "androidx.paging:paging-rxjava2:$paging_version"
+       }
+       #+END_SRC
+****** Navigation
+       #+BEGIN_SRC java
+       dependencies {
+           def nav_version = "1.0.0-alpha05"
+
+           implementation "android.arch.navigation:navigation-fragment:$nav_version" // use -ktx for Kotlin
+           implementation "android.arch.navigation:navigation-ui:$nav_version" // use -ktx for Kotlin
+
+           // optional - Test helpers
+           androidTestImplementation "android.arch.navigation:navigation-testing:$nav_version" // use -ktx for Kotlin
+       }
+       #+END_SRC
+****** Safe args
+       #+BEGIN_SRC java
+       buildscript {
+           repositories {
+               google()
+           }
+           dependencies {
+               classpath "android.arch.navigation:navigation-safe-args-gradle-plugin:1.0.0-alpha05"
+           }
+       }
+       #+END_SRC
+****** WorkManager
+       #+BEGIN_SRC java
+       dependencies {
+           def work_version = "1.0.0-alpha08"
+
+           implementation "android.arch.work:work-runtime:$work_version" // use -ktx for Kotlin
+
+           // optional - Firebase JobDispatcher support
+           implementation "android.arch.work:work-firebase:$work_version"
+
+           // optional - Test helpers
+           androidTestImplementation "android.arch.work:work-testing:$work_version"
+       }
+       #+END_SRC
+**** Data Binding Library
+***** OverView
+      #+BEGIN_SRC java
+      TextView textView = findViewById(R.id.sample_text);
+      textView.setText(viewModel.getUserName());
+      #+END_SRC
+      #+BEGIN_SRC java
+      <TextView
+          android:text="@{viewmodel.userName}" />
+      #+END_SRC
+****** Resources
+****** Get started
+****** Layout and binding expressions
+       #+BEGIN_SRC xml
+       <layout xmlns:android="http://schemas.android.com/apk/res/android"
+               xmlns:app="http://schemas.android.com/apk/res-auto">
+           <data>
+               <variable
+                   name="viewmodel"
+                   type="com.myapp.data.ViewModel" />
+           </data>
+           <ConstraintLayout... /> <!-- UI layout's root element -->
+       </layout>
+       #+END_SRC
+****** Work with observable data objects
+****** Generate binding classes
+****** Binding adapters
+       #+BEGIN_SRC java
+       @BindingAdapter("app:goneUnless")
+       public static void goneUnless(View view, Boolean visible) {
+           view.visibility = visible ? View.VISIBLE : View.GONE;
+       }
+       #+END_SRC
+****** Bind layout views to Architecture Components
+****** Two-way data binding
+       
+***** Get started
+****** Build environment
+      #+BEGIN_SRC java
+      android {
+          ...
+          dataBinding {
+              enabled = true
+          }
+      }
+      #+END_SRC
+****** Android Studio support for data binding
+       #+BEGIN_SRC xml
+       <TextView android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:text="@{user.firstName, default=my_default}"/>
+       #+END_SRC
+****** New data binding compiler for binding classses
+       
+***** Layouts and binding expressions
+****** overview
+      #+BEGIN_SRC xml
+      <?xml version="1.0" encoding="utf-8"?>
+      <layout xmlns:android="http://schemas.android.com/apk/res/android">
+         <data>
+             <variable name="user" type="com.example.User"/>
+         </data>
+         <LinearLayout
+             android:orientation="vertical"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent">
+             <TextView android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+                 android:text="@{user.firstName}"/>
+             <TextView android:layout_width="wrap_content"
+                 android:layout_height="wrap_content"
+                 android:text="@{user.lastName}"/>
+         </LinearLayout>
+      </layout>
+      #+END_SRC
+
+****** Data object
+       #+BEGIN_SRC java
+       public class User {
+         public final String firstName;
+         public final String lastName;
+         public User(String firstName, String lastName) {
+             this.firstName = firstName;
+             this.lastName = lastName;
+         }
+       }
+       #+END_SRC
+
+****** Binding data
+       #+BEGIN_SRC java
+       @Override
+       protected void onCreate(Bundle savedInstanceState) {
+          super.onCreate(savedInstanceState);
+          // ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
+          ActivityMainBinding binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+          User user = new User("Test", "User");
+          binding.setUser(user);
+
+          //ListItemBinding binding = ListItemBinding.inflate(layoutInflater, viewGroup, false);
+          // or
+          //ListItemBinding binding = DataBindingUtil.inflate(layoutInflater, R.layout.list_item, viewGroup, false);
+       }
+
+       #+END_SRC
+****** Expresson language
+******* Common features
+        Mathematical + - / * %
+        String concatenation +
+        Logical && ||
+        Binary & | ^
+        Unary + - ! ~
+        Shift >> >>> <<
+        Comparison == > < >= <=
+        instanceof
+        Grouping ()
+        Literals - character, String, numeric, null
+        Cast
+        Method calls
+        Field access
+        Array access []
+        Ternary operator ?:
+
+        #+BEGIN_SRC java
+        android:text="@{String.valueOf(index + 1)}"
+        android:visibility="@{age < 13 ? View.GONE : View.VISIBLE}"
+        android:transitionName='@{"image_" + id}'
+        #+END_SRC
+******* Missing operations
+        this/super/new/explicity generic invocation
+******* Null coalescing operator
+        The null coalescing operator (??) chooses the left operand 
+        if it isn't null or the right if the former is null.
+
+        android:text="@{user.displayName ?? user.lastName}"
+        This is functionally equivalent to:
+
+        android:text="@{user.displayName != null ? user.displayName : user.lastName}"
+******* Property Reference
+        android:text="@{user.lastName}"
+******* Avoiding null pointer exceptions
+******* Collections
+        Common collections, such as arrays, lists, sparse lists, and maps, 
+        can be accessed using the [] operator for convenience.
+        #+BEGIN_SRC xml
+        <data>
+            <import type="android.util.SparseArray"/>
+            <import type="java.util.Map"/>
+            <import type="java.util.List"/>
+            <variable name="list" type="List<String>"/>
+            <variable name="sparse" type="SparseArray<String>"/>
+            <variable name="map" type="Map<String, String>"/>
+            <variable name="index" type="int"/>
+            <variable name="key" type="String"/>
+        </data>
+        …
+        android:text="@{list[index]}"
+        …
+        android:text="@{sparse[index]}"
+        …
+        android:text="@{map[key]}"
+        #+END_SRC
+******* String literals
+        android:text='@{map["firstName"]}'
+        android:text="@{map[`firstName`]}"
+******* Resources
+        android:padding="@{large? @dimen/largePadding : @dimen/smallPadding}"
+        android:text="@{@string/nameFormat(firstName, lastName)}"
+        android:text="@{@plurals/banana(bananaCount)}"
+       
+
+        Have an orange
+        Have %d oranges
+        android:text="@{@plurals/orange(orangeCount, orangeCount)}"
+******* Event handling
+        Class	Listener setter	Attribute
+        SearchView	setOnSearchClickListener(View.OnClickListener)	android:onSearchClick
+        ZoomControls	setOnZoomInClickListener(View.OnClickListener)	android:onZoomIn
+        ZoomControls	setOnZoomOutClickListener(View.OnClickListener)	android:onZoomOut
+        - Method references
+          #+BEGIN_SRC java
+          public class MyHandlers {
+              public void onClickFriend(View view) { ... }
+          }
+          #+END_SRC
+          #+BEGIN_SRC xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <layout xmlns:android="http://schemas.android.com/apk/res/android">
+             <data>
+                 <variable name="handlers" type="com.example.MyHandlers"/>
+                 <variable name="user" type="com.example.User"/>
+             </data>
+             <LinearLayout
+                 android:orientation="vertical"
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent">
+                 <TextView android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+                     android:text="@{user.firstName}"
+                     android:onClick="@{handlers::onClickFriend}"/>
+             </LinearLayout>
+          </layout>
+          #+END_SRC
+        - Listener bindings
+          #+BEGIN_SRC java
+          public class Presenter {
+              public void onSaveClick(Task task){}
+          }
+          #+END_SRC
+          #+BEGIN_SRC xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <layout xmlns:android="http://schemas.android.com/apk/res/android">
+              <data>
+                  <variable name="task" type="com.android.example.Task" />
+                  <variable name="presenter" type="com.android.example.Presenter" />
+              </data>
+              <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                  <Button android:layout_width="wrap_content" android:layout_height="wrap_content"
+                  android:onClick="@{() -> presenter.onSaveClick(task)}" />
+                  <!-- android:onClick="@{(theView) -> presenter.onSaveClick(theView, task)}" -->
+                  <!-- android:onCheckedChanged="@{(cb, isChecked) -> presenter.completeChanged(task, isChecked)}" -->
+              </LinearLayout>
+          </layout>
+          #+END_SRC
+****** Imports,variables and includes
+******* imports
+        Type aliases
+       #+BEGIN_SRC xml
+       <data>
+         <import type="android.view.View"/>
+         <import type="com.example.real.estate.View"
+                 alias="Vista"/>
+       </data>
+
+       <TextView
+          android:text="@{user.lastName}"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:visibility="@{user.isAdult ? View.VISIBLE : View.GONE}"/>
+       #+END_SRC
+
+**** Handling Lifecycles
+      #+BEGIN_SRC java
+      public class MyObserver implements LifecycleObserver {
+          @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+          public void connectListener() {
+              ...
+          }
+
+          @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+          public void disconnectListener() {
+              ...
+          }
+      }
+
+      myLifecycleOwner.getLifecycle().addObserver(new MyObserver());
+      #+END_SRC
+**** LiveData
+     #+BEGIN_SRC java
+     public class NameViewModel extends ViewModel {
+
+     // Create a LiveData with a String
+     private MutableLiveData<String> mCurrentName;
+
+         public MutableLiveData<String> getCurrentName() {
+             if (mCurrentName == null) {
+                 mCurrentName = new MutableLiveData<String>();
+             }
+             return mCurrentName;
+         }
+
+     // Rest of the ViewModel...
+     }
+
+     public class NameActivity extends AppCompatActivity {
+
+         private NameViewModel mModel;
+
+         @Override
+         protected void onCreate(Bundle savedInstanceState) {
+             super.onCreate(savedInstanceState);
+
+             // Other code to setup the activity...
+
+             // Get the ViewModel.
+             mModel = ViewModelProviders.of(this).get(NameViewModel.class);
+
+
+             // Create the observer which updates the UI.
+             final Observer<String> nameObserver = new Observer<String>() {
+                 @Override
+                 public void onChanged(@Nullable final String newName) {
+                     // Update the UI, in this case, a TextView.
+                     mNameTextView.setText(newName);
+                 }
+             };
+
+             // Observe the LiveData, passing in this activity as the LifecycleOwner and the observer.
+             mModel.getCurrentName().observe(this, nameObserver);
+
+             mButton.setOnClickListener(new OnClickListener() {
+                             @Override
+                             public void onClick(View v) {
+                                     String anotherName = "John Doe";
+                                     mModel.getCurrentName().setValue(anotherName);
+                             }
+                     });
+         }
+     }
+     #+END_SRC
+**** ViewModel(视图模型)
+     
+*** Images & graphics(图像与图形)
+**** Drawables Overview(绘制概览)
+     Drawable 类/子类 绘制图形与图像
+     - 保存图像
+     - 在xml中定义资源属性
+     Vector drawables矢量图
+**** Create drawables from resource images
+     #+BEGIN_SRC java
+     public class ImageActivity extends AppCompatActivity {
+         public final String TAG = ImageActivity.class.getSimpleName();
+         LinearLayout mLinearLayout;
+
+         @Override
+         protected void onCreate(Bundle savedInstanceState) {
+             super.onCreate(savedInstanceState);
+             Log.d(TAG, "onCreate()");
+             mLinearLayout = new LinearLayout(this);
+             showImageView();
+             setContentView(mLinearLayout);
+             //setContentView(R.layout.activity_image);
+         }
+
+         private void showImageView() {
+             Log.d(TAG, "showImage()");
+             ImageView image = new ImageView(this);
+             image.setImageResource(R.drawable.album_jazz_blues);
+             //image.setImageResource(R.raw.album_jazz_blues);
+             image.setAdjustViewBounds(true);
+             image.setLayoutParams(new ViewGroup.LayoutParams(
+                     ViewGroup.LayoutParams.WRAP_CONTENT,
+                     ViewGroup.LayoutParams.WRAP_CONTENT));
+             mLinearLayout.addView(image);
+         }
+     }
+     #+END_SRC
+*** Audio & video(音频与视频)
+**** Media app architecture overview
+     #+BEGIN_SRC json
+     {
+         "app":{
+             "UI":{
+                 "function":"Transport Controls",
+                 "MediaController":"submodule"
+             },
+             "Player":{
+                 "function":"play media",
+                 "MediaSession":"playbackstate,metadata,callback"
+             }
+         }
+     }
+     #+END_SRC
+     使用Media session，Media controller可以动态部署界面与播放器
+***** Media session
+      隐藏播放器细节，管理媒体状态，接收媒体控制器回调。
+***** Media controller
+      独立于用户界面。
+      
+***** Vedio apps versus autio apps
+****** Vedio app
+       不需要后台服务
+****** Audio app
+       可以分前端和后台服务，从而实现后台播放音乐。
+       Activity                                        MediaBrowserService
+       MediaBrowser  <-------connect-------------->    MediaBrowserService
+       MediaController <-----callbacks------------>    MediaSession
+       UI                                              Player
+
+***** Media apps and Android audio infrastructure
+      精心设计的媒体应用程序应与其他播放音频的应用程序“很好地协同工作”。
+      它应该准备好共享手机并与您设备上使用音频的其他应用程序合作。它还应响应设备上的硬件控制。
+***** The media-compat library
+      android.support.v4.media.session
+      https://developer.android.com/reference/android/support/v4/media/session/package-summary
+      MediaSessionCompact/MediaControllerCompat
+***** Measuring performance
+      MediaPlayer.getMetrics()
+      MediaRecorder.getMetrics()
+      MediaCodec.getMetrics()
+      MediaExtractor.getMetrics()
+
+**** Using a media session
+     
+** Best practices(最佳实践)
+*** Testing(测试)
+**** Overview(概览)
+     advantages(优点)
+     - *Repid feedback* on failures;快速故障方愦
+     - *Early failure detection* in the development cycle;在开发期间及早检测到错误
+     - *Safer code refactoring*;安全代码重构
+     - *Stable development velocity*; 稳定开发进度
+**** Fundamentals of Testing(测试基础)
+***** Use an iterative development workflow(迭代开发)
+                        Failing UI Test ---> Passing Unit Test 
+                                \                    /
+      Failing UI Test ==========>\                  / ===========> PassingUT
+              \\                  \ <--Refactor <--/                 //
+               \\                                                   //
+                \\ <============  Refactor <<======================//
+***** Understand the Testing Pyramid(测试金字塔)
+                 /\
+                /  \ UI Tests(Large tests 10%)
+               /----\
+              /      \ Integration Tests(Medium tests 20%)
+             /--------\
+            /          \ Unit Tests(Small tests 70%)
+           /------------\
+***** Write small tests
+****** Robolectric(unit test framework)
+      http://robolectric.org
+****** Mock objects(模拟对象)
+      https://site.mockito.org
+***** Write medium tests
+      测试组件的协作关系。
+***** Write large tests
+      测试业务逻辑
+***** JUnit4 Rules
+      https://junit.org/junit4/
+***** Espresso
+      https://developer.android.com/training/testing/espresso/
+***** UI Automator
+      https://developer.android.com/training/testing/ui-automator
+***** Android Test Orchetrator
+ https://developer.android.com/training/testing/junit-runner.html#using-android-test-orchestrator
+
+**** Set up project
+***** Add Android Test libraries
+****** Add Gradle dependencies
+       #+BEGIN_SRC java
+       allprojects {
+           repositories {
+               jcenter()
+               maven {
+                   url "https://maven.google.com"
+               }
+           }
+       }
+       #+END_SRC
+****** 
+* Android Studio
+  https://developer.android.com/studio
+** Meet Android Studio
 **** Overview
      *Android Studio* is the official Integrated Development Environment(IDE)
      是官方集成开发环境
@@ -2158,13 +3083,13 @@ public void onConfigurationChanged(Configuration newConfig) {
       File > Project Struct > SDK Location > JDK location
 ***** Set proxy settings(build.gradle)
 
-*** Workflow basics
+** Workflow basics
     1. Set up your workspace, create a project
     2. Write your app
     3. Build and run
     4. Iterate (Debut/profile/Test)
     5. Publish
-*** Manage your project
+** Manage your project
 **** Overview
      *Project* source code, assets, test code, build configurations.
 ***** Modules
@@ -2181,7 +3106,7 @@ public void onConfigurationChanged(Configuration newConfig) {
 **** Create a project
 **** Add C and C++ code
 **** Create an Android library     
-** ndk
+* ndk
 *** Getting Started with the NDK(Native Development Kit)
    *NDK* is a set of tools that allows you to use C/C++ code with Android, and
    provides platform libraries.
@@ -2478,5 +3403,10 @@ public void onConfigurationChanged(Configuration newConfig) {
     public class MyService extends Service {...}
 ** 7. Notification(通知)
 ** 8. 文件操作
+* tips
+** Android Studio Design界面不显示layout控件的解决方法
+   Android Studio更新到3.1.3后，发现拖到Design中的控件在预览界面中不显示；
+   解决办法：
+   在Styles.xml中的parent="..."中的Theme前添加Base
 * poco
 ** Standalone Toolchain
