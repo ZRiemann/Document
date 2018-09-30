@@ -3408,5 +3408,43 @@ public void onConfigurationChanged(Configuration newConfig) {
    Android Studio更新到3.1.3后，发现拖到Design中的控件在预览界面中不显示；
    解决办法：
    在Styles.xml中的parent="..."中的Theme前添加Base
+** 解决Gradle:download特别慢或卡主不动的问题
+   #+BEGIN_SRC java
+   // Top-level build file where you can add configuration options common to all sub-projects/modules.
+   buildscript {
+       
+       repositories {
+           google()
+           jcenter()
+                   // 添加下面代码
+           maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
+       }
+       dependencies {
+           classpath 'com.android.tools.build:gradle:3.2.0'
+           
+
+           // NOTE: Do not place your application dependencies here; they belong
+           // in the individual module build.gradle files
+       }
+   }
+
+   allprojects {
+       repositories {
+           google()
+           jcenter()
+                   //添加下面代码
+           maven{ url 'http://maven.aliyun.com/nexus/content/groups/public/'}
+       }
+   }
+
+   task clean(type: Delete) {
+       delete rootProject.buildDir
+   }
+
+   #+END_SRC
+** https\://services.gradle.org/distributions/gradle-4.6-all.zip 下载不动
+   手动下载并放置到对于位置：
+   ~/.gradle/wrapper/dists/gradle-4.6-all/bcst21l2brirad8k2ben1letg/gradle-4.6-all.zip
+   同时删除gradle-4.6-all.zip.part
 * poco
 ** Standalone Toolchain

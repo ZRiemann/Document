@@ -821,3 +821,113 @@
        https://webrtc.googlesource.com/src/+/master/api/peerconnectioninterface.h
      
 * OpenTok
+  https://github.com/opentok/opentok-android-sdk-samples
+  #+BEGIN_SRC java
+  buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.3.3'
+    // NOTE: Do not place your application dependencies here; they belong
+    // in the individual module build.gradle files
+    }
+  }
+
+  allprojects {
+     repositories {
+         jcenter()
+         maven { url 'https://maven.google.com' }
+         maven { url 'https://tokbox.bintray.com/maven' }
+     }
+  }
+
+  task clean(type: Delete) {
+     delete rootProject.buildDir
+  }
+
+  #+END_SRC
+  #+BEGIN_SRC java
+  apply plugin: 'com.android.application'
+
+  android {
+     compileSdkVersion 25
+     buildToolsVersion '25.0.3'
+
+     defaultConfig {
+         applicationId "com.example.yourname.myapplication"
+         minSdkVersion 16
+         targetSdkVersion 25
+         versionCode 1
+         versionName "1.0"
+     }
+     buildTypes {
+         release {
+             minifyEnabled false
+         }
+     }
+  }
+  dependencies {
+      compile fileTree(dir: 'libs', include: ['*.jar'])
+      androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+          exclude group: 'com.android.support', module: 'support-annotations'
+      })
+      compile 'com.android.support:appcompat-v7:25.4.0'
+      compile 'com.android.support.constraint:constraint-layout:1.0.2'
+      testCompile 'junit:junit:4.12'
+      compile 'com.opentok.android:opentok-android-sdk:2.14.0'
+      compile 'pub.devrel:easypermissions:0.4.0'
+  }
+  #+END_SRC
+  #+BEGIN_SRC java
+  import android.util.Log;
+  import com.opentok.android.Session;
+  import com.opentok.android.Stream;
+  import com.opentok.android.Publisher;
+  import com.opentok.android.PublisherKit;
+  import com.opentok.android.Subscriber;
+  import com.opentok.android.OpentokError;
+  import android.support.annotation.NonNull;
+  import android.Manifest;
+  import pub.devrel.easypermissions.AfterPermissionGranted;
+  import pub.devrel.easypermissions.EasyPermissions;
+
+  public class MainActivity extends AppCompatActivity {
+    private static String API_KEY = "";
+    private static String SESSION_ID = "";
+    private static String TOKEN = "";
+    private static final String LOG_TAG = MainActivity.class.getSimpleName();
+    private static final int RC_SETTINGS_SCREEN_PERM = 123;
+    private static final int RC_VIDEO_APP_PERM = 124;
+
+    private Session mSession;
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+
+      super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+      EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
+
+    @AfterPermissionGranted(RC_VIDEO_APP_PERM)
+    private void requestPermissions() {
+      String[] perms = { Manifest.permission.INTERNET,
+                         Manifest.permission.CAMERA,
+                         Manifest.permission.RECORD_AUDIO };
+      if (EasyPermissions.hasPermissions(this, perms)) {
+          // initialize view objects from your layout
+
+
+          // initialize and connect to the session
+
+
+      } else {
+          EasyPermissions.requestPermissions(this,
+                                             "This app needs access to your camera and mic to make video calls",
+                                             RC_VIDEO_APP_PERM, perms);
+      }
+  }
+  }
+  #+END_SRC
