@@ -746,6 +746,10 @@
 *** Prebuild libraries
     最简单的入门方法是使用JCenter提供的官方预建库。这些库是从树的末端编译而来，仅用于开发目的。
     implementation 'org.webrtc:google-webrtc:1.0.+'
+    webrtc 版本:
+    https://bintray.com/google/webrtc/google-webrtc
+    Grandle 与 Maven 对比:
+    https://gradle.org/maven-vs-gradle/
 *** Native APIs
 **** Block Diagram(框图)
  - Stream
