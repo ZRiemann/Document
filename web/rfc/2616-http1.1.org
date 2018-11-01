@@ -3,6 +3,7 @@
 
 * Abstract(摘要)
   超文本传输​​协议（HTTP）是应用 *程序级别 分布式,协作(collaborative),超媒体信息协议* 系统。
+  解析器 file:src/http.h
 
 * 1 Introduction(介绍)
 ** 1.1 Purpose(目标)
@@ -38,8 +39,114 @@
      与client对应，通过接收连接接收请求(request)然后发送应答(response)的应用程序。
      任何服务器都可以充当源服务器(origin server)， 代理(proxy)，
      网关(gateway)或隧道(tunnel)，基于性质的切换行为每个请求。
+   - proxy(代理）
+     中间程序既是服务端也是客户端，最为其他客户端的代表向其他服务器发送请求。
+     1. 内部处理请求
+     2. 可能通过适配，转发请求到其他服务器。
+     *transparent roxy* 不修改请求，不越权处理请求；
+     *non-transparent proxy* 为agent提供额外的服务，可能修改请求或应答内容。
+     client <--> (as a server)proxy(as a client) <--> server
+     --->
+     <--- 内部应答(internally)
+     -------------> pass them on ------------->
+     <------------- 中继         <-------------
+   - gateway(网关)
+     为其他服务提供中介的服务器。与代理不同，网关接收请求，就好像它是请求资源的原始服务器;
+     请求客户可能没有意识到它正在与网关通信。
+     client <----> gateway <------> server-a
+                           <------> server-b
+                           ...
+   - tunnel(隧道)
+     两个连接的中继程序。不作为HTTP通讯的部分
+     client <---------(tunnel)-----------> server
+   - cache(高速缓存)
+     response的本地缓存，以及其(消息存储、检索、删除)管理子系统。
+     用于节省时间集节省带宽。任何客户端或服务器都可以包含缓存，但不能被隧道使用。
+   - cacheable(缓存使能)
+     使能判断定义 [[caching in http]]
+   - fist-hand(第一手)
+     未经过中介处理的应答
+   - explicit expiration time(明确到期时间)
+     cache 不能作为应答的到期时间
+   - heuristic expiration time(启发式到期时间)
+     当没有explict expiration time时被赋予cache
+   - age(年龄)
+     应答的原始服务端发送时间开始计算。
+   - freshness lifetime(新鲜期)
+     应答的产生到明确到期时间的时间跨度
+     response generation <------------------------> response explicit time
+     | <----------- freshness lifetime ---------------------------------->|
+   - fresh(新鲜的)
+     年龄在新鲜期内的应答被认为是新鲜的。
+   - stale(陈旧的)
+     超出新鲜期的的应答被认为是旧的
+   - sematically transparent(语义透明)
+     缓存以“语义透明”方式运行
+   - validator(验证器)
+     协议元素（例如，实体标签或最后修改时间）
+     用于确定缓存条目是否等效实体的副本
+   - upstream/downstream
+     上游和下游描述了消息的流程，所有消息从上游流向下游。
+   - inbound/outbound
+     入站和出站是指请求和响应路径，
+     “入站”表示“朝向原始服务器”
+     “出站”表示“朝向用户代理”
+** 1.4 Overall Operation(总体框架)
+   HTTP协议是请求/响应协议。
+   HTTP通信通常通过TCP / IP连接进行。
+   默认端口：80
+   UA(User agent)
+   v(connection)
+   O(Origin server)
 
+   - simplest case(最简单情况)
+       request chain--------------------->
+     UA ----------------- v --------------- O
+        <--------------------response chain
+   - N个中介(intermediaries)情况
+     A/B/C: proxy/gateway/tunnel
+        request chain -------------------------------------->
+     UA ---- v ---- A ---- v ---- B ---- v ---- C ---- v ---- O
+        <------------------------------------- response chain
 
+     B has cached the response
+        request chain ---------->
+       UA -----v----- A -----v----- B - - - - - - C - - - - - - O
+          <--------- response chain
+   在HTTP / 1.0中，大多数实现都为每个实现使用了新连接请求/响应交换。短连接
+   在HTTP / 1.1中，可以使用连接一个或多个请求/响应交换，尽管可能是连接由于各种原因关闭。长连接
+* 2 Notational Conventions and Generic Grammer(符号约定和通用语法)
+** 2.1 Augmented BNF(增强 Backus-Naur Form(RFC-822))
+   - name = definition
+   - "literal"  引号围绕文字文本。除非另有说明，该文本不区分大小写。
+   - rule1 | rule2 用条（“|”）分隔的元素是替代品，可选项
+   - (rule1 rule2) 单一选项
+   - <n>*<m>rule 元素前面的字符 “*”表示n - m次重复。
+   - [foo bar] == *1(foo bar)
+   - N rule == <n>*<n> rule
+   - <n>#<m>rule 
+     1#rule == ( *LWS element *( *LWS "," *LWS element ))
+   - ; comment
+   - implied *LWS(linear wite space)
+     本说明书描述的语法是基于单词的。
+** 2.2 Basic Rule(基本规则)
+   OCTET          = <any 8-bit sequence of data>
+   CHAR           = <any US-ASCII character (octets 0 - 127)>
+   UPALPHA        = <any US-ASCII uppercase letter "A".."Z">
+   LOALPHA        = <any US-ASCII lowercase letter "a".."z">
+   ALPHA          = UPALPHA | LOALPHA
+   DIGIT          = <any US-ASCII digit "0".."9">
+   CTL            = <any US-ASCII control character
+   (octets 0 - 31) and DEL (127)>
+   CR             = <US-ASCII CR, carriage return (13)>
+   LF             = <US-ASCII LF, linefeed (10)>
+   SP             = <US-ASCII SP, space (32)>
+   HT             = <US-ASCII HT, horizontal-tab (9)>
+   <">            = <US-ASCII double-quote mark (34)>
+
+   CRLF           = CR LF
+   
+   - HTTP / 1.1将序列CR LF定义为行尾标记，除了 *entity-body行标记* 由其关联的媒体类型定义，
 ** 3.2 HTTP URI
    #<<URI>>
 * 4 HTTP Message
@@ -52,3 +159,5 @@
   #<<entity>>
 * 12 Content Negotation(内容协商)
   #<<content negotation>>
+* 13 Caching in HTTP
+  #<<caching in http>>
