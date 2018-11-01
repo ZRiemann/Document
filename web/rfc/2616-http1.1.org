@@ -1,0 +1,54 @@
+#+TITLE: Hypertext Transfer Protocol -- HTTP/1.1
+#+OPTIONS: num:t toc:t
+
+* Abstract(摘要)
+  超文本传输​​协议（HTTP）是应用 *程序级别 分布式,协作(collaborative),超媒体信息协议* 系统。
+
+* 1 Introduction(介绍)
+** 1.1 Purpose(目标)
+   HTTP/0.9/1.0/1.1
+** 1.3 Terminology(术语)
+   - connection
+     在两个程序之间建立的传输层虚拟电路为了沟通的目的。
+   - [[message]]
+     HTTP通信的基本单元，通过连接(connection)传输。
+   - [[request]]
+     HTTP请求消息
+   - [[response]]
+     HTTP响应消息
+   - [[resource]]
+     可以通过[[URI]]标识的网络数据对象或服务。资源可能有多种形式表示
+    （例如多种语言，数据格式，大小和决议）或以其他方式变化。
+   - [[entity]](实体)
+     作为请求/相应的有效负载传输的信息。
+     entity-header/entity-body
+   - representation(表示)
+     有内容协商([[content negotation]])的相应实体,可能存在多个与特定响应状态相关的表示。
+   - [[content negotation]]（内容协商/协议/判断）
+     用于选择适当表示的机制为请求提供服务。
+   - variant（变种）
+     资源可能包含一个或多个表示(representation)在任何给定的瞬间与它相关联。
+     其中每一个表示被称为“变量(varriant)”。
+   - client
+     通过建立连接(connection)发送请求(request)的应用程序。
+   - user agent(用户代理)
+     发起请求的客户端。这些通常是浏览器，编辑器，蜘蛛spiders
+    （网络遍历机器人 web-traversing-robots）或其他最终用户工具。
+   - server(服务器)
+     与client对应，通过接收连接接收请求(request)然后发送应答(response)的应用程序。
+     任何服务器都可以充当源服务器(origin server)， 代理(proxy)，
+     网关(gateway)或隧道(tunnel)，基于性质的切换行为每个请求。
+
+
+** 3.2 HTTP URI
+   #<<URI>>
+* 4 HTTP Message
+  #<<message>>
+* 5 HTTP Request
+  #<<request>>
+* 6 HTTP Response
+  #<<response>>
+* 7 Entity
+  #<<entity>>
+* 12 Content Negotation(内容协商)
+  #<<content negotation>>

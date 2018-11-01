@@ -1,4 +1,7 @@
 #+TITLE: org-mode 基础教程
+#+FILETAGS: :org-mode
+#+TAGS: { tag-1(a) tag-2(b) } tag-3(c) tag-4(d)
+
 * 精选
 ** 教程连接
 http://orgmode.org/orgguide.pdf
@@ -51,8 +54,10 @@ M-RET 可以自动输入同级条目；
 M-S-RET可以输入一个带checkbox的列表项，而在总任务后面可以输入一个[%]或者[/]则能自动计算总任务进度。最后结果如图所示。
 
 ** 3 脚注
-   [fn:1] 本文参考：http://orgmode.org/orgguide.pdf
-
+   插入脚注：C-c C-x f 接下俩你可以写一些其他东西，然后在文章的末尾写上下面两句话（注意：必须要顶格写）：
+   把光标移动到正文的1处，按 C-c C-c，可以跳转到注脚1处，在注脚1处按 C-c C-c，可以跳转到正文的1 处。
+   [fn:1] 
+   The Org homepage[fn:2]
 ** 4 表格
    下面我们填入一些数据，在填写的过程中，按Tab键可以调到右方表格，按Enter则能跳到下方表格。如果同时按住Shift，则是反方向跳。输入表格完成后，按 C-c C-c则能自动对齐表格，出入完成对齐后，表格如下：
 下面我们来体验下org-mode的强大的表格函数。我们在total列任选一个位置，输入=$3+$4 ，然后按C-u C-c C-c ，org-mode便能自动为我们计算所有三列加四列的和，并放到第五列。最后完成的表格如下
@@ -64,13 +69,49 @@ M-S-RET可以输入一个带checkbox的列表项，而在总任务后面可以�
 | hehe   |  12834381 |   78 |   62 |   140 |
 #+TBLFM: $5=$3+$4
 ** 5 连接
-   连接资源（图片，文件，URL等）
-   [ [连接地址] [连接内容] ]
-   [[http://orgmode.org/orgguid.pdf][orgguid.pdf]]
-   [[file:/home/maple/test.jpg][a picture]]
-   如果去掉标签，则能直接显示图片
-   [[file:/home/maple/test.jpg]]
-   Emacs默认不显示，需要C-c C-x C-v 才能显示
+   在一个链接上按C-c C-o即可访问，至于调用什么程序访问，取决于链接的内容，emacs和org mode的配置了。
+*** 自动连接
+    对于符合链接规则的内容，org-mode会自动将其视为链接，包括括文件、网页、邮箱、新闻组、BBDB 数据库项、 IRC 会话和记录等。下面是一些例子：
+    http://www.astro.uva.nl/~dominik            on the web
+    file:/home/dominik/images/jupiter.jpg       file, absolute path
+    /home/dominik/images/jupiter.jpg            same as above
+    file:papers/last.pdf                        file, relative path
+    file:projects.org                           another Org file
+    docview:papers/last.pdf::NNN                open file in doc-view mode at page NNN
+    id:B7423F4D-2E8A-471B-8810-C40F074717E9     Link to heading by ID
+    news:comp.emacs                             Usenet link
+    mailto:adent@galaxy.net                     Mail link
+    vm:folder                                   VM folder link
+    vm:folder#id                                VM message link
+    wl:folder#id                                WANDERLUST message link
+    mhe:folder#id                               MH-E message link
+    rmail:folder#id                             RMAIL message link
+    gnus:group#id                               Gnus article link
+    bbdb:R.*Stallman                            BBDB liwnk (ith regexp)
+    irc:/irc.com/#emacs/bob                     IRC link
+    info:org:External%20links                   Info node link (with encoded space)
+    对于文件链接，可以用::后面增加定位符的方式链接到文件的特定位置。定位符可以是行号或搜索选项。如：
+
+    file:~/code/main.c::255                     进入到 255 行
+    file:~/xx.org::My Target                    找到目标‘<<My Target>>’
+    file:~/xx.org/::#my-custom-id               查找自定义 id 的项
+*** 手动连接
+    连接资源（图片，文件，URL等）
+    [ [连接地址] [连接内容] ]
+    [[http://orgmode.org/orgguid.pdf][orgguid.pdf]]
+    [[file:/home/maple/test.jpg][a picture]]
+    如果去掉标签，则能直接显示图片
+    [[file:/home/maple/test.jpg]]
+    Emacs默认不显示，需要C-c C-x C-v 才能显示
+*** 内部连接
+    [[target]] 标签
+    #<<target>> 点击target标签后跳转到这里
+    M-x org-mark-ring-goto ; 回退到标签处
+*** 连接命令
+    C-c C-l 创建连接
+    C-c & ; 跳转回去 M-x org-mark-ring-goto ; 回退到标签处
+    C-c % ; 记录多个位置
+    
 ** 6 待办事项(TODO)
 C-c C-t 改变TODO状态
 C-c / t
@@ -104,7 +145,7 @@ C-c C-c 改变checkbox状态
    =code=
    ~vervatim~
    +strike-through+
-   H_2O
+   H_2 O
    H_{2}O
    E=mc^2
    
@@ -129,6 +170,8 @@ C-c C-c 改变checkbox状态
 #+EXPORT_SELECT_TAGS:   Tags that select a tree for export
 #+EXPORT_EXCLUDE_TAGS:  Tags that exclude a tree from export
 #+XSLT:        the XSLT stylesheet used by DocBook exporter to generate FO file
+#+CAPTION: This is the catption for the next table or link
+#+INCLUDE:"filename" src c++ ;包含其他文件
 -------------------------------------------------------------------------------
 #+OPTIONS
 H:         set the number of headline levels for export
@@ -199,3 +242,10 @@ but not any simpler -- Albert Einstein
     C-c C-e
     导出PGF需要LaTex支持
     到处html
+
+* Footnotes
+
+[fn:2] The link is: http://orgmode.org
+
+[fn:1] 本文参考：http://orgmode.org/orgguide.pdf
+

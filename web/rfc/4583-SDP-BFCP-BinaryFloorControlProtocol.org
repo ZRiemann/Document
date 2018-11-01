@@ -1,0 +1,23 @@
+#+TITLE: SDP for Binary Floor Control Protocol
+
+* Abstract
+  SDP[1]
+  m=application <port> <transport> <fmt> ...
+  m=application 50000  TCP/TLS/BFCP *
+  a=floorctrl:c-only s-only c-s
+* Examples
+  m=application 50000 TCP/TLS/BFCP *
+  a=setup:passive
+  a=connection:new
+  a=fingerprint:SHA-1 4A:AD:B9:B1:3F:82:18:3B:54:02:12:DF:3E:5D:49:6B:19:E5:7C:AB
+  a=floorctrl:s-only
+  a=confid:4321
+  a=userid:1234
+  a=floorid:1 m-stream:10
+  a=floorid:2 m-stream:11
+  m=audio 50002 RTP/AVP 0
+  a=label:10
+  m=video 50004 RTP/AVP 31
+  a=label:11
+* Footnotes
+[1]  [[file:4556-SDP-SessionDescriptionProtocol.org][rfc4556-SDP]]
