@@ -145,18 +145,313 @@
    <">            = <US-ASCII double-quote mark (34)>
 
    CRLF           = CR LF
+   LWS            = [CRLF] 1*( SP | HT )
+   TEXT           = <any OCTET except CTLs, but including LWS>
+   HEX            = "A" | "B" | "C" | "D" | "E" | "F" |
+                    "a"   | "b" | "c" | "d" | "e" | "f" | DIGIT 
+
+   token          = 1*<any CHAR except CTLs or separators>
+   separators     = "(" | ")" | "<" | ">" | "@" |
+                    ","   | ";" | ":" | "\" | <"> |
+                    "/"  | "[" | "]" | "?" | "=" |
+                    "{"  | "}" | SP | HT
+
+   comment        = "(" *( ctext | quoted-pair | comment ) ")"
+   ctext          = <any TEXT excluding "(" and ")">
+
+   quoted-string  = ( <"> *(qdtext | quoted-pair ) <"> )
+   qdtext         = <any TEXT except <">>
+   quoted-pair    = "\" CHAR
    
    - HTTP / 1.1将序列CR LF定义为行尾标记，除了 *entity-body行标记* 由其关联的媒体类型定义，
+   - HTTP / 1.1标题字段值可以折叠到多行上延续线以空格或水平制表符开头。空格键替代空白符
 ** 3.2 HTTP URI
    #<<URI>>
+* 3 Protocol Parameters(协议参数)
+** 3.1 HTTP Version
+   <major>.<minor> numbering scheme
+   目的：指定消息格式及其通信解析能力
+   minor: 添加新东西，但兼容同一主版本
+   major: 修改了协议消息内容，不能与不同主版本协议兼容
+   
+   HTTP-Version field(字段) in the first line of message(第一行)
+   HTTP-Version   = "HTTP" "/" 1*DIGIT "." 1*DIGIT
+   代理/网关绝不能发送带有版本的消息指标大于其实际版本。如果发生则代理/网关必须降级
+   请求版本，或响应错误，或切换到隧道行为。
+   代理/网关对该请求的响应必须在与请求相同的主要版本。
+** 3.2 Uniform Resource Identifiers(URL 统一资源标识)
+   URI已被许多名称所知：WWW地址/Universal Document标识符/通用资源标识符URL/URN
+   格式化的字符串
+*** 3.2.1 General Syntax(一般语法)
+    RFC-2396-URI
+    <scheme>:
+    URI 长度不受限制，但一般不超过255，否则可能老的服务器无法支持
+*** 3.2.2 HTTP URL
+    http_URL = "http:" "//" host [ ":" port ] [ abs_path [ "?" query ]]
+    如果是代理人收到一个不是完全限定域名的主机名可以将其域添加到它收到的主机名。
+    如果代理收到一个完全限定的域名，代理不得更改主机名称。
+*** 3.2.3 URI Comparison(URI 比较)
+    字节比较，大小写敏感；
+    例外：
+    默认端口80 (http://192.168.10.211 == http://192.168.10.211:80)
+    主机名大小写无关(HOST_NAME == host_name)
+    方案大小写无关(http = HTTP)
+** 3.3 Date/Time Formats(日期时间参数)
+*** 3.3.1 Full Date(全日期时间)
+    解析日期值的HTTP / 1.1客户端和服务器必须接受所有三种格式
+    Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123(generate format)
+    Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+    Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+
+    所有HTTP日期/时间戳必须以格林威治标准时间表示（格林威治标准时间）GMT(Greenwich Mean Time)，
+    出于HTTP的目的，GMT正是如此等于UTC（协调世界时Coordinated Universal Time）。
+    HTTP日期区分大小写，不得包含除了特别包含在SP中的SP之外的其他LWS语法。
+    HTTP-date    = rfc1123-date | rfc850-date | asctime-date
+    rfc1123-date = wkday "," SP date1 SP time SP "GMT"
+    rfc850-date  = weekday "," SP date2 SP time SP "GMT"
+    asctime-date = wkday SP date3 SP time SP 4DIGIT
+    date1        = 2DIGIT SP month SP 4DIGIT
+    ; day month year (e.g., 02 Jun 1982)
+    date2        = 2DIGIT "-" month "-" 2DIGIT
+    ; day-month-year (e.g., 02-Jun-82)
+    date3        = month SP ( 2DIGIT | ( SP 1DIGIT ))
+    ; month day (e.g., Jun  2)
+    time         = 2DIGIT ":" 2DIGIT ":" 2DIGIT
+    ; 00:00:00 - 23:59:59
+    wkday        = "Mon" | "Tue" | "Wed"
+                    | "Thu" | "Fri" | "Sat" | "Sun" |
+    weekday      = "Monday" | "Tuesday" | "Wednesday"
+                    | "Thursday" | "Friday" | "Saturday" | "Sunday" |
+    month        = "Jan" | "Feb" | "Mar" | "Apr"
+                    | "May" | "Jun" | "Jul" | "Aug" |
+                    | "Sep" | "Oct" | "Nov" | "Dec" |
+    
+*** 3.3.2 Delta Seconds(秒间距)
+    HTTP header fields allow :
+    delta-seconds  = 1*DIGIT
+** 3.4 Character Sets(字符集)
+   charset = token
+*** 3.4.1 Missing Charset
+    HTTP / 1.1收件人必须尊重发件人提供的charset标签;
+** 3.5 Content Codings(内容编码)
+   content-coding   = token
+   gzip/compress/deflate/identity
+** 3.6 Transfre Codings(传输编码)
+   transfer-coding         = "chunked" | transfer-extension
+   transfer-extension      = token *( ";" parameter )
+   parameter               = attribute "=" value
+   attribute               = token
+   value                   = token | quoted-string
+** 3.6.1 Chunked Transfer Coding
+   Chunked-Body   = *chunk
+                        last-chunk
+                        trailer
+                        CRLF
+
+       chunk          = chunk-size [ chunk-extension ] CRLF
+                        chunk-data CRLF
+       chunk-size     = 1*HEX
+       last-chunk     = 1*("0") [ chunk-extension ] CRLF
+
+       chunk-extension= *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
+       chunk-ext-name = token
+       chunk-ext-val  = token | quoted-string
+       chunk-data     = chunk-size(OCTET)
+       trailer        = *(entity-header CRLF)
+** 3.7 Media Types
+   media-type     = type "/" subtype *( ";" parameter )
+   type           = token
+   subtype        = token
+*** 3.7.1 Canonicalization and Text Defaults(规范化和文本默认值)
+*** 3.7.2 Multipart Types
+** 3.8 Product Tokens(产品token)
+   product         = token ["/" product-version]
+   product-version = token
+   Examples:
+       User-Agent: CERN-LineMode/2.15 libwww/2.17b3
+       Server: Apache/0.8.4
+** 3.9 Quality Values
+   qvalue         = ( "0" [ "." 0*3DIGIT ] ) |
+                    ( "1" [ "." 0*3("0") ] )
+** 3.10 Language Tags
+   language-tag  = primary-tag *( "-" subtag )
+   primary-tag   = 1*8ALPHA
+   subtag        = 1*8ALPHA
+
+   en, en-US, en-cockney, i-cherokee, x-pig-latin
+** 3.11 Entity Tags
+   entity-tag = [ weak ] opaque-tag
+   weak       = "W/"
+   opaque-tag = quoted-string
+** 3.12 Range Units
+   range-unit       = bytes-unit | other-range-unit
+   bytes-unit       = "bytes"
+   other-range-unit = token
 * 4 HTTP Message
   #<<message>>
+** 4.1 Message Types
+   请求/应答
+   HTTP-message   = Request | Response     ; HTTP/1.1 messages
+   generic-message = start-line
+                     *(message-header CRLF)
+                      CRLF
+                      [ message-body ]
+   start-line      = Request-Line | Status-Line
+** 4.2 Message Headers(消息头)
+   - [[general-header]]
+   - [[request-header]]
+   - [[response-header]]
+   - [[entity-header]]
+
+   message-header = field-name ":" [ field-value ]
+   field-name     = token
+   field-value    = *( field-content | LWS )
+   field-content  = <the OCTETs making up the field-value
+                    and consisting of either *TEXT or combinations
+                    of token, separators, and quoted-string>
+** 4.3 Message Body(消息体)
+   HTTP消息的消息体（如果有的话）用于携带与请求或响应关联的实体主体。
+   message-body = entity-body | <entity-body encoded as per Transfer-Encoding>
+   请求中存在消息正文由包含Content-Length或Transfer-Encoding标头字段，消息头。
+   HEAD 请求方法必须不带消息体；
+   所有1xx,204(no content),304(not modified)应答不带消息体；
+   消息体长度可能为0；
+** 4.4 Message Length(消息长度)
+** 4.5 General Header Fields(一般消息头字段)
+   general-header = Cahce-Control
+                    Connection
+                    Date
+                    Pragma
+                    Trailer
+                    Transfer-Encoding
+                    Upgrade
+                    Via
+                    Warning
+
+** 4.5 
+   #<<general-header>>
 * 5 HTTP Request
   #<<request>>
+  Request = [[Request-Line]] *((general-header |
+                            request-header |
+                            entity-header) 
+                            CRLF CRLF 
+                            [message-body])
+** 5.1 Request-Line
+   #<<Request-Line>>
+   Request-Line   = Method SP Request-URI SP HTTP-Version CRLF
+** 5.1.1 Method
+   Method         = "OPTIONS"                ; Section 9.2
+                      | "GET"                    ; Section 9.3
+                      | "HEAD"                   ; Section 9.4
+                      | "POST"                   ; Section 9.5
+                      | "PUT"                    ; Section 9.6
+                      | "DELETE"                 ; Section 9.7
+                      | "TRACE"                  ; Section 9.8
+                      | "CONNECT"                ; Section 9.9
+                      | extension-method
+       extension-method = token
+** 5.1.2 Request-URI
+   Request-URI    = "*" | absoluteURI | abs_path | authority
+   The authority form is only used by the CONNECT method
+   OPTIONS * HTTP/1.1
+   GET http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1
+
+   GET /pub/WWW/TheProject.html HTTP/1.1
+   Host: www.w3.org
+
+   If the Request-URI is encoded using the "% HEX HEX" encoding
+   
+   A transparent proxy MUST NOT rewrite the "abs_path" part of the
+   received Request-URI when forwarding it to the next inbound server,
+   except as noted above to replace a null abs_path with "/".
+** 5.2 The Resource Identified by a Request
+   1. If Request-URI is an absoluteURI, the host is part of the
+     Request-URI. Any Host header field value in the request MUST be
+     ignored.
+
+   2. If the Request-URI is not an absoluteURI, and the request includes
+     a Host header field, the host is determined by the Host header
+     field value.
+
+   3. If the host as determined by rule 1 or 2 is not a valid host on
+     the server, the response MUST be a 400 (Bad Request) error message.
+** 5.3 Request Header Fields
+   #<<request-header>>
+   request-header = Accept                   ; Section 14.1
+                      | Accept-Charset           ; Section 14.2
+                      | Accept-Encoding          ; Section 14.3
+                      | Accept-Language          ; Section 14.4
+                      | Authorization            ; Section 14.8
+                      | Expect                   ; Section 14.20
+                      | From                     ; Section 14.22
+                      | Host                     ; Section 14.23
+                      | If-Match                 ; Section 14.24
+                      | If-Modified-Since        ; Section 14.25
+                      | If-None-Match            ; Section 14.26
+                      | If-Range                 ; Section 14.27
+                      | If-Unmodified-Since      ; Section 14.28
+                      | Max-Forwards             ; Section 14.31
+                      | Proxy-Authorization      ; Section 14.34
+                      | Range                    ; Section 14.35
+                      | Referer                  ; Section 14.36
+                      | TE                       ; Section 14.39
+                      | User-Agent               ; Section 14.43
+  Unrecognized header fields are treated as entity-header fields.
 * 6 HTTP Response
   #<<response>>
+  Response      = Status-Line               ; Section 6.1
+                       *(( general-header        ; Section 4.5
+                        | [[response-header]]        ; Section 6.2
+                        | entity-header ) CRLF)  ; Section 7.1
+                       CRLF
+                       [ message-body ]          ; Section 7.2
+** 6.1
+   #<<response-header>>
+   Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
+*** 6.1.1 Status Code and Reason Phrase
+    状态码由3个数字组成
+    原因短语：状态码的简短描述
+    第一个数字定义应答类型
+    - 1xx: 信息类 - 收到请求，继续处理等
+    - 2xx: 成功 - 收到，理解并接收
+    - 3xx: 重定向 - 需要进一步的请求
+    - 4xx: 客户端错误 - 客户端包含错误的语法或无法实现
+    - 5xx: 服务端错误 - 服务器无法满足有效请求
+*** 6.2 Response Header Fields
+    追加对状态行的补充信息，服务器信息、资源的进一步访问
+    无法识别的扩充字段被认为是entity-header fields(实体字段)
+    response-header = Accept-Ranges           ; Section 14.5
+                       | Age                     ; Section 14.6
+                       | ETag                    ; Section 14.19
+                       | Location                ; Section 14.30
+                       | Proxy-Authenticate      ; Section 14.33
+                       | Retry-After             ; Section 14.37
+                       | Server                  ; Section 14.38
+                       | Vary                    ; Section 14.44
+                       | WWW-Authenticate        ; Section 14.47
+
+
 * 7 Entity
   #<<entity>>
+  实体包含头(entity-header)和体(entity-body)
+ 
+** 7.1
+   #<<entity-header>
+   entity-header  = Allow                    ; Section 14.7
+                      | Content-Encoding         ; Section 14.11
+                      | Content-Language         ; Section 14.12
+                      | Content-Length           ; Section 14.13
+                      | Content-Location         ; Section 14.14
+                      | Content-MD5              ; Section 14.15
+                      | Content-Range            ; Section 14.16
+                      | Content-Type             ; Section 14.17
+                      | Expires                  ; Section 14.21
+                      | Last-Modified            ; Section 14.29
+                      | extension-header
+
+       extension-header = message-header
+
 * 12 Content Negotation(内容协商)
   #<<content negotation>>
 * 13 Caching in HTTP
