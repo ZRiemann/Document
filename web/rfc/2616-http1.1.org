@@ -431,12 +431,10 @@
                        | Vary                    ; Section 14.44
                        | WWW-Authenticate        ; Section 14.47
 
-
 * 7 Entity
   #<<entity>>
   实体包含头(entity-header)和体(entity-body)
- 
-** 7.1
+** 7.1 Entity Header Fields
    #<<entity-header>
    entity-header  = Allow                    ; Section 14.7
                       | Content-Encoding         ; Section 14.11
@@ -445,13 +443,63 @@
                       | Content-Location         ; Section 14.14
                       | Content-MD5              ; Section 14.15
                       | Content-Range            ; Section 14.16
-                      | Content-Type             ; Section 14.17
+                      | Content-Type             ; Section 14.17 SHOULD
                       | Expires                  ; Section 14.21
                       | Last-Modified            ; Section 14.29
                       | extension-header
 
        extension-header = message-header
+  接收端对不可识别的扩展头因该忽略，但必须被透明代理转发。
+** 7.2 Entity Body
+   endity-body = *OCTTE(8bit字节串)
+*** 7.2.1 Type
+    数据类型由头字段 Content-Tpe 和 Content-Encoding 指定。
+    2层模型
+    entyty-body := Content-Encoding(Content-Type(data))
+                    \- 如：压缩格式    \-底层数据的媒体类型
+    only if Content-Type 可被(根据如URI)猜测时可不指定。
+    如无法确定则认定为 "application/octet-stream"
+*** 3.2.2 Entity Length
+    实体长度是未被传输编码前的消息长度(如为被压缩前的长度)。
+    
+* 8 Connections
+** 8.1 Presistent Connection(长连接)
+*** 8.1.1 Purpose(目标)
+    implementations SHOULD 实现长连接
+    短连会接导致服务器负载集网络拥堵，所以改长连接。
+    优点:
+    - 节约CPU时间
+    - 流水线化请求应答，可以同时发出几个请求后等待应答。
+    - 减少网络拥塞
+    - 避免后续请求握手时间
+    - HTTP可以更优雅地发展，未来版本的HTTP可能会乐观地尝试新功能
+*** 8.1.2 Overall Operation(总体流程)
+    HTTP/1.1与其他早期版本的重大不同是采用 *默认长连接*
+    除非另外指定，客户端应该认为服务端将保持长连接， *即使是应答了错误信息* 
+    长连接提供了关闭TCP信号机制，一但客户端受到关闭信号，客户端在该连接上 *必须停止发送任何请求*
+**** 8.1.2.1 Negotiation(协商/谈判)
+     除非客户端请求头包含connection-token "close",否则服务端将保持长连接。
+     如果服务的选择应答后断开连接，那么 *应该* 在应答头部指定 connection-token close.
+     如果双方同时指定close token，这个请求将是改连接的最后一个请求。
+     为保持长连接， *每个消息必须指定长度* (否则无法分包)
+**** 8.1.2.2 Pipelining(流水线)
+     发送多个请求而不等待每个请求响应。
+     当第一个流水线尝试失败后， *应该* 准备尝试重连
+     *不应该* 进行不幂等(nom-idempotent)的流水线请求， 不幂等请求 *应该* 严格一问一答模式。
+*** 8.1.3 Proxy Servers
+    代理服务正确的实现连接头字段(*Connection header field*)非常重要
+    代理服务 *必须* 与下级服务保持长连接。
+*** 8.1.4 Practical Considerations(考虑实际因素)
+    - 超时的非活动连接
+      代理服务器将指定更长的超时时间
+      当某方希望超时关闭连接时 *因该* 优雅的发出关闭信号，且对方应该回应信号。
+      双方 *必须* 能够处理异步的close信号，客户端可以重连并重发失败的 *幂等请求* ， *非幂等请求* 不自动重发。
+      
+    - 单用户不能超过2个连接，代理最多使用2*N个连接。
+** 8.2 Message Transmission Requirements(数据传输需求)
 
+   长连接+TCP流量控制来避免阵法性的过载。
+   不要期望客户端重连，这样反而加剧网络拥塞。
 * 12 Content Negotation(内容协商)
   #<<content negotation>>
 * 13 Caching in HTTP
