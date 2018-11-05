@@ -497,9 +497,78 @@
       
     - 单用户不能超过2个连接，代理最多使用2*N个连接。
 ** 8.2 Message Transmission Requirements(数据传输需求)
-
+*** 8.2.1 Persistent Connections and Flow Control(流量控制)
    长连接+TCP流量控制来避免阵法性的过载。
    不要期望客户端重连，这样反而加剧网络拥塞。
+*** 8.2.2 Monitoring Connections for Error Status Messages
+    如出现错误状态
+    - 立即停止发送
+    - 如chunked，则发送0长度
+    - 如指定Content-Length，必须关闭连接
+*** 8.2.3 Use of the 100(Continue) Status
+    - 必须发送 100-continue expectation
+    - 服务端必须回复100，并继续读取流
+    TODO
+*** 8.2.4 Client Behavior if Server Prematurely Close Connection
+    - 重试请求
+    - 指数退避法
+* 9 Method Definitions
+** 9.1 Safe and Idenpotent Methods(安全与幂等方法)
+*** 9.1.1 Safe Methods
+    GET/HEAD 不应该有实际的操作
+    POST/PUT/DELETE 操作提醒用户注意不安全的请求操作
+*** 9.1.2 Idempotent Methods
+    N > 0 次同一请求的副作用是0.
+    
+** 9.2 OPTIONS
+   OPTIONS 方法通信选项，
+   “*”请求仅用作“ping”或“no-op”方法类型;
+   如无应答体，返回Content-Length 0
+   Max-Forwords 指定最大转发跳数
+   
+** 9.3 GET
+   - GET方法意味着检索Request-URI指向的任何信息。
+   - GET方法的语义变为“条件GET”，如果请求消息包括
+     If-Modified-Since，If-Unmodified-Since，If-Match，If-None-Match或If-Range标头字段。
+     仅在满足指定条件时传输
+   - GET方法的语义变为“部分GET”，如果请求消息包括Range头字段。
+** 9.4 HEAD
+   HEAD方法与GET相同，只是服务器不能在响应中返回消息正文。
+   常用于测试超文本链接的有效性，可访问性，和最近的修改；
+   通过Content-Length, Content-MD5, ETag or Last-Modified 测试缓存内容是否发生变化。
+** 9.5 POST
+   Request-URI指向的资源，原始服务器接收请求实体作为新的下属。
+   - 现有资源的注释;
+   - 发布消息到公告栏、新闻组、邮箱列表、文章组
+   - 提供数据块到数据处理程序
+   - 通过追加操作扩增数据库
+   
+   200/201 OK
+   201 已创建
+** 9.6 PUT
+   将请求实体保存到 Request-URI 指向的资源；
+   如资源已存在则被视为更新资源。 response 200(OK)/204(No Content)
+   如不存在则添加该新资源。 response 201 Created
+   绝不能忽视Content-*，如不能理解或实现返回501(Not Implemented)
+
+   POST,PUT区别：
+   POST 处理URI资源实体
+   PUT 用户代理知道的是什么URI和服务器绝不能尝试将请求应用于其他资源。如需要应用其他URI则返回301(Moved Permanently)
+       由用户代理决定是否重定向，如一篇文章可能被定义不同的版本，
+** 9.7 DELETE
+   删除URI指向的资源。该方法可被重写，不代表真的被删除。
+** 8.8 TRACE
+   调用远程应用层回环请求消息。
+   最终接收端恢复200，(final recipient)可能是origin server/first proxy,gateway by Max-Forwords = 0;
+   TRACE 必须不能携带实体
+
+   用于跟踪请求链，测试、诊断信息。
+   Content-Type : "message/http"
+   MUST NOT be cached.
+** 9.9 CONNECT
+   此规范保留方法名称CONNECT，以便与可以动态切换为隧道的代理一起使用.
+* 10 Status Code Definitions
+  TODO now
 * 12 Content Negotation(内容协商)
   #<<content negotation>>
 * 13 Caching in HTTP

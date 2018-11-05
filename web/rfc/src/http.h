@@ -147,6 +147,9 @@
 #define ZHTTP_SC_PARTIAL_CONTENT "Partial Content"
 
 #define ZHTTP_SC_MULTIPLE_CHOICES "Multiple Choices"
+/**
+ * PUT server desires request be applied to a different URI
+ */
 #define ZHTTP_SC_MOVED_PERMANENTLY "Moved Permanently"
 #define ZHTTP_SC_FOUND "Found"
 #define ZHTTP_SC_SEE_OTHER "See Other"
