@@ -568,7 +568,21 @@
 ** 9.9 CONNECT
    此规范保留方法名称CONNECT，以便与可以动态切换为隧道的代理一起使用.
 * 10 Status Code Definitions
-  TODO now
+** 10.1 Information 1xx
+   临时应答，仅包含Status-Line和可选标头，以空行终止。
+   除实验条件，服务器不发送任何1xx应答
+   1xx应答将被客户端忽略。
+   代理必须转发1xx响应，除非指定 Expect: 100-continue。
+*** 10.1.1 100 Continue
+*** 10.1.2 101 Switching Protocols
+** 10.2 Successful 2xx
+   请求正常接收、理解、接受
+*** 10.2.1 200 OK
+    - GET 与请求的资源相对应的实体被应答
+    - HEAD 与请求的资源相对应的实体被应答，但无消息体
+    - POST 描述或包含行动结果的实体;
+    - TRACE 包含收到的请求消息的实体，被终端服务器接收
+*** TODO now
 * 12 Content Negotation(内容协商)
   #<<content negotation>>
 * 13 Caching in HTTP
