@@ -582,8 +582,75 @@
     - HEAD 与请求的资源相对应的实体被应答，但无消息体
     - POST 描述或包含行动结果的实体;
     - TRACE 包含收到的请求消息的实体，被终端服务器接收
-*** TODO now
+*** 10.2.2 201 Created
+    请求已经完成
+    URI可以引用新创建的资源
+    如果动作不能立即执行，服务器应该以202（已接受）响应代替
+*** 10.2.3 202 Accepted
+     该请求已被接受处理，但处理有没有完成。
+*** 10.2.4 203 Non-Authoritation Information
+*** 10.2.5 204 No Content
+*** 10.2.6 205 Reset Content
+*** 10.2.7 206 Partial Content
+** 10.3 Redirection 3xx
+*** 10.3.1 300 Multiple Choices
+*** 10.3.2 301 Moved Permanently
+*** 10.3.3 302 Found
+*** 10.3.4 303 See Other
+*** 10.3.5 304 Not Modified
+*** 10.3.6 305 Use Proxy
+*** 10.3.7 306 (Unused)
+*** 10.3.8 307 Temporary Redirect
+** 10.4 Client Error 4xx
+*** 10.4.1 400 Bad Request
+*** 10.4.2 401 Unauthorized
+*** 10.4.3 402 Payment Required
+*** 10.4.4 403 Forbidden
+*** 10.4.5 404 Not Found
+*** 10.4.6 405 Method Not Allowed
+*** 10.4.7 406 Not Acceptable
+*** 10.4.8 407 Proxy Authentication Required
+*** 10.4.9 408 Request Timeout
+*** 10.4.10 409 Conflict
+*** 10.4.11 410 Gone
+*** 10.4.12 411 Length Required
+*** 10.4.13 412 Precondition Failed
+*** 10.4.14 413 Request Entity Too Large
+*** 10.4.15 414 Request-URI Too Long
+*** 10.4.16 415 Unsupported Media Type
+*** 10.4.17 416 Requested Range Not Satisfiable
+*** 10.4.18 417 Expectation Failed
+** 10.5 Server Error 5xx
+*** 10.5.1 500 Internal Server Error
+*** 10.5.2 501 Not Implemented
+*** 10.5.3 502 Bad Gateway
+*** 10.5.4 503 Service Unavailable
+*** 10.5.5 504 Gateway Timeout
+*** 10.5.6 505 HTTP Version Not Supported
+* 11 Access Authentication
 * 12 Content Negotation(内容协商)
   #<<content negotation>>
+  当有多个表示可用时,为给定响应选择最佳表示的过程.
+  - server-driven(服务器驱动)
+  - agent-driven(代理驱动)
+** 12.1 Server-driven Negotiation
+   最佳表示选择算法在服务端，称为服务端驱动协商。
+   客户端可能在请求头部指定 Accetp, Accept-Language, Accept-Encoding ...
+   缺点：
+   - 判断不准确
+   - 让用户代理在每个用户代理中描述其功能请求可能效率很低，可能侵犯用户的隐私。
+   - 多用户请求，它可能会限制公共缓存使用相同响应的能力。
+
+   Accept (section 14.1), Accept-Charset (section 14.2), 
+   Accept-Encoding (section 14.3), Accept-Language (section 14.4), and User-Agent (section 14.43).
+** 12.2 Agent-driven Negotiation
+   after receiving (initial response), select best representiation.
+   接收到初始应答后，由客户端选择最佳表示。
+   缺点: 需要第二次请求来获得最佳表示
+   HTTP / 1.1定义300（多个选择）和406（不可接受）用于在服务器启用时启用代理驱动的协商的状态代码
+   不愿意或无法使用服务器驱动提供不同的响应谈判。
+** Transparent Negotiation
+   透明协商是服务器驱动和代理驱动组合。
 * 13 Caching in HTTP
   #<<caching in http>>
+  
