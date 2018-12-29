@@ -677,9 +677,7 @@ public void onConfigurationChanged(Configuration newConfig) {
 **** 清单文件结构
 #+BEGIN_SRC xml
 <?xml version="1.0" encoding="utf-8"?>
-
 <manifest>
-
     <uses-permission />
     <permission />
     <permission-tree />
@@ -3448,3 +3446,43 @@ public void onConfigurationChanged(Configuration newConfig) {
    同时删除gradle-4.6-all.zip.part
 * poco
 ** Standalone Toolchain
+* tree
+- root
+  - manifest
+    AndroidManifest.xml
+    - <manifest>
+      - <uses-permission>
+      - <permission>
+      - <permission-tree>
+      - <permission-group>
+      - <instrumentation>
+      - <uses-sdk>
+      - <uses-configuration>
+      - <uses-feature>
+        <uses-feature android:name="android.hardware.camera" android:required=false"/>
+        PackageManager.hasSystemFeature();
+      - <support-screens>
+      - <compatible-screens>
+      - <supports-gl-texture>
+      - <application>
+        - <activity>
+          - attribute
+            - android:allowEmbeded=["true"|"false"]
+            - android:allowTaskReparenting=["true"|"false"]
+          - <intent-filter>
+            - <action>
+              - android:name
+                "android.action.MAIN"
+                "more"
+            - <categror>
+            - <data>
+          - <meta-data>
+        - <activity-alias>
+          - <intent-filter>
+          - <meta-data>
+        - <service>
+        - <provider>
+          - <grant-uri-permission>
+          - <meta-data>
+          - <path-permission>
+        - <uses-library>
