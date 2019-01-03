@@ -111,7 +111,7 @@
   <content-header>:value>\r\n
   \r\n
   <body>
-  
+
   |               类型 | 描述                          |
   |--------------------+-------------------------------|
   |             状态码 |                               |
@@ -197,9 +197,9 @@
     rep+Set-Cookie:jseid=xxx--->
     req+Cookie:jseid=xxx--->
     <---rep
-*** 表达变量 
+*** 表达变量
 *** QueryString
-** telnet http 测试 
+** telnet http 测试
 ** URL详解 Uniform Resource Locator
    schema://host[:port#]/path/.../[;url-params][?query-string][#anchor]
    scheme: http/https/ftp/rtmp ...
@@ -226,4 +226,912 @@
       修改资源
     + DELETE
       删除资源
+
+* Mozilla Web HTTP
+** Guides
+*** Resource and URLs
+    - resource
+      docement,photo,anythin else
+    - URI(Uniform Resource Identifier)
+      URL a kind of URI
+**** URLs and URNs
+***** URLs(Uniform Resource Location)
+      URI 的最常见形式是统一资源定位符 (URL)，它也被称为 Web 地址。
+      https://developer.mozilla.org
+      https://developer.mozilla.org/en-US/docs/Learn/
+      https://developer.mozilla.org/en-US/search?q=URL
+***** URNs(Uniform Resource Name)
+      It identifies a resource by name in a particular namespace.
+      urn:isbn:9780141036144
+      -> the book Nineteen Eighty-Four by George Orwell,
+      urn:ietf:rfc:7230
+      -> IEFT specification 7230, HTTP/1.1
+***** Syntax of Uniform Resource Identifiers(URIs)
+  - example
+    http://www.example.com:80/path
+    https://developer.mozilla.org/en-US/docs/Learn
+    tel:+1-816-555-1212
+    git@github.com:mdn/browser-compat-data.git
+    ftp://example.org/resource.txt
+    urn:isbn:9780141036144
+  - Scheme or protocol(方案/协议)
+    |-------------+------------------------------|
+    | Scheme      | Description                  |
+    |-------------+------------------------------|
+    | data        | Data URIs                    |
+    | [[file ]]       | Host-specific file names     |
+    | ftp         | File Transfer Protocol       |
+    | http/https  | Hyper text transfer protocol |
+    | mailto      | Electronit mail address      |
+    | ssh         | secure shell                 |
+    | tel         | telephone                    |
+    | urn         | Uniform Resource Names       |
+    | view-source | Source code of the resource  |
+    | ws/wss      | WebSocket connections        |
+    |-------------+------------------------------|
+  - Authority(主机/官方地址)
+    Domain name: www.example.com
+  - Port(端口)
+    :80
+  - Path(路径)
+    :80/paht/to/myfile.html
+    is the path to the resource on the Web server.
+  - Query(查询)
+    <URL>?key1=value1&key2=value2
+         \- parameters
+    查询由 (key.value)&(key.value)...
+  - Fragment(段)
+    <URL>#SomewhereInTheDocument
+         \- Anchor(锚)
+***** Data URIs(数据资源)
+      data:<resource>
+      其允许内容创建者向文档中嵌入小文件。
+  - Syntax(语法)
+    data:[<meiatype>][;base64],<data>
+    - prefix; data:
+    - MIME type;
+      indicating the type of data
+      default = 'text/plain;charset=US-ASCII'
+      'image/jpeg'
+    - optional base64 token if non-textual
+    - data itself
+    - examples
+      Simple text/plain data
+      data:,Hello%2c%20World
+
+      base64-encoded version of the above
+      data:text/plain;base64,SGVsbG8sIFdvcmxkIQ%3D%3D
+
+      An HTML document with <h1>Hello, World!</h1>
+      data:text/html,%3Ch1%3EHello%2C%20World!%3C%2Fh1%3E
+
+      An HTML document that executes a JavaScript alert
+      data:text/html,<script>alert('hi');</script>
+****** Encoding data into base64 format
+       - Linux/Mac OS
+         $ uuencode -m infile remotename
+       - In a Web page, using JavaScript
+         https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/Base64_encoding_and_decoding
+****** Common problems
+  - 不要忘记逗号 data:,<data itself>
+  - HTML格式化
+    base64后的问题
+  - 长度限制
+    firefox 不限，Opera11 限制65535
+  - 缺乏错误处理
+  - 不支持查询字符串
+***** MIME types(Mutipurpose Internet Mail Extensions type)
+  - rfc6838
+  - https://www.iana.org/assignments/media-types/media-types.xhtml
+  - Syntax
+    - General structure
+      type/subtype
+    - Discrete types
+      text/plain ;纯文本类型
+      text/html  ;HTML文本
+      text/javascript ;javascript文本
+      text/css   ; css 文本
+      image/jpeg
+      image/png
+      audio/mpeg
+      audio/ogg
+      audio/*
+      video/mp4
+      application/*
+      application/json
+      application/ecmascript
+      application/octet-stream
+      ...
+      | type        | description | example of typical subtypes                      |
+      |-------------+-------------+--------------------------------------------------|
+      | text        | 可读文本    | text/[plain,html,css,javascript,markdown]        |
+      | image       | 图像        | image/[gif,png,jpeg,bmp,webp,vnd.microsoft.icon] |
+      | audio       | 音频        | audio/midi,mpeg,webm,ogg,wav                     |
+      | vidio       | 视频        | video/webm,ogg                                   |
+      | application | 二进制      | application/octet-stream,pkcs12,xml,pdf,vnd...   |
+    - Multipart types
+      multipart/form-data
+      multipart/byteranges
+      Multipart 类型表示细分领域的文件类型的种类，
+      经常对应不同的 MIME 类型。
+      这是复合文件的一种表现方式。multipart/form-data 可用于联系 HTML Forms 和 POST 方法，
+      此外 multipart/byteranges使用状态码206 Partial Content来发送整个文件的子集，
+      而HTTP对不能处理的复合文件使用特殊的方式：
+      将信息直接传送给浏览器（这时可能会建立一个“另存为”窗口，但是却不知道如何去显示内联文件。）
+*** HTTP guide
+**** Basics
+**** Overview
+***** HTTP 能控制什么
+    - 缓存
+    - 开放同源限制
+    - 认证
+      Authenticate
+      HTTP Cookies
+    - 代理和隧道
+    - 会话
+***** HTTP 流
+    1. 打开一个TCP连接
+    2. 发送一个HTTP报文
+    3. 读取服务端返回的报文信息
+    4. 关闭连接或者为后续请求重用连接
+***** HTTP Request
+    - example
+      #+BEGIN_SRC html
+      GET / HTTP/1.1
+      Host: developer.mozilla.org
+      Accept-Language: fr
+      #+END_SRC
+    - Method
+      GET,POST,OPTIONS,HEAD
+    - Path
+    - Version of the protocol
+    - Headers
+    - Body
+***** HTTP Response
+    - example
+      #+BEGIN_SRC html
+      HTTP/1.1 200 OK
+      Date: Sat, 09 Oct 2010 14:28:02 GMT
+      Server: Apache
+      Last-Modified: Tue, 01 Dec 2009 20:18:22 GMT
+      ETag: "..."
+      Accept-Range: bytes
+      Content-Length: 29769
+      Content-Type: text/html
+      #+END_SRC
+    - Version of the protocol
+    - A status code
+    - A Status message
+    - HTTP headers
+    - Optionally, a body containing the fetched resource
+***** APIs based on HTTP
+    XMLHttpRequest
+    server-send events
+***** Conclusion
+**** Evolution of HTTP(演变)
+ - WebSocket
+ - HTTP/2
+**** HTTP Messages
+ - developer languages
+   Activity initiation          HTTP/1.x message          HTTP/2 stream
+   API(script)                                            Frame type=HEADERS
+   UI-activity(browser)                                   Frame type=CONTINUATION
+   HTML-Forms(browder)   --> Translation into HTTP -Bin-> Frame type=DATA
+   Config-file(server)                                    Frame ...
+ - 结构
+   |------------+--------------------------------+---------------------------------------------|
+   | name       | request                        | response                                    |
+   |------------+--------------------------------+---------------------------------------------|
+   | start-line | POST / HTTP/1.1                | HTTP/1.1 403 Forbidden                      |
+   |------------+--------------------------------+---------------------------------------------|
+   | headers    | Host: localhost:8080           | Server: Apache                              |
+   |            | User-Agent: Mozilla...         | Content-Type: text/html; charset=iso-8859-1 |
+   |            | Accept: text/html,...          | Date: ...                                   |
+   |            | Accept-language:en-US,en;q=0.5 | Keep-Alive: timeout=5, max=1000             |
+   |------------+--------------------------------+---------------------------------------------|
+   | empty-line |                                |                                             |
+   |------------+--------------------------------+---------------------------------------------|
+   | body       | ...                            | ...                                         |
+   |------------+--------------------------------+---------------------------------------------|
+ - HTTP Request
+   - Start line
+     1. method
+      GET,PUT,POST,HEAD,OPTIONS
+     2. target
+      URL
+     3. HTTP version; HTTP/1.1
+   - Header
+     <key>: <value>
+     - Request header
+     User-Agent: ...
+     Accept: text/html,application/xhtml+xml,...
+     Accept-Language: en-US,en;q=0.5
+     Accept-Encoding: gzip, default
+     - General header
+     Connection: keep-alive
+     Upgrade-Insecure-Request: 1
+     - Entity header
+     Content-Type: multipart/form-data; ...
+     Content-Length: 345
+   - Body
+     - Sigle-resource bodies
+       Content-Type
+       Content-Length
+     - Multiple-resource bodies
+       HTML Forms
+ - HTTP Response
+   - Status line
+     1. The protocol version, HTTP/1.1
+     2. status code 200
+     3. status text
+   - Headers
+     - General headers
+       Connection: Keep-Llive
+       Date: ...
+       Transfer-Encoding: chunked
+     - Response headers
+       Access-Control-Allow-Origin: *
+       Etag: "..."
+       Server: Apache
+       Set-Cookie: ...
+     - Entity headers
+       Content-Encoding: gzip
+       Content-Type: text/html; charset=utf-8
+   - Body
+     - Single-resource
+       Content-Type,Content-Length
+     - single-resource bodies
+       Transfer-Encoding
+     - Multiple-resource bodies
+**** HTTP/2 Frames
+     不需要额外操作
+     - Frame
+     - multiplexing
+     - header compression
+**** A typical HTTP session
+ - session consist of three phases
+   1. establish a (TCP) conection
+   2. send request and waits for the answer.
+   3. server process the request, sending back its answer
+**** Protocol upgrade mechannism(协议升级)
+ - 握手
+   POST/GET ...
+   Connection: Upgrade
+   Upgrade: <protocols>
+ - The 101 status code
+   101 Switching Protocols
+ - Common uses for this mechanism
+   - Upgrading to an HTTP/2 connectoin
+     #+BEGIN_SRC html
+     GET / HTTP/1.1
+     Host: destination.server.ext
+     Connection: Upgrade, HTTP2-Settings
+     Upgrade: h2c
+     HTTP2-Settings: base64EncodedSettings
+
+     HTTP/1.1 101 Switching Protocols
+     Connection: Upgrade
+     Upgrade: h2c
+     #+END_SRC
+   - Upgrading to a WebSocket connection
+     webSocket = new WebSocket("ws://destination.server.ext", "optionalProtocol");
+ - WebSocket-specific headers
+   - Sec-WebSocket-Extensions
+     Sec-WebSocket-Extensions: superspeed,colormode; depth=16
+   - Sec-WebSocket-Key
+   - Sec-WebSocket-Protocol
+   - Sec-WebSocket-Version
+     Sec-WebSocket-Version: 13
+ - Response-only headers
+   - Sec-WebSocket-Accept: hash
+ - Optional upgrade
+   #+BEGIN_SRC html
+   GET http://destination.server.ext/secretpage.html HTTP/1.1
+   Host: destination.server.ext
+   Upgrade: TLS/1.0
+   Connection: Upgrade
+
+   <!-- not support upgrade -->
+   HTTP/1.1 200 OK
+   Date: Thu, 17 Aug 2017 21:07:44 GMT
+   Server: Apache
+   Last-Modified: Thu, 17 Aug 2017 08:30:15 GMT
+   Content-Type: text/html; charset=utf-8
+   Content-Length: 31374
+
+   <html>
+     ...
+   </html>
+
+   <!-- support -->
+   HTTP/1.1 101 Switching Protocols
+   Upgrade: TLS/1.0, HTTP/1.1
+   #+END_SRC
+ - Mandotory upgrade
+   #+BEGIN_SRC html
+   OPTIONS * HTTP/1.1
+   Host: destination.server.ext
+   Upgrade: TLS/1.0
+   Connection: Upgrade
+   #+END_SRC
+ - Server-initiated upgrade tp TSL
+   #+BEGIN_SRC html
+   HTTP/1.1 426 Upgrade Required
+   Upgrade: TLS/1.1, HTTP/1.1
+   Connection: Upgrade
+
+   <html>
+   ... Human-readable HTML page describing why the upgrade is required
+       and what to do if this text is seen ...
+   </html>
+   #+END_SRC
+*** HTTP security
+*** HTTP access control(CORS)
+    Cross-Origin Resource Sharing(CORS)
+    - request
+      Host: bar.other
+      Origin: htt.://foo.example
+    - response
+ .    Access-Control-Allow-Origin: *
+*** HTTP authentication
+**** The general HTTP authentication framework
+ - rfc-7235
+   Client                                       Server
+   GET / HTTP/1.1 ---------------------------->
+                   HTTP/1.1 401 Unauthorized
+                   WWW-Authenticate: Basic realm...
+           <-----------------------------------
+   Ask user
+   GET / HTTP/1.1
+   Authentication: Basic ...
+           ------------------------------------>
+                               HTTP/1.1 200 OK
+                               or
+                            HTTP/1.1 403 Forbidden
+           <-----------------------------------
+ - 代理认证
+   HTTP/1.1 407
+   Proxy-Authenticate: ...
+ - 访问拒绝
+   403
+ - 夸域图片认证
+ - HTTP 认证编码
+   utf-8
+ - WWW-Authenticate .nd P..xy-Authenticate
+   - syntax       .  .    . ..
+     WWW-Authentica.e:.<type> .ealm=<realm>
+     Proxy-Authentic..e. <type> realm=<realm>
+ - Authorization and .roxy-Authorization
+   - syntax
+     Authorization: <type> <credientials>
+     Proxy-Authorization: <type> <credentials>
+ - 验证方案
+   - Basic
+     base64b编码凭证
+     https://tools.ietf.org/html/rfc7617
+   - Bearer
+     令牌通过OAuth 2.0
+     https://tools.ietf.org/html/rfc6750
+   - Digest
+     md5散列
+     https://tools.ietf.org/html/rfc7616
+   - HOBA
+     Http Origin-Bound认证，基于数字签名
+     https://tools.ietf.org/html/rfc7486
+   - Mutual
+     https://tools.ietf.org/html/draft-ietf-httpauth-mutual-11
+   - AWS4-HMAC-SHA256
+     https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
+ - Basic authentication scheme
+   base64 + HTTPS/TLS
+   - Restricting access with Apache and basic authentication
+     - .htaccess
+       #+BEGIN_SRC text
+       AuthType Basic
+       AuthName "Access to the staging site"
+       AuthUserFile /path/to/.htpasswd
+       Require valid-user
+       #+END_SRC
+     - .htpasswd
+       #+BEGIN_SRC text
+       aladdin:$apr1$ZjTqBB3f$IF9gdYAGlMrs2fuINjHsz.
+       user2:$apr1$O04r.y2H$/vEkesPhVInBByJUkXitA/
+       #+END_SRC
+   - Restricting access with nginx and basic authen tication
+     #+BEGIN_SRC text
+     location /status {
+         auth_basic "Access to the staging site";
+         auth_basic_user_file /etc/apache2/.htpasswd;
+     }
+     #+END_SRC
+*** HTTP 缓存
+ - Different kinds of caches
+   - 私有缓存
+     #+BEGIN_SRC ditaa
+        +-----------+--------+                          +----------------+
+        |browser1   | cache  +--------------------------+{s}             |
+        +-----------+--------+                          |   Web Server1  |
+                                                        |                |
+        +------------+-------+                          |                |
+        |browser1   | cache  +--------------------------+                |
+        +-----------+--------+                          +----------------+
+     #+END_SRC
+   - 共享缓存
+     #+BEGIN_SRC ditaa
+                               +-------------------+
+         +-------------+       |shared cache       |            +-------------+
+         | Browser     +-------+                   |            |{s}          |
+         +-------------+       |                   +------------+             |
+         +-------------+       |                   |            | Web server  |
+         | Browser1    +-------+                   |            |             |
+         +-------------+       |                   |            |             |
+                               +-------------------+            +-------------+
+     #+END_SRC
+   - 浏览器/代理缓存
+   - 网关、CDN、方向代理缓存
+ - Targets of caching operations
+ - Controlling caching
+   - Cache-control header
+     - No cache storage at all
+       缓存中不得存储任何关于客户端请求和服务端响应的内容。
+       每次由客户端发起的请求都会下载完整的响应内容。
+       #+BEGIN_SRC text
+       Cach-Control: no-store
+       Cach-Control: no-cach, no-store, must-revalidate
+       #+END_SRC
+     - No caching
+       Cach-Control: no-cache
+     - Private and public caches
+       Cach-Control: private
+       Cach-Control: public
+     - Expiration(过期机制)
+       Cache-Control: max-age=<seconds>
+     - validation(确认)
+       Cache-Control: must-revalidate
+     - Pragma (兼容HTTP/1.0)
+ - Freshness
+   #+BEGIN_SRC ditaa
+
+     +-----------+                +-------------+              +-------------+
+     | Client1   |                | Cache       |              |  Server     |
+     +----+------+                +------+------+              +-------+-----+
+          |                              |                             |
+          |                              |                             |
+          +----------------------------->|  empty cache                |
+          | GET /doc HTTP/1.1            |                             |
+          |                              +---------------------------->|
+          |                              |                             |
+          |                              |                             |
+          |                              |<----------------------------+
+          |                              | HTTP/1.1 200 OK             |
+          |<---------------------------- | Cache-Control: max-age=100  |
+          |                              |                             |
+          |                              |                             |
+          |                              |                             |
+          | 10 seconds later             |                             |
+          |----------------------------> |                             |
+          |                              | cache in 100                |
+          | <----------------------------+                             |
+          |  ...                         |                             |
+          |  Age:10                      |                             |
+          | 100 seconds later            |                             |
+          +----------------------------> |                             |
+          |                              | cache expiration            |
+          |                              +---------------------------> |
+          |                              |         GET /doc HTTP/1.1   |
+          |                              |         If-None-Match:...   |
+          |                              |                             |
+          |                              | <---------------------------+
+          |                              |       HTTP/1.1 304 Not modi |
+          | <----------------------------+                             |
+          | ...                          |                             |
+          | Age:0                        |                             |
+
+   #+END_SRC
+ - Revved resources(加速资源)
+ - Cache validation
+   - Etag
+     If-None-Match
+     Last-Modified
+     If-Modified-Since
+ - Varying response
+   Vary: User-Agent ;用于区分移动版和PC版
+   Vary: Content-Encoding ; 区分压缩方式
+   #+BEGIN_SRC ditaa
+
+       +---------+                    +-----------+              +----------+
+       |client1  |                    | cache     |              |server    |
+       +---+-----+                    +-----+-----+              +-----+----+
+           |                                |                          |
+           +------------------------------> |                          |
+           | Accept-Encoding: *             |------------------------> |
+           |                                |                          |
+           |                                |<-------------------------|
+           |<-------------------------------+        Content-Encoded:gzip
+           |                                |        Vary: Content-Encoding
+           |                                |                          |
+           |------------------------------->|                          |
+           | Accept-Encoding: br            |------------------------->|
+           |                                | <------------------------+
+           |                                |  gzip                    |
+           |                                |  br                      |
+           |<-------------------------------+                          |
+           | br                             |                          |
+           |                                |                          |
+           +------------------------------->|                          |
+           | Accept-Encoding: br            |                          |
+           |                                |
+           |<-------------------------------+
+           | br                             |
+   #+END_SRC
+*** HTTP compression(压缩)
+ - File format compression
+   - 无损压缩
+   - 有损压缩
+ - End-to-end compression
+   [client] ---[proxy] --...-- [proxy] --- [Server]
+   compressed  intermediate nodes don't    compress the body
+               uncompress the body
+
+   Accept-Encoding: gzip,br
+   Content-Encoding: br
+   Vary: Accept-Encoding
+ - Hop-by-hop compression
+   由中间节点进行压缩和解压缩
+*** Condition request(条件请求)
+    Last-Modified
+    ETag
+    - Conditional headers
+      - If-Match
+        Resouce ETag == header ETag -> true
+      - If-None-Match
+        Resouce ETag != header ETag -> true
+      - If-Modified-Since
+        resource > Last-Modified -> true
+      - If-Unmodified-Since
+      - If-Range
+    - Use case
+      - Cache update
+      - Integrity of a partial download
+      - Avoiding lost update problem with optimistic locking
+      - Dealing with the first upload of a resource
+*** Content negotiation
+    - Accept
+      列举了用户代理希望接收的媒体资源的 MIME 类型
+      其中不同的 MIME 类型之间用逗号分隔，
+      同时每一种 MIME 类型会配有一个品质因数（quality factor），
+      该参数明确了不同 MIME 类型之间的相对优先级。
+    - Accept-CH
+      DPR
+      Viewport-Width
+      Width
+    - Accept-Charset
+      ISO-8859-1,utf-8;q=0.7,*;q=0.7
+    - Accept-Encoding
+      br,gzip;q=0.8
+    - Accept-Language
+      de,en;q=0.7
+    - User-Agent
+    - Vary
+*** HTTP cookies
+    - used for three purpose
+      - Session management
+      - Personalization
+      - Tracking
+    - 某些替代方案
+      - Web storage API
+      - IndexedDB
+ - 创建Cookie
+   Set-Cookie: <key>=<value>
+   PHP/Node.JS/Python/Ruby on Rails
    
+   HTTP/1.0 200 OK
+   Content-type: text/html
+   Set-Cookie: yummy_cookie=choco
+   Set-Cookie: tasty_cookie=strawberry
+
+*** range requests
+   - Checkong if a server support partial requests
+     $ curl -I Http://i.imgur.com/z4d4kWk.jpg
+     HTTP/1.1 200 OK
+     ...
+     Accept-Ranges: bytes  ; 支持部分获取
+     ; Accept-Ranges: none ; 不支持部分获取
+     Content-Length: 146515
+
+   - Requesting a specific range from a server
+     - single part ranges
+       curl http://aaa.com/bbb.jpg -i -H "Range: bytes=0-123"
+     - multipart ranges
+       curl http://aaa.com/bbb.jpg -i -H "Range: bytes=0-50, 100-150"
+       HTTP/1.1 206 Partial Content
+       Content-Type: multipart/byteranges; boundary=3d5b41343
+       Content-Length: 282
+       --3d5b41343
+       Content-Type: text/html
+       Content-Range: bytes 0-50/1270
+       ...
+       --3d5b41343
+       Content-Type: text/html
+       Content-Range: bytes 0-50/1270
+       ...
+     - Condition range requests
+       Modified
+       ETag
+       If-Range: Wed, ...
+       
+   - Partical request response
+     - 206 Partical Content
+     - 416 Requested Range Not Satisfiable
+     - 200 OK 不支持范围获取
+   - Transfer-Encoding
+     
+
+
+
+
+*** HTTP redirects
+ - 原理
+   #+BEGIN_SRC ditaa
+            +----------+                                 +------------+
+            | Client   |                                 |  Server    |
+            +----+-----+                                 +------+-----+
+                 |                                              |
+                 +--------------------------------------------->|
+                 |GET /doc HTTP/1.1                             |
+                 |                                              |
+                 |<---------------------------------------------+
+                 |             HTTP/1.1 301 Moved Permanently   |
+                 |             Location: /doc_new               |
+                 |                                              |
+                 |                                              |
+                 +--------------------------------------------> |
+                 | GET /doc_new HTTP/1.1                        |
+                 |                                              |
+                 |<---------------------------------------------+
+                 |                          HTTP/1.1 200 OK     |
+                 |                                              |
+                                                        
+   #+END_SRC
+
+ - 永久重定向
+   301 Moved Permanently
+   308 Permanent Redirect
+
+ - 临时重定向
+   302 Found     由于不可预见的原因该页面暂不可用。
+   303 SeeOther  用于PUT 或 POST 请求完成之后进行页面跳转
+                 来防止由于页面刷新导致的操作的重复触发。
+   307 Temporary
+
+ - 特殊重定向
+   300 Multiple Choice
+   304 Not Modified
+ - 设定重定向映射其他方法
+   - HTML
+     #+BEGIN_SRC html
+     <head> 
+       <meta http-equiv="refresh" content="0;URL=http://www.example.com/" />
+     </head>
+     #+END_SRC
+
+   - JavaScript
+     #+BEGIN_SRC javascript
+     window.location = "http://www.example.com/"
+     #+END_SRC
+
+   - 优先级
+     HTTP protocol > HTTP <meta> > javaScript
+ - 应用场景
+   - 域名别称
+     - www.example.com --> exapple.com
+     - 公司改名后旧页面继续可用
+     - 强制HTTPS协议
+   - 保持连接有效
+   - 对不安全请求的临时响应
+     303 See Other; 避免用户反复刷新
+   - 对于耗时请求的临时响应
+     303 See Other; 等待操作完成
+ - 在通用服务器中配置重定向
+   - Apache
+     - 配置文件： .htaccess | 服务器配置文件
+     - mod_alias
+       #+BEGIN_SRC xml
+       <VirtualHost *:80>
+         ServerName example.com
+         <!-- http://example.com 被重定向到 http://www.example.com/-->
+         Redirect / http://www.example.com
+         <!-- 支持正则表达式 -->
+         RedirectMatch ^/images/(.*)$ http://images.example.com/$1
+         <!-- 设置参数 -->
+         Redirect permanent / http://www.example.com
+         Redirect 301 / http://www.example.com
+       </VirtualHost>
+       #+END_SRC
+     - mode_rewrite 更灵活，也更复杂
+   - Nginx
+     #+BEGIN_SRC text
+     server{
+         listen 80;
+         server_name example.com;
+         return 301 $scheme://www.example.com$request_uri;
+
+         rewrite ^/images/(.*)$ http://images.example.com/$1 redirect;
+         rewrite ^/images/(.*)$ http://images.example.com/$1 permanent;
+     }
+     #+END_SRC
+ - 重定向死循环
+   配置文件无法检测该问题，浏览器会检查处该问题；
+** References
+*** HTTP headers
+**** Accept
+ - Accept: <MIME> 内容协商，内容备选项，告知客户端可以处理的内容类型(MIME)
+ - Content-Type: <MIME> 服务端在备选项中决定最终类型
+ - symtax
+   Accept: <MIME_type>/<MIME_subtype>
+   Accept: <MIME_TYPE>/*
+   Accept: */*
+   Accept: text/html, application/xhtml+xml, application/xml;q=0.9,*/*;q=0.8
+
+   ;q=(q因子权重)
+**** Accept-Charset 
+ - Accept-Charset: <charset> 告知（服务器）客户端可以处理的字符集类型
+   - charset iso-8859-1/utf-8/...
+ - Content-Type: 应答用户
+**** Accept-Encoding
+ 客户端能够理解的内容编码方式——通常是某种压缩算法
+ - Content-Encoding: <selected>
+ - syntax
+   Accept-Encoding: gzip
+   Accept-Encoding: compress
+   Accept-Encoding: deflate
+   Accept-Encoding: br
+   Accept-Encoding: identity
+   Accept-Encoding: *
+ 
+   // Multiple algorithms, weighted with the quality value syntax:
+   Accept-Encoding: deflate, gzip;q=1.0, *;q=0.5
+
+**** Accept-Language
+     客户端声明它可以理解的自然语言
+ - Content-Language: <selected>
+ - syntax
+   #+BEGIN_SRC text
+   Accept-Language: <language> ;en,zh
+   Accept-Language: <locale>   ;zh-CN,en;q=0.5
+   Accept-Language: *
+
+   // Multiple types, weighted with the quality value syntax:
+   Accept-Language: fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5
+   #+END_SRC
+**** Accept-Ranges
+     标识自身支持范围请求(partial requests)。字段的具体值用于定义范围请求的单位。
+ - syntax
+   Accept-Ranges: bytes ; 字节单位
+   Accept-Ranges: none  ; 不支持任何范围请求单位
+
+
+**** Access-Control-Allow-Credentials
+     响应头表示是否可以将对请求的响应暴露给页面。返回true则可以，其他值均不可以。
+     Credentials可以是 cookies, authorization headers 或 TLS client certificates。
+ - sample
+   #+BEGIN_SRC javascript
+   var xhr = new XMLHttpRequest();
+   xhr.open('GET', 'http://example.com/', true); 
+   xhr.withCredentials = true; 
+   xhr.send(null);
+
+   fetch(url, {
+     credentials: 'include'  
+   })
+   #+END_SRC
+
+**** Access-Control-Allow-Headers
+
+**** Age
+     消息头里包含消息对象在缓存代理中存贮的时长，以秒为单位。
+**** Allow
+     Allow 首部字段用于枚举资源所支持的 HTTP 方法的集合。
+     若服务器返回状态码 405 Method Not Allowed，则该首部字段亦需要同时返回给客户端。
+     如果 Allow  首部字段的值为空，说明资源不接受使用任何 HTTP 方法的请求。
+**** Authorization
+     HTTP协议中的 Authorization 请求消息头含有服务器用于验证用户代理身份的凭证，
+     通常会在服务器返回401 Unauthorized 状态码以及
+     WWW-Authenticate 消息头之后在后续请求中发送此消息头。
+**** Cache-Control
+ - request syntax
+   Cache-Control: max-age=<seconds>
+   Cache-Control: max-stale[=<seconds>]
+   Cache-Control: min-fresh=<seconds>
+   Cache-control: no-cache 
+   Cache-control: no-store
+   Cache-control: no-transform
+   Cache-control: only-if-cached
+ - response 
+   Cache-control: must-revalidate
+   Cache-control: no-cache
+   Cache-control: no-store
+   Cache-control: no-transform
+   Cache-control: public
+   Cache-control: private
+   Cache-control: proxy-revalidate
+   Cache-Control: max-age=<seconds>
+   Cache-control: s-maxage=<seconds>
+**** Clear-Site-Data
+ - use case
+   - 登出
+     如果用户退出您的网站或服务，您可能希望删除本地存储的数据。
+     您可以通过在https://example.com/logout 的 *响应* 头增加Clear-Site-Data，以达到目的：
+     Clear-Site-Data: "cache", "cookies", "storage", "executionContexts"
+   - 清除cookie
+     如果它在https://example.com/clear-cookies 的响应头中出现，
+     则同一域 https://example.com 和所有子域
+     （如https://stage.example.com 等）中的所有Cookie，将都被清除。
+**** Connection
+     决定当前的事务完成后，是否会关闭网络连接
+ - syntax
+   Connection: keep-alive ;保持连接
+   Connection: close      ;断开连接
+**** Content-Disposition
+     应答消息头指示回复的内容该以何种形式展示，内联/附件
+ - syntax
+   1. 作为消息主体中的消息头
+   Content-Disposition: inline
+   Content-Disposition: attachment
+   Content-Disposition: attachment; filename="filename.jpg"
+
+   1. 作为multipart body中的消息头
+   Content-Disposition: form-data
+   Content-Disposition: form-data; name="fieldName"
+   Content-Disposition: form-data; name="fieldName"; filename="filename.jpg"
+ - example
+   #+BEGIN_SRC text
+   200 OK
+   Content-Type: text/html; charset=utf-8
+   Content-Disposition: attachment; filename="cool.html"
+   Content-Length: 22
+
+   <HTML>Save me!</HTML>
+
+   // multipart/form-data
+   POST /test.html HTTP/1.1
+   Host: example.org
+   Content-Type: multipart/form-data;boundary="boundary"
+
+   --boundary
+   Content-Disposition: form-data; name="field1"
+
+   value1
+   --boundary
+   Content-Disposition: form-data; name="field2"; filename="example.txt"
+
+   value2
+   --boundary--
+   #+END_SRC
+**** Content-*
+**** DNT
+     #+BEGIN_SRC javascript
+     navigator.doNotTrack;
+     #+END_SRC
+**** Date Date: Wed, 21 Oct 2015 07:28:00 GMT
+**** ETag
+     HTTP响应头是资源的特定版本的标识符,这可以让缓存更高效，并节省带宽
+**** Expect
+     表示服务器只有在满足此期望条件的情况下才能妥善地处理请求。
+     Expect: 100-continue
+     通知接收方客户端要发送一个体积可能很大的消息体，
+     期望收到状态码为100 (Continue)  的临时回复。
+ - sample
+   #+BEGIN_SRC text
+   PUT /somewhere/fun HTTP/1.1
+   Host: origin.example.com
+   Content-Type: video/h264
+   Content-Length: 1234567890987
+   Expect: 100-continue
+
+   服务器开始检查请求消息头，可能会返回一个状态码为 100 (Continue)
+   的回复来告知客户端继续发送消息体，也可能会返回一个状态码为
+   417 (Expectation Failed) 的回复来告知对方要求不能得到满足。
+   #+END_SRC
+*** HTTP request methods
+
