@@ -1,4 +1,1159 @@
 * https://developer.mozilla.org
+  https://github.com/mdn
+  https://pages.github.com/
+** HTML
+ - HTML: Hypertext Markup Language
+   - elements
+     - <tags>
+       tags is used for creating an element
+       <p>My cat is very grumpy</p>
+       - Opening tag
+         <p>
+         - Attribute
+           syntax: <key>="value"
+           example: <p class="editor-note"> ... </p>
+           - <attr-name>
+           - disabled
+       - content
+         My cat is very grumpy.
+         - nesting element
+           <p>My cat is <strong>very</strong> grumpy.</p>
+         - empty element
+           <img src="images/firefox-icon.png" alt="My test image">
+       - closing tag
+         </p>
+     - defined-elements
+       - Marking up text
+         - Headings(段落标题)
+           <h1>...<h6>
+         - Paragraphs(段落)
+           <p>段落</p>
+         - [[Lists]](列表)
+           - List item(列表项)
+             - tag: <li>
+           - Unorded lists(无序)
+             - tag: <ul></ul>
+           - Ordered lists(有序)
+             - tag: <ol><ol>
+           - [[Description lists]](描述列表)
+           - example
+             #+BEGIN_SRC html
+             <p>At Mozilla, we’re a global community of technologists, thinkers, and builders working together ... </p>
+
+             <!-- use list -->
+             <p>At Mozilla, we’re a global community of</p>
+                 
+             <ul> 
+               <li>technologists</li>
+               <li>thinkers</li>
+               <li>builders</li>
+             </ul>
+
+             <p>working together ... </p>
+             #+END_SRC
+         - [[Links]](链接)
+           - tag: <a> ;anchor
+           - attrs
+             - href="<url>" ; hypertext reference
+             - title="The Moilla homepage" ; 鼠标悬停提示
+             - target="_blank" ; 打开方式，新标签叶连接
+           - example
+             #+BEGIN_SRC html
+             <a href="www.example.org">example.org</a>
+             #+END_SRC
+       - Multimedia and embedding
+         - <img>
+           <img src="<url>" [alt="desc" width="" height="" ...]>
+           - attrs:
+             - alt: alternative
+               - alt="" ; 装饰
+               - "descripton" ; 内容
+               - 连接
+             - src
+             - width/height ; 避免使用，用CSS替代
+             - title ; 鼠标悬停内容提示
+         - <figure><figcaption>
+           - instruction
+             图片语义容器
+       - Heading elements
+         - <title> ; html标题，书签
+         - <meta> ; 元数据
+           #+BEGIN_SRC html
+           <meta charset="utf-8">
+           <!-- 方便联系管理员 -->
+           <meta name="author" content="Chris Mills">
+           <!-- 搜索引擎获取该描述 -->
+           <meta name="descriptoin" content="The MDN Learning ...">
+
+           <!-- 元数据协议 -->
+           <meta property="og:image" content="https://developer.cdn.mozilla.net/static/img/opengraph-logo.dc4e08e2f6af.png">
+           <meta property="og:description" content="The Mozilla Developer Network (MDN) provides
+           information about Open Web technologies including HTML, CSS, and APIs for both Web sites
+           and HTML5 Apps. It also documents Mozilla products, like Firefox OS.">
+           <meta property="og:title" content="Mozilla Developer Network">
+           #+END_SRC
+         - <link> ; 连接外部资源
+           #+BEGIN_SRC html
+           <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+           <link rel="stylesheet" href="my-css-file.css">
+           #+END_SRC
+         - <script> ; 引入javascript资源
+           #+BEGIN_SRC html
+           <script src="my-js-file.js"></script>
+           #+END_SRC
+         - <head> ; html 头
+           #+BEGIN_SRC html
+           <!-- lang属性1.有助搜索 2. 有助发音-->
+           <html lang="en-US"></html>
+           #+END_SRC
+   - document
+     - Entity reference
+       - < &lt;
+       - > &gt;
+       - " &quot;
+       - ' &apos;
+       - & &amp;
+     - comments ; <!-- some ting else -->
+     - structure
+       - <!DOCTYPE html>
+       - <html>
+         - <head>
+           - introduction
+             不显示在页面中，包含一些页面的元数据。
+         - <body>
+     - example
+       how individual elements are combined to form an entire HTML page.
+       #+BEGIN_SRC html
+       <!DOCTYPE html>
+       <html>
+         <head>
+           <meta charset="utf-8">
+           <title>My test page</title>
+         </head>
+         <body>
+           <img src="images/firefox-icon.png" alt="My test image">
+         </body>
+       </html>
+       #+END_SRC
+   - CSS(Cascading Style Sheets层叠样式表)
+     - introduction 控制网页样式，如字体、颜色、背景
+     - syntax
+       - Selector(选择器)
+         - 分类
+           - Element
+             All HTML elements of the specified type
+           - ID
+             The element on the page with the specified ID.
+             #+BEGIN_SRC css
+             #my-id {
+                 color: red;
+             }
+             #+END_SRC
+             #+BEGIN_SRC html
+             <p id="my-id">paragraph with id:my-id</p>
+             <a id="my-aid">arcon with the id:my-id</a>
+             #+END_SRC
+           - Class
+             The element on the page with the specified class
+             #+BEGIN_SRC css
+             .my-class {
+                 color: red;
+             }
+             #+END_SRC
+             #+BEGIN_SRC html
+             <p class="my-class">paragraph wit the class: my-class</p>
+             #+END_SRC
+           - Attribute
+             img[src]
+             Selects <img src="myimage.png"> but not <img>
+           - Pseudo-class
+             a:hover
+             Select <a>, 
+             but only when the mouse pointer is hovering over the link.
+       - Declaration(声明)
+         指定了你想要添加样式元素的属性。 用{...}
+         color: red;
+         <propertie>: <value>;
+         - Properties
+         - Properties value
+     - example
+       控制段落颜色,保存到sytles/style.css
+       #+BEGIN_SRC css
+       p {
+           color: red;
+           width: 500px;
+           border: 1px solid black;
+           font-size: 16px;
+           line-height: 2;
+           letter-spacing: 1px;
+       }
+       p, li, h1 {
+           color: red;
+       }
+
+       html{
+           font-size: 10px; /* 字体大小 10 像素*/
+           font-family: 'Open Sans', sans-serif; /* 使用Open Sans字体*/
+           background-color: #00539f;
+       }
+
+       body{
+           width: 600px;
+           margin: 0 auto;
+           background-color: #FF9500;
+           padding: 0 20px 20px 20px;
+           border: 5px solid black;
+       }
+       h1{
+           font-size: 60px;
+           text-align: center; /* 居中 */
+           margin: 0;
+           padding: 20 0;
+           color: #00539f;
+           /* 1. 水平对齐
+            ,* 2. 垂直对齐
+            ,* 3. 模糊半径
+            ,* 4. 阴影基色
+            ,*/
+           text-shadow: 3px 3px 1px black;
+       }
+       img{
+           display: block;
+           margin: 0 auto; /* 居中图像 */
+       }
+       #+END_SRC
+       index.html 调用样式表styles/style.css
+       #+BEGIN_SRC html
+       <!DOCTYPE html>
+       <html>
+         <head>
+           <link href="styles/styles.css" rel="stylesheet" type="text/css">
+           <link href="http://fonts.googleepis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
+         </head>
+       </html>
+       #+END_SRC
+     - layout(box布局)
+       - properties
+         - padding(内边距) ;around paragraph text
+         - border(边框) ；the solid line that sits just outside the padding
+         - margin(外边距) ; the space around the outside of element
+         - width(宽度)
+         - background-color(背景色)
+         - color(前景色，通常字体颜色)
+         - text-shadow(文本阴影)
+         - display(显示模式)
+       - level 级别
+         - block ; 块级别
+         - inline ; 内联级别
+           css:display: block; 内联级别升级到块级别
+   - JavaScript
+     - introduction
+       - program language
+         add interactive to your website(like games)
+       - Browser APIs
+         #+BEGIN_SRC javascript
+         /* scripts/main.js
+          ,*/
+         var myHeading = document.querySelector('h1');
+         myHeading.textContent = 'Hello world!';
+         #+END_SRC
+         #+BEGIN_SRC html
+         <body>
+           <script src="scripts/main.js"></script>
+         </body>
+         #+END_SRC
+       - Third-party APIs
+       - Third-party frameworks/libs
+     - variable
+       - syntax
+         var vname;
+       - type
+         - string
+         - number
+         - boolean
+         - array
+         - object
+     - comments /**/
+     - Operators
+       - +,-,*,/
+       - = ;赋值
+       - === ; 比较
+       - !   ; 非
+       - !== ; 不等于
+     - control
+       #+BEGIN_SRC javascript
+       var iceCream = 'chocolate';
+       if(iceCream === 'chocolate'){
+           alert('Yay, I love chocolate ice cream!');
+       }else{
+           alert('Awww, but chocolate is my favorite...');
+       }
+       #+END_SRC
+     - function
+       #+BEGIN_SRC javascript
+       function mutiply(num1, num2){
+           var result = num1 * num2;
+           return result;
+       }
+       #+END_SRC
+     - events
+       #+BEGIN_SRC javascript
+       document.querySelector('html').onclick = function(){
+           alert('Ouch! Stop poking me!');
+       }
+       #+END_SRC
+     - examples
+       - 图片切换
+         #+BEGIN_SRC javascript
+         var myImage = document.querySelector('img');
+         myImage.onclick = function(){
+             var mySrc = myImage.getAttribute('src');
+             if(mySrc === 'images/firefox-icon.png'){
+                 myImage.setAttribute('src', 'images/firefox2.png');
+             }else{
+                 myImage.setAttribute('src', 'images/firefox-icon.png');
+             }
+         }
+         #+END_SRC
+       - 个性化欢迎
+         Web Storage API
+         #+BEGIN_SRC html
+         </body>
+         <button>Change user</button>
+         <script src="scripts/main.js"><script>
+         <body>
+         #+END_SRC
+         #+BEGIN_SRC javascript
+         var myButton = document.querySelector('button');
+         var myHeading = document.querySelector('h1');
+
+         function setUserName(){
+             var myName = prompt('please enter your name.');
+             localStorage.setItem('name', myName);
+             myHeading.textContent = 'Mozilla is cool,' + myName;
+         }
+
+         if(!localStorage.getItem('name')){
+             setUserName();
+         }else{
+             myHeading.textContent = 'Mozilla is cool,' + localStorage.getItem('name');
+         }
+         #+END_SRC
+*** Text fundamentals(文本基础)
+ - Implementing structural hierarchy
+   #+BEGIN_SRC html
+   <h1>The Crushing Bore</h1>
+
+   <p>By Chris Mills</p>
+
+   <h2>Chapter 1: The Dark Night</h2>
+
+   <p>It was a dark night. Somewhere, an owl hooted. The rain lashed down on the ...</p>
+
+   <h2>Chapter 2: The eternal silence</h2>
+
+   <p>Our protagonist could not so much as a whisper out of the shadowy figure ...</p>
+
+   <h3>The specter speaks</h3>
+
+   <p>Several more hours had passed, when all of a sudden the specter sat bolt upright and exclaimed, "Please have mercy on my soul!"</p>
+   #+END_SRC
+   - 建议
+     - <h1> 是顶级标题，每个页面调用一次
+     - <h1><h2><h3>...顺序使用标题
+     - 适当控制级别深度
+ - Why do we need structure?
+   - 突出重点
+   - 有利搜索引擎检索关键字
+   - 视力障碍者，通过屏幕阅读器快速定位文本内容
+   - CSS，javascript控制更加精细
+ - Why do we need semantics?
+   - <h1> 是一个语意元素，语意值将被多种方式使用如：标题、搜索优化、屏幕阅读
+   - <span> 不是语意元素
+ - Lists
+   #<<Lists>>
+   - Unordered
+     #+BEGIN_SRC html
+     <ul>
+       <li>牛奶</li>
+       <li>鸡蛋</li>
+       <li>面包</li>
+       <li>鹰嘴豆泥</li>
+     </ul>
+     #+END_SRC
+ - Emphasis and importance(重点与强调)
+   HTML提供相关语意来表达重点和强调等效果
+   - Emphasis(强调)
+     - element: <em>
+     - 标识讽刺语句
+       <p>I am <em>glad</em> you weren't <em>late</em>.</p>
+   - Strong importance(重点)
+     - elements: <strong>
+     if you drink it, <strong>you may <em>die</em></strong>.</p>
+ - italic,bold,underline
+   <i> 被用来传达传统上用斜体表达的意义：外国文字，分类名称，技术术语，一种思想……
+   <b> 被用来传达传统上用粗体表达的意义：关键字，产品名称，引导句……
+   <u> 被用来传达传统上用下划线表达的意义：专有名词，拼写错误……
+*** Advance text foramt
+ - Description Lists
+   #<<Description lists>>
+   - elements: <dl> <dt> <dd>
+   - example
+     #+BEGIN_SRC html
+     <dl>
+       <dt>soliloquy</dt>
+       <dd>In drama, where a character speaks to themselves, representing their inner thoughts or feelings and in the process relaying them to the audience (but not to other characters.)</dd>
+       <dt>monologue</dt>
+       <dd>In drama, where a character speaks their thoughts out loud to share them with the audience and any other characters present.</dd>
+       <dt>aside</dt>
+       <dd>In drama, where a character shares a comment only with the audience for humorous or dramatic effect. This is usually a feeling, thought or piece of additional background information.</dd>
+     </dl>
+     #+END_SRC
+ - Qutations
+   - 块引用
+     - <blockquote>
+   - 行内引用
+     - <q>
+   - 引文
+     #+BEGIN_SRC html
+     <p>According to the <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/blockquote">
+     <cite>MDN blockquote page</cite></a>:
+     </p>
+
+     <blockquote cite="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/blockquote">
+       <p>The <strong>HTML <code>&lt;blockquote&gt;</code> Element</strong> (or <em>HTML Block
+       Quotation Element</em>) indicates that the enclosed text is an extended quotation.</p>
+     </blockquote>
+
+     <p>The quote element — <code>&lt;q&gt;</code> — is <q cite="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/q">intended
+     for short quotations that don't require paragraph breaks.</q> -- <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/q">
+     <cite>MDN q page</cite></a>.</p>
+     #+END_SRC
+ - Abbreviations(缩略语)
+   - <abbr>
+     #+BEGIN_SRC html
+     <p>We use <abbr title="Hypertext Markup Language">HTML</abbr> to structure our web documents.</p>
+
+     <p>I think <abbr title="Reverend">Rev.</abbr> Green did it in the kitchen with the chainsaw.</p>
+     #+END_SRC
+ - Marking up contact details
+   - <address>
+     #+BEGIN_SRC html
+     <p>Chris Mills, Manchester, The Grim North, UK</p>
+     #+END_SRC
+ - Superscript and subscript
+   - <sup><sub>
+     #+BEGIN_SRC html
+     <p>My birthday is on the 25<sup>th</sup> of May 2001.</p>
+     <p>Caffeine's chemical formula is C<sub>8</sub>H<sub>10</sub>N<sub>4</sub>O<sub>2</sub>.</p>
+     <p>If x<sup>2</sup> is 9, x must equal 3 or -3.</p>
+     #+END_SRC
+ - Representing computer code
+   - <code>: 用于标记计算机通用代码。
+   - <pre>: 对保留的空格（通常是代码块）——如果您在文本中使用缩进或多余的空白，
+            浏览器将忽略它，您将不会在呈现的页面上看到它。
+            但是，如果您将文本包含在<pre></pre>标签中，
+            那么空白将会以与你在文本编辑器中看到的相同的方式渲染出来。
+   - <var>: 用于标记具体变量名。
+   - <kbd>: 用于标记输入电脑的键盘（或其他类型）输入。
+   - <samp>: 用于标记计算机程序的输出。
+ - Marking up time and dates
+   方便计算机识别
+   - <time>
+     <time datetime="2016-01-20">20 January 2016</time>
+*** Document and website structure
+ - Basic section of a document
+ - HTML for structuring content
+   我们需要遵守语义，并 *使用正确的元素进行语义化工作* 。
+   - <header>
+   - <nav>
+   - <main>,<article>,<section>,<div>
+   - <aside>
+   - <footer>
+   - 无语意元素
+     - <div>
+     - <span>
+     - <br> ; 换行
+     - <hr> ; 水平分隔线
+
+*** HTML 表单
+ - 表单验证
+   - HTML5 内置教研
+     - <input required>
+     - <pattern>
+     - <minlength>
+     - <maxlength>
+     - <min>
+     - <max>
+     - <step>
+   - javascript
+     - validationMessage
+     - validity
+     - validity.customError
+ - 
+*** CSS
+ - @<rule>
+   - @media
+     #+BEGIN_SRC css
+     @media (min-width: 801px){
+         body{
+             margin: 0 auto;
+             width: 800px;
+         }
+     }
+     #+END_SRC
+ - 可读性
+  
+** CSS
+ - 基础
+   #+BEGIN_SRC css
+   div p, #id:first-line{
+       background-color: red;
+       background-style: none;
+   }
+   #+END_SRC
+ - 类型
+   - Simple: type,class,id
+     - type/element selectors
+       #+BEGIN_SRC html
+       <p>what color do you like?</p>
+       <div>I like blue.</div>
+       <p>I prefer red!</p>
+       #+END_SRC
+       #+BEGIN_SRC css
+       p {
+           color: red;
+       }
+       div {
+           color: blue;
+       }
+       #+END_SRC
+     - class selectors
+       .<class-name>
+       #+BEGIN_SRC html
+       <ul>
+         <li class="first done">Create a HTML docuemnt</li>
+         <li class="second done">Created a CSS style sheet</li>
+         <li class="third">link them all togeter</li>
+       </ul>
+       #+END_SRC
+       #+BEGIN_SRC css
+       .first {
+           font-weight: bold;
+       }
+       .done {
+           text-decoration: line-through;
+       }
+       #+END_SRC
+     - id selectors
+       #<ID-name>
+       #+BEGIN_SRC html
+       <p id="polite">- "Goold morning."</p>
+       <p id="rude">- "Go away!"</p>
+       #+END_SRC
+       #+BEGIN_SRC css
+       #polite {
+           font-family: cursive;
+       }
+
+       #rude {
+           font-family: monospace;
+           text-transform: uppercase;
+       }
+       #+END_SRC
+     - universal selector
+       (*) 有性能损失
+       #+BEGIN_SRC html
+       <div>
+         <p>I think the containing box just needed
+         a <strong>border</strong> or <em>something</em>,
+         but this is getting <strong>out of hand</strong>!</p>
+       </div>
+       #+END_SRC
+       #+BEGIN_SRC css
+       ,* {
+         padding: 5px;
+         border: 1px solid black;
+         background: rgba(255,0,0,0.25)
+       }
+       #+END_SRC
+   - Attribute: 通过 属性 / 属性值 匹配一个或多个元素
+     [<attr>]
+     [<attr>=<val>]
+     [<attr>~=<val>]
+     - data-* 
+       本例中的 data-* 属性被称为 数据属性。
+       它们提供了一种在HTML属性中存储自定义数据的方法，
+       由此，这些数据可以轻松地被提取和使用。有关详细信息，请参阅 如何使用数据属性。
+     #+BEGIN_SRC html
+     <i lang="fr-FR">Poulet basquaise</i>
+     <ul>
+     <li data-quantity="1kg" data-vegetable>Tomatoes</li>
+     <li data-quantity="3" data-vegetable>Onions</li>
+     <li data-quantity="3" data-vegetable>Garlic</li>
+     <li data-quantity="700g" data-vegetable="not spicy like chili">Red pepper</li>
+     <li data-quantity="2kg" data-meat>Chicken</li>
+     <li data-quantity="optional 150g" data-meat>Bacon bits</li>
+     <li data-quantity="optional 10ml" data-vegetable="liquid">Olive oil</li>
+     <li data-quantity="25cl" data-vegetable="liquid">White wine</li>
+     </ul>
+     #+END_SRC
+     #+BEGIN_SRC css
+     /* 所有具有"data-vegetable"属性的元素将被应用绿色的文本颜色 */
+     [data-vegetable] {
+     color: green
+     }
+
+     /* 所有具有"data-vegetable"属性且属性值刚好为"liquid"的元素将被应用金色的背景颜色 */
+     [data-vegetable="liquid"] {
+     background-color: goldenrod;
+     }
+
+     /* 所有具有"data-vegetable"属性且属性值包含"spicy"的元素，
+     即使元素的属性中还包含其他属性值，都会被应用红色的文本颜色 */
+     [data-vegetable~="spicy"] {
+     color: red;
+     }
+     #+END_SRC
+     - Substring value selectors
+       - syntax
+         [<atrr>|=val] 选择attr属性的值是 val 或值以 val- 开头的元素
+         [<attr>^=val] 选择attr属性的值以 val 开头（包括 val）的元素。
+         [<attr>$=val] 选择attr属性的值以 val 结尾（包括 val）的元素。
+         [<attr>*=val] 选择attr属性的值中包含子字符串 val 的元素
+       - sample
+         #+BEGIN_SRC css
+         /* 语言选择的经典用法 */
+         [lang|="fr"] {
+           font-weight: bold;
+         }
+
+         /* 
+             具有"data-vegetable"属性含有值"not spicy"的所有元素,都变回绿色
+         ,*/
+         [data-vegetable*="not spicy"] {
+           color: green;
+         }
+
+         /* 
+            具有"data-quantity"属性其值以"kg"结尾的所有元素*/
+         [data-quantity$="kg"] {
+           font-weight: bold;
+         }
+
+         /* 
+            具有属性"data-quantity"其值以"optional"开头的所有元素 
+         ,*/
+         [data-quantity^="optional"] {
+           opacity: 0.5;
+         }
+         #+END_SRC
+   - Pseudo-classes: 匹配处于确定状态的一个或多个元素
+     比如被鼠标指针悬停的元素，或当前被选中或未选中的复选框，或元素是DOM树中一父节点的第一个子节点。
+     - syntax
+       :<pseudo-class>
+     - peusdo-class items
+       :valid
+       :visited
+       ...
+     - example
+       #+BEGIN_SRC html
+       <a href="https://developer.mozilla.org/" target="_blank">Mozilla Developer Network</a>
+       #+END_SRC
+       #+BEGIN_SRC css
+       /* 这些样式将在任何情况下应用于我们
+       的链接 */
+
+       a {
+         color: blue;
+         font-weight: bold;
+       }
+
+       /* 我们想让被访问过的链接和未被访问
+       的链接看起来一样 */
+
+       a:visited {
+         color: blue;
+       }
+
+       /* 当光标悬停于链接，键盘激活或锁定
+       链接时，我们让链接呈现高亮 */
+
+       a:hover,
+       a:active,
+       a:focus {
+         color: darkred;
+         text-decoration: none;
+       }
+       #+END_SRC
+   - Pseudo-elements: 匹配处于相关的确定位置的一个或多个元素
+     例如每个段落的第一个字，或者某个元素之前生成的内容。     
+   - Combinators: 有效的方式组合两个或更多的选择器
+                  用于非常特定的选择的方法。
+                  你可以只选择divs的直系子节点的段落，
+                  或者直接跟在headings后面的段落。
+   - Multiple:这个思路是将以逗号分隔开的多个选择器放在一个CSS规则下面
+ - 值和单位
+   - Numeric values
+     - Length and size
+       #+BEGIN_SRC html
+       <p>This is a paragraph.</p>
+       <p>This is a paragraph.</p>
+       <p>This is a paragraph.</p>
+       #+END_SRC
+       #+BEGIN_SRC css
+       p {
+         margin: 5px;
+         padding: 10px;
+         border: 2px solid black;
+         background-color: cyan;
+       }
+
+       p:nth-child(1) {
+         width: 150px;
+         font-size: 18px;
+       }
+
+       p:nth-child(2) {
+         width: 250px;
+         font-size: 24px;
+       }
+
+       p:nth-child(3) {
+         width: 350px;
+         font-size: 30px;
+       }
+       #+END_SRC
+     - values
+       - absolute units
+         - px,pt,pc
+           pixel,points,picas
+         - q,mm,cm,in
+           quarter millimeters, millimeters, centimeters, inches.
+       - relative units
+         - em
+           1em is the same as the font-size of the current element.
+           default 1em = 16px;
+         - ex,ch
+           height of a lowercase x and the width of the number 0.
+         - rem(root em)
+           always equal the size of the default base font-size;
+         - vw,vh
+           1/100th of the width/height of the view port.
+       - unitless values
+         - 0
+           margin: 0;
+         - line-height: 1.5
+         - Number of animatiions
+   - Percentages     
+   - Colors
+     - Keywords
+       red ...
+     - Hexadecimal values
+       #ff0000 ; red
+     - RGB
+       background-color: rgb(255,255,0);
+     - HLS(hue,saturation,lightness)
+       - hue(色调) 0~360
+       - saturation(饱和度) 0~100%
+       - lightness(亮度) 0~100%
+     - RGBA/HLSA
+       transparency(透明度)
+     - Opacity(不透明度)
+   - Functions
+     - rgba(<r>,<g>,<b>,<a>)
+     - hsla(...)
+     - rotate()
+     - calc()
+     - url()
+ - Cascade and inheritance
+   - The Cascade
+     - factors
+       1. importance
+          - !important
+            !important > ID > class > element
+       2. Specificity
+          - 权重
+            1. 千位：
+               如果声明是在style 属性中该列加1分
+              （这样的声明没有选择器，
+               所以它们的专用性总是1000。）否则为0。
+            2. 百位：
+               在整个选择器中每包含一个ID选择器就在该列中加1分。
+            3. 十位：在整个选择器中每包含一个类选择器、
+               属性选择器、或者伪类就在该列中加1分。
+            4. 个位：在整个选择器中每包含一个元素选择器
+               或伪元素就在该列中加1分。
+       3. Source order
+          相同权重的后面覆盖前面的交集部分；
+   - The Inheritance
+     - Controlling inheritance
+       - inherit
+         该值将应用到选定元素的属性值设置为与其父元素一样。
+       - initial
+         该值将应用到选定元素的属性值设置为与浏览器默认样式表中
+         该元素设置的值一样。如果浏览器默认样式表中没有设置值，
+         并且该属性是自然继承的，那么该属性值就被设置为 inherit。
+       - unset
+         该值将属性重置为其自然值，即如果属性是自然继承的，
+         那么它就表现得像 inherit，否则就是表现得像 initial。
+       - revert
+         如果当前的节点没有应用任何样式，
+         则将该属性恢复到它所拥有的值。
+       - all:[inherit|initial|unset]
+ - The box model
+   - Box properties
+     - width,height(内容框)
+       设置内容框（content box）的宽度和高度。
+       内容框是框内容显示的区域——包括框内的文本内容，
+       以及表示嵌套子元素的其它框。
+       - min-width,max-width,min-height,maxheight
+     - padding(内边距)
+       - padding-[top|right|bottom|left]
+     - border(边界)
+       - border-[top|right|bottom|left]
+       - border-[widty|style|color]
+     - margin(外边距)
+       - margin-[top|rignt|bottom|left]
+       - marging collapsing
+         两边框拼接是使用 max(margin1, margin2) 
+         不是 margin1 + margin2
+     - display(框类型)
+   - tips
+     - background-clip -> background-[color/image]
+     - overflow
+     - box-sizing, border-box
+   - Advance box manipulation
+     - Overflow
+       - syntax
+         overflow: <values>
+       - values
+         - auto
+           溢流的内容被隐藏，然后出现滚动条来让我们滚动查看所有的内容。
+         - hidden
+           溢流的内容被隐藏。
+         - visible
+           溢流的内容被显示在盒子的外边（这个是默认的行为）
+     - background clip
+     - outline
+   - Types of CSS boxes
+     - syntax
+       display: [block|inline|inline-block]
+     - values
+       - block box(default)
+       - inline box
+       - inline-block box
+ - Debug CSS
+   
+*** Styling text
+ - font
+   - color(文字颜色)
+   - font-family(字体)
+     - web safe fonts
+       https://www.cssfontstack.com/
+       - arial sans-seril helvetica
+       - courier-new monospace
+       - georgia serif
+       - Times-new-roman serif
+       - Trebuchet-ms sans-serif
+       - verdana sans-serif
+     - default fonts
+       - 衬线: 是指字体笔画尾端的小装饰，存在于某些印刷体字体中
+       |------------+----------------------------------------+---------|
+       | term       | definition                             | example |
+       |------------+----------------------------------------+---------|
+       | serif      | 有衬线的字体                           |         |
+       | sans-serif | 没有衬线的字体                         |         |
+       | monospace  | 相同宽度的字体                         |         |
+       | cursive    | 用于模拟笔迹的字体，具有流动的连接笔画 |         |
+       | fantasy    | 用来装饰的字体                         |         |
+       |------------+----------------------------------------+---------|
+   - font-stack(字体栈)
+     - instruction
+       浏览器就有多种字体可以选择，避免有些字体不可用
+     - font-family: "Trebuchet MS", Verdana, sans-serif;
+   - font-size(字体大小)
+     - px
+     - ems
+     - rems
+   - font attributes
+     - font-style
+       - normal
+       - italic
+       - oblique
+     - font-weight
+       - normal,bold
+       - lighter,bolder
+     - fong-transform(转换)
+       - none(不转换)
+       - uppercase
+       - lowercase
+       - capitalize
+       - full-width
+     - text-decoration
+       - syntax 
+         text-decoration: line-through red wavy;
+       - none
+       - underline(下划线)
+       - overline(上划线)
+       - line-through(穿过文本)
+
+       - text-decoration-[line|style|color]
+   - Text drop shadows(文字阴影)
+     - syntax
+       text-shadow: <h-offset> <v-offset> <blur-radius> <color>;
+                    水平偏移   上下偏移    模糊半径      颜色
+       text-shadow: 4px 4px 5px red;
+     - Multiple shadows
+       #+BEGIN_SRC css
+       text-shadow: -1px -1px 1px #aaa,
+                    0px 4px 1px rgba(0,0,0,0.5),
+                    4px 4px 5px rgba(0,0,0,0.7),
+                    0px 0px 7px rgba(0,0,0,0.4);
+       #+END_SRC
+ - layout
+   - Text alignment
+     text-align: [left|right|center|justify(hyphens)]
+   - Line height
+     line-heigh: 1.5;
+   - Letter and word spacing
+     #+BEGIN_SRC css
+     letter-spacing: 2px;
+     word-spacing:4px     
+     #+END_SRC
+ - more
+   - font-variant 在小型大写字母和普通文本选项之间切换。
+   - font-kerning 开启或关闭字体间距选项。
+   - font-feature-settings ...
+
+   - text-ident(缩进)
+   - text-overflow
+   - white-space
+   - word-block(单词内部换行)
+   - direction(方向)
+   - hyphens(连字符开关)
+   - link-break
+   - text-align-last
+   - text-orientation
+   - word-wrap(浏览器单词内换行)
+   - writing-mode(水平/垂直布局)
+ - font shorthand
+   font-style, font-variant, font-weight, font-stretch, 
+   font-size, line-height, and font-family.
+   
+   font: italic normal bold normal 3em/1.5 Helvetica, Arial, sans-serif;
+*** Styling lists
+ - Handing list spacing
+ - list-style-type
+   #+BEGIN_SRC css
+   /* 大写罗马字序号 */
+   ol{
+       list-style-type: upper-roman;
+   }
+   #+END_SRC
+ - list-sytle-position
+   #+BEGIN_SRC css
+   ol {
+       list-style-type: upper-roman;
+       /* 位于行内 */
+       list-style-position: inside;
+   }
+   #+END_SRC
+ - list-style-image
+   #+BEGIN_SRC css
+   ul {
+       list-style-image: url(star.svg);
+   }
+
+   ul {
+     padding-left: 2rem;
+     list-style-type: none;
+   }
+
+   ul li {
+     padding-left: 2rem;
+     background-image: url(star.svg);
+     background-position: 0 0;
+     background-size: 1.6rem 1.6rem;
+     background-repeat: no-repeat;
+   }
+
+   ul {
+     list-style-type: square;
+     list-style-image: url(example.png);
+     list-style-position: inside;
+   }
+   /* 与上面等价 */
+   ul {
+     list-style: square url(example.png) inside;
+   }
+   #+END_SRC
+
+ - Controlling list counting
+   - start
+     <ol start="4"></ol>
+   - reversed
+     <ol start="4" reversed></ol>
+   - value
+     <li value"2"></li>
+*** Styling links
+ - Link states
+   - introduction
+     #+BEGIN_SRC css
+     a{}
+     a:link{}
+     a:focus{}
+     a:hover{}
+     a:active{}
+     #+END_SRC
+   - Link(unvisited)
+     :link
+   - Visited
+     :visited
+   - Hover(鼠标悬停时)
+     :hover
+   - Focus(获得[tab]焦点时)
+     :focus
+   - Active(被点击/鼠标按下时)
+     :active
+ - Including icons on links
+   #+BEGIN_SRC css
+   a[href*="http"] {
+       /*一个插入的副本，然后指定位置是 100% 使其出现在内容的右边，然后距离上方是 0 px。*/
+       background: url('https://mdn.mozillademos.org/files/12982/external-link-52.png') no-repeat 100% 0;
+       /* 指定要显示的背景图像的大小 */
+       background-size: 16px 16px;
+       /* 为背景图片留出空间，所以我们不会和文本重叠。 */
+       padding-right: 19px;
+   }
+   #+END_SRC
+ - Styling links as buttons
+   #+BEGIN_SRC html
+   <ul>
+     <li><a href="#">Home</a></li><li><a href="#">Pizza</a></li><li><a href="#">Music</a></li><li><a href="#">Wombats</a></li><li><a href="#">Finland</a></li>
+   </ul>
+   #+END_SRC
+   #+BEGIN_SRC css
+   ul {
+       /* */
+       padding: 0;
+       /* 设置了它的宽度是外部容器  <body> (在这次条件下) 的 100%  */
+       width: 100%;
+   }
+
+   li {
+       /* 不自动换行 */
+       display: inline;
+   }
+
+   a {
+       /* 取消外框 */
+       outline: none;
+       /* 取消下划线 */
+       text-decoration: none;
+       /* 设置类型 */
+       display: inline-block;
+       /* 设置按钮宽度，100/5=20*/
+       width: 19.5%;
+       /* 防止宽度溢出 */
+       margin-right: 0.625%;
+       /* 剧中文本 */
+       text-align: center;
+       /* 设置按钮高度 */
+       line-height: 3;
+       /* 字体颜色 */
+       color: black;
+   }
+
+   li:last-child a {
+     margin-right: 0;
+   }
+
+   a:link, a:visited, a:focus {
+     background: yellow;
+   }
+
+   a:hover {     
+     background: orange;
+   }
+
+   a:active {
+     background: red;
+     color: white;
+   }
+   #+END_SRC
+*** Web fonts
+ - introduction
+   #+BEGIN_SRC css
+   @font-face{
+       font-family: "myFont";
+       src: url("myFont.tff");
+   }
+   html{
+       font-family: "myFont", "Bitstream Vera Serif", serif;
+   }
+   #+END_SRC
+*** Styling boxes
+ - Setting width and height constraints
+   - min-width,max-width,min-height,max-height;
+     #+BEGIN_SRC css
+     div {
+         width: 70%;
+         max-width: 1280px;
+         min-width: 480px;
+
+         /* 0 上下边为0
+            auto 居中*/
+         margin: 0 auto;
+     }
+
+     #+END_SRC
+
+ - Changing the box model completely
+   - tatal width = width + padding-right + padding-left + border-right + border-left
+   - box-sizing: border-box
+ - display type
+   - block
+   - inline
+   - inline-block
+   - table 允许你像处理table布局那样处理非table元素
+   - flex 布置一系列弹性等宽容器或者垂直居中内容
+   - grid 给出一种简单实现CSS网格系统的方式
+   - background: yellow linear-gradient(to bottom, orange, yellow) norepeat left;
+ - background-size
+   
+*** Changing background styles using CSS
+ - background-color
+ - background-image
+ - background-position
+ - background-repeat
+ - background-attachment
+   - scroll
+   - fixed
+   - local
+ - backgournd
+ - background-size
+*** Styling border using CSS
+ - Longhand options
+   - border-[top|right|bottom|left]
+   - border-[width|style|color]
+     - style dashed/sloid/dotted
+   - border-[top-width|top-style|top-color]
+ - border-radius(圆角)
+   #+BEGIN_SRC css
+   border-radius: 10%
+   #+END_SRC
+ - border-image
+*** Styling tables
+*** Advance box effects
+ - Box shadows
+ - inset, box-shadow(定制按钮)
+ - Filters
+ - Blend modes(混合模式)
+   - background-blend-mode
+   - mix-blend-mode
+ - -webkit-backgournd-clip: text
+   
 * w3schools
   https://www.w3schools.com
   <tag attribute="value">element</tag>

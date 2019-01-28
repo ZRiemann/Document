@@ -1134,4 +1134,175 @@
    417 (Expectation Failed) 的回复来告知对方要求不能得到满足。
    #+END_SRC
 *** HTTP request methods
+**** CONNECT
+ - introduction
+   用来创建隧道（tunnel）。
+ - syntax
+   CONNECT www.example.com:80 HTTP/1.1
+   HOST: server.example.com:80
+   Proxy-Authorization: basic aGVsbG....
+**** DELETE
+ - introduction
+   请求方法用于删除指定的资源。
+ - syntax
+   DELETE /file.html HTTP/1.1
+ - response
+   200 OK
+   202 Accepted 表示请求的操作可能会成功执行，但是尚未开始执行。
+   204 No Content
+**** GET
+ - introduction
+   请求指定的资源
+ - syntax
+   GET /index HTTP/1.1
+**** OPTIONS
+ - introduction
+   用于获取目的资源所支持的通信选项
+ - syntax
+   OPTOINS /index.html HTTP/1.1
+   OPTIONS * HTTP/1.1
+ - example
+   - 检测服务器所支持的请求方法
+     curl -X OPTIONS http://example.org -i
 
+     HTTP/1.1 200 OK
+     Allow: OPTIONS, GET, HEAD, POST
+     Cache-Control: max-age=604800
+     Date: Thu, 13 Oct 2016 11:45:00 GMT
+     Expires: Thu, 20 Oct 2016 11:45:00 GMT
+     Server: EOS (lax004/2813)
+     x-ec-custom-error: 1
+     Content-Length: 0
+   - CORS 中的预检请求
+     #+BEGIN_SRC text
+     OPTIONS /resources/post-here/ HTTP/1.1 
+     Host: bar.other 
+     Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8 
+     Accept-Language: en-us,en;q=0.5 
+     Accept-Encoding: gzip,deflate 
+     Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7 
+     Connection: keep-alive 
+     Origin: http://foo.example 
+     Access-Control-Request-Method: POST 
+     Access-Control-Request-Headers: X-PINGOTHER, Content-Type
+     #+END_SRC
+     #+BEGIN_SRC text
+     HTTP/1.1 200 OK
+     Date: Mon, 01 Dec 2008 01:15:39 GMT 
+     Server: Apache/2.0.61 (Unix) 
+     Access-Control-Allow-Origin: http://foo.example 
+     Access-Control-Allow-Methods: POST, GET, OPTIONS 
+     Access-Control-Allow-Headers: X-PINGOTHER, Content-Type 
+     Access-Control-Max-Age: 86400 
+     Vary: Accept-Encoding, Origin 
+     Content-Encoding: gzip 
+     Content-Length: 0 
+     Keep-Alive: timeout=2, max=100 
+     Connection: Keep-Alive 
+     Content-Type: text/plain
+     #+END_SRC
+**** PATCH
+ - introduction
+   请求方法 PATCH  用于对资源进行部分修改。
+   HTTP协议中， PUT 方法已经被用来表示对资源进行整体覆盖， 
+   而 POST 方法则没有对标准的补丁格式的提供支持。
+   不同于  PUT 方法，而与 POST 方法类似，
+   PATCH  方法是非幂等的，这就意味着连续多个的相同请求会产生不同的效果。
+ - syntax
+   PATCH /file.txt HTTP/1.1
+ - example
+   - request
+     #+BEGIN_SRC text
+     PATCH /file.txt HTTP/1.1 
+     Host: www.example.com
+     Content-Type: application/example
+     If-Match: "e0023aa4e"
+     Content-Length: 100
+
+     [description of changes]
+     #+END_SRC
+   - response
+     #+BEGIN_SRC text
+     HTTP/1.1 204 No Content
+     Content-Location: /file.txt
+     ETag: "e0023aa4f"
+     #+END_SRC
+**** POST
+ - introduction
+   发送数据给服务器. 请求主体的类型由 Content-Type 首部指定.
+   - HTML 表单发送
+   - XMLHttpRequest
+   - 注释已有的资源
+   - 公告板，新闻组，邮件列表或类似的文章组中发布消息;
+   - 通过注册新增用户;
+   - 向数据处理程序提供一批数据，例如提交一个表单;
+   - 通过追加操作，扩展数据库数据.
+ - example
+   #+BEGIN_SRC text
+   POST / HTTP/1.1
+   Host: foo.com
+   Content-Type: application/x-www-form-urlencoded
+   Content-Length: 13
+
+   say=Hi&to=Mom
+   #+END_SRC
+
+   #+BEGIN_SRC text
+   POST /test.html HTTP/1.1 
+   Host: example.org 
+   Content-Type: multipart/form-data;boundary="boundary" 
+
+   --boundary 
+   Content-Disposition: form-data; name="field1" 
+
+   value1 
+   --boundary 
+   Content-Disposition: form-data; name="field2"; filename="example.txt" 
+
+   value2
+   #+END_SRC
+**** PUT
+ - introduction
+   用于新增资源或者使用请求中的有效负载替换目标资源的表现形式。
+ - example
+   - request
+     #+BEGIN_SRC text
+     PUT /new.html HTTP/1.1
+     Host: example.com
+     Content-type: text/html
+     Content-length: 16
+
+     <p>New File</p>
+     #+END_SRC
+   - response
+     #+BEGIN_SRC text
+     HTTP/1.1 201 Created
+     Content-Location: /new.html
+     #+END_SRC
+     #+BEGIN_SRC text
+     HTTP/1.1 204 No Content
+     Content-Location: /existing.html
+     #+END_SRC
+**** TRACE
+ - introcuction
+   实现沿通向目标资源的路径的消息环回（loop-back）测试 ，提供了一种实用的 debug 机制。
+ - syntax
+   TRACE /index.html HTTP/1.1
+*** CSP directives
+**** base-uri
+ - introduction
+ - syntax
+   #+BEGIN_SRC text
+   Content-Security-Policy: base-uri <source>;
+   Content-Security-Policy: base-uri <source> <source>;
+   #+END_SRC
+*** Feature-Policy
+ - syntax
+   Feature-Policy: <directive> <allowlist>
+**** autoplay
+ - allowlist
+   - *
+   - self
+   - src
+   - none
+   - <origins>

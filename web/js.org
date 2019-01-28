@@ -388,5 +388,475 @@
      rs.pipe(ws);
      readable.pipe(writable, {end:false});
 *** Web开发
-**** koa
-     
+**** koa     
+* MDN
+  https://developer.mozilla.org/zh-CN/docs/Learn/JavaScript
+  - javascript root
+    -
+** What is JavaScript
+*** A hight-level definition
+ - API
+   - 浏览器API
+     - DOM API
+     - Geolocation API
+     - Canvas/WebGL API
+     - HTMLMediaElement/WebRTC API
+   - 第三方API
+     - Twitter API
+     - Google Maps API
+ - Browser security
+ - Server/Client side
+   - client
+     javascript
+   - server
+     php,python,ruby,javascript(node.js)
+ - How do you add JavaScript to your page?
+   - internal javascript
+     #+BEGIN_SRC html
+     <head>
+       <script>
+         // javascript codes
+       </script>
+     </head>
+     #+END_SRC
+   - enternal javascript
+     1. script.js
+     2. index.html -> <script src="script.js"></script>
+   - inline javaScript handler
+     #+BEGIN_SRC html
+     function createParagraph() {
+       let para = document.createElement('p');
+       para.textContent = 'You clicked the button!';
+       document.body.appendChild(para);
+     }
+     <button onclick="createParagraph()">Click me!</button>
+     #+END_SRC
+*** Troubleshooting javascript
+- Types of error
+  - syntax error
+  - logic error
+- An erronous example
+- Fixing syntax errors
+*** Variables - Storing the information you need
+- Declaring a variable
+  - var/let
+    var myName;
+    let myAge;
+  - var type
+    - number
+    - string
+    - boolean
+    - array
+      var myNameArray = ['Chris', 'bob', 'Jim'];
+    - Object
+      var dog = {name:'Spot', bleed:'Dalmatian'};
+  - typeof <var-name>
+*** 数组
+** 面向对象
+   constructor.prototype
+   Object.create(obj);
+
+** JSON
+   - parse() ; string -> json
+   - stringify(); json -> strong();
+     #+BEGIN_SRC javascript
+     var myJson = {'name': 'chris', 'age': 38};
+     var myString = JSON.stringify(myJson);
+     #+END_SRC
+** Web API
+ - Browser API
+   - DOM
+     - window
+       - innerWidth/innerHeight
+       - 操作载入窗口的文档
+       - 存储客户端上文档的特殊数据
+       - 为当前窗口绑定event handler
+         - window.onresize = function(){...}
+     - navigator
+       navigator表示浏览器存在于web上的状态和标识（即用户代理）
+       用户摄像头的地理信息、用户偏爱的语言、多媒体流等等。
+     - document
+       在浏览器中用DOM表示,是载入窗口的实际页面
+       - node
+         - element node
+         - root node
+         - child node
+         - descendant node
+         - parent node
+         - sibling node
+         - text node
+       - APIs
+         - document.querySelector();  匹配第一个
+         - document.querySelectorAll(); 匹配所有存储到array中
+         - document.createElement(); 创建元素
+         - <node>.appendChild(<node>); 追加元素
+         - document.createTextNode('some text') ;
+         - <node>.cloneNode(); 创建副本
+         - <node>.removeChild(<child-node>); 删除子节点
+
+         - document.stylesheets ; return CSSStyleSheet array;
+         - <element>.style.<attr> = <value>;
+         - <element>.setAttribute('class', 'highlight');
+   - Ajax(XMLHttpRequest/Fetch)
+     - XMLHttpRequest(XHR)
+     - Fetch
+       替代XMLHTTPRequest
+       #+BEGIN_SRC javascript
+       fetch(url).then(function(response){
+           response.text().then(function(text){
+               poemDisplay.textContent = text;
+           });
+       })
+       #+END_SRC
+   - Canvas/WebGL
+     - SVG(Scalable Vector Graphic)
+     - canvas
+       #+BEGIN_SRC html
+       <div>
+         <canvas id="first-canvas" width="320" height="240">This is canvas, but your browser not support</canvas>
+       </div>
+       #+END_SRC
+       #+BEGIN_SRC javascript
+       
+       #+END_SRC
+     - WebGL
+   - HTMLMediaElement/WebAudio/WebRTC
+   - Notafications/Vibration
+   - Web Storage/IndexedDB
+ - Third-party API
+   - introduction
+     1. 首先需要您通过一个 <script> 元素连接到第三方服务器所开放的JavaScript库
+     2. 调用库api
+   - Twitter
+   - Google Maps
+   - Facebook suite
+   - YouTube
+   - Twilio
+
+** Object
+- class (ECMAScript6)
+  - 'use strict';
+  - class
+  - constructor
+  - static
+  - extends
+  - super
+  - 性能
+    - <object>.hasOwnProperty('<property-name>');
+      只查询自己的属性，不追溯原型链；（提高性能）
+    - Object.keys();
+  - 注意
+    - 检查属性是否undefined还不够。该属性可能存在，但其值恰好设置为undefined。
+    - 不要扩展Object.prototype
+** TypedArray
+   #+BEGIN_SRC js
+   'use strict';
+
+   var buffer = new ArrayBuffer(16);
+
+   if(buffer.byteLength === 16){
+       console.log('Yes, it\'s 16 bytes');
+   }else{
+       console.log('Oh no, it\' the wrong size!');
+   }
+
+   var int32View = new Int32Array(buffer);
+
+   for(var i = 0; i < int32View.length; i++){
+       int32View[i] = 2 * i;
+   }
+
+   console.log(int32View);
+
+   var int16View = new Int16Array(buffer);
+   console.log(int16View);
+
+   /* C structure accesser
+   struct some_struct{
+      unsigned long id;
+      char username[16];
+      float amount_due;
+   };
+    ,*/
+   var buffer = new ArrayBuffer(24);
+   var idView = new Uint32Array(buffer, 0, 1);
+   var usernameView = new Uint8Array(buffer, 4, 16);
+   var amountDueView = new Float32Array(buffer, 20, 1);
+   #+END_SRC
+** Memory Manager
+   - alloc
+     - init value
+     - call function
+       #+BEGIN_SRC js
+       var d = new Date();
+       var e = document.createElement('div');
+       #+END_SRC
+   - release
+     - reference count
+       #+BEGIN_SRC js
+       function f(){
+           var o = {};
+           var o1 = {};
+           o.a = o1;
+           o1.a = o;
+           /* o, o1 引用计数不能递减到 0，无法回收
+              除非对象循环递减内部对象的引用；
+           */
+       }
+       f();
+       #+END_SRC
+     - 标记-清除算法
+       解决循环引用的问题，收集不在root中的对象，避免引用计数；
+
+** concurrency model and event loop
+   - run time
+     - stack
+       函数堆栈
+     - heap
+       数据堆
+     - queue
+       消息队列
+   - event loop
+     #+BEGIN_SRC js
+     while(queue.waitForMessage()){
+         queue.precessNextMessage();
+     }
+     #+END_SRC
+     - add message
+       #+BEGIN_SRC js
+       const s = new Date().getSeconds();
+       setTimeout(function(){
+           console.log('Ran after' + (new Date().getSeconds()  -s) + 'sedonds') ;
+       }, 500);
+
+       /* 阻止了 500ms 超时回调 */
+       while(true){
+           if(new Date().getSeconds - s >= 2){
+               console.log('good, loop for 2 seconds');
+               break;
+           }
+       }
+
+       /* 0 延时，将消息插到队列最后，不表示立刻执行；
+        ,*/
+       #+END_SRC
+* node.js
+** nvm
+   node.js 版本管理
+   nvm install 10.15.0
+   nvm use 10.15.0
+** npm
+   node.js 包管理
+   - 快速下载
+     npm install --global smart-npm --registry=https://registry.npm.taobao.org/
+     - npm install <package-name> --save ; 保存到package.json
+     - npm install <package-name> --save-dev ; 保存到package.json,开发依赖，用户无需安装
+   - packages
+     - lint
+       1. npm install -g eslint
+          eslint --init
+       2. npm install eslint --save-dev ;保存到测试依赖
+       3. 修改配置
+          #+BEGIN_SRC json
+          {
+              "scripts":{
+                  "lint": "eslint src/js"
+              }
+          }
+          #+END_SRC
+       4. npm run lint
+     - express-generator
+       sudo npm install express-generator -g
+     - nodemon
+       npm install --save-dev nodemon
+       #+BEGIN_SRC json
+       "scripts":{
+           "start": "node ./bin/www",
+           "devstart": "nodemon ./bin/www"
+       }
+       #+END_SRC
+       $ DEBUG=<epxress-project>:* npm run devstart
+     - 
+       
+** node
+   node.js 程序
+** deployment
+ - 设置 NODE_ENV 为 'production'
+ - Log appropriately
+   npm install debug
+ - 使用 gzip/deflate 压缩响应文件
+   对于生产中流量较大的网站，您不会使用此中间件。相反，你会使用像 Nginx 这样的反向代理。
+   npm install compression
+   #+BEGIN_SRC javascript
+   var catalogRouter = require('./routes/catalog'); //Import routes for "catalog" area of site
+   var compression = require('compression');
+
+   // Create the Express application object
+   var app = express();
+
+   ...
+
+   app.use(compression()); //Compress all routes
+
+   app.use(express.static(path.join(__dirname, 'public')));
+
+   app.use('/', indexRouter);
+   app.use('/users', usersRouter);
+   app.use('/catalog', catalogRouter);  // Add catalog routes to middleware chain.
+
+   ...
+   #+END_SRC
+ - 使用 Helmet 避免被常见漏洞侵袭
+   https://helmetjs.github.io/docs/
+   npm install helmet
+   #+BEGIN_SRC js
+   var compression = require('compression');
+   var helmet = require('helmet');
+
+   // Create the Express application object
+   var app = express();
+
+   app.use(helmet());
+   ...
+   #+END_SRC
+ - Paas
+   https://www.heroku.com/pricing
+   #+BEGIN_SRC text
+   heroku help
+   heroku create
+   git push heroku master
+   heroku open
+   heroku config:set NODE_ENV='production'
+   heroku config:set MONGODB_URI='mongodb://your_user:your_password@ds139278.mlab.com:39278/local_library_production'
+   heroku config
+   heroku logs  # Show current logs
+   heroku logs --tail # Show current logs and keep updating with any new results
+   heroku ps   #Display dyno status
+   #+END_SRC
+ - 设置 node 版本
+   #+BEGIN_SRC json
+   {
+     "name": "express-locallibrary-tutorial",
+     "version": "0.0.0",
+     "engines": {
+       "node": "8.9.1"
+     },
+       "private": true,
+   }
+   #+END_SRC
+ - 数据库配置
+   var mongoDB = process.env.MONGODB_URI || 'mongodb://your_user_id:your_password@ds119748.mlab.com:19748/local_library';
+* jQuery
+** downloading jQuery
+   $ npm install jquery
+   $ git clone git://github.com/jquery/jquery.git
+   <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js">
+** 语法
+- $(selector).action()
+  #+BEGIN_SRC js
+  $(document).ready(function(){
+     $(this).hide();
+      $('p').hide(); 
+  });
+
+  // js entry
+  window.onload = function(){
+      //...
+  }
+  #+END_SRC
+** 效果
+- 现实/隐藏
+  - $('p').hide(spped, callback)
+  - $('p').show()
+  - $('p').toggle()
+- Fading(衰退)
+  - *.fadeIn(speed, callback)
+  - *.fadeOut()
+  - *.fadeToggle()
+  - *.fadeTo()
+- slide(滑动)
+  - slideDown(speed, callback)
+  - slideUp()
+  - slideToggle()
+- animate(动画)
+  - animate({<attr>: value, ...})
+- 停止效果渲染过程
+  - stop()
+- callback()
+- Chaining()
+  <selector>.<action1>().<action2>()...
+** HTML(DOM)
+- 获取/设置内容
+  - text()
+  - html()
+  - val()
+- 获取/设置属性
+  - attr('<attr-name>')
+- 回调(获取旧值，返回新值)
+  #+BEGIN_SRC js
+  $('#btn').attr('href', function(i, orig){
+      return orig + 'new value';
+  })
+  #+END_SRC
+- 添加元素
+  - append()
+    在被选元素的结尾插入内容
+  - prepend()
+    在被选元素的开头插入内容
+  - after()
+    在被选元素之后插入内容
+  - before()
+    在被选元素之前插入内容
+- 删除元素
+  - remove()
+    删除被选元素（及其子元素）
+  - empty()
+    从被选元素中删除子元素
+- CSS类
+  - addClass()
+  - removeClass()
+  - toggleClass()
+  - css
+- css()
+  - css('propertyname', 'value')
+- 尺寸
+  - width()
+  - height()
+  - innerWidth()
+  - innerHeight()
+  - outerWidht()
+  - outerWidth(true)
+** 遍历
+- parents
+  - parent()
+  - parents()
+  - parentsUntil()
+- childs
+  - childred()
+  - find()
+- siblings
+  - siblings()
+  - next()
+  - nextAll()
+  - nextUntil()
+  - prev()
+  - prevAll()
+  - prevUntil()
+- filter
+  - first()
+  - last()
+  - eq()
+  - filter()
+  - not()
+** AJAX
+- load()
+** others
+- noConflict()
+  #+BEGIN_SRC js
+  $.noConflict();
+  jQuery(document).ready(function(){
+      jQuery('button') .click(function(){
+          jQuery('p').text('jQuery still working');
+      });
+  });
+  #+END_SRC

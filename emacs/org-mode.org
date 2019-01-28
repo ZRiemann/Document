@@ -104,7 +104,7 @@ M-S-RET可以输入一个带checkbox的列表项，而在总任务后面可以�
     [[file:/home/maple/test.jpg]]
     Emacs默认不显示，需要C-c C-x C-v 才能显示
 *** 内部连接
-    [[target]] 标签
+    [[target]]标签
     #<<target>> 点击target标签后跳转到这里
     M-x org-mark-ring-goto ; 回退到标签处
 *** 连接命令
