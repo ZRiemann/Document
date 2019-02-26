@@ -1,0 +1,68 @@
+* mongoose
+  https://mongoosejs.com/docs/guide.html
+* Schemas(框架)
+  - 对应数据库表;
+  - Schema.add()
+    添加新表项
+  - SchemeType
+    String
+    Number
+    Date
+    Buffer
+    Boolean
+    Mixed
+    ObjectId
+    Array
+    Decimal128
+    Map
+  - defines
+    - structure of document
+    - instance methods
+    - static Model methods
+    - compound indexes
+    - middleware(hooks)
+
+  |------------+-----------+---------------|
+  | MongoDB    | mongoose  | Database      |
+  |------------+-----------+---------------|
+  | collection | Schema    | table(数据表) |
+  |            | Documents | raw(数据行) |
+  |            | json key  | column(数据列)  |
+  |------------+-----------+---------------|
+  
+  #+BEGIN_SRC js
+  const mongoose = require('mongoose');
+  let Schema = mongoose.Schema;
+
+  let blogSchema = new Schema({
+      title: String,
+      author: String,
+      body: String,
+      comments: [{body: String, date: Date}],
+      date: {type: Date, default: Date.now},
+      hidden: Boolean,
+      meta:{
+          votes: Number,
+          favs: Number
+      }
+  });
+
+  const schema = new Schema(
+  {
+    name: String,
+    binary: Buffer,
+    living: Boolean,
+    updated: { type: Date, default: Date.now },
+    age: { type: Number, min: 18, max: 65, required: true },
+    mixed: Schema.Types.Mixed,
+    _someId: Schema.Types.ObjectId,
+    array: [],
+    ofString: [String], // 其他类型也可使用数组
+    nested: { stuff: { type: String, lowercase: true, trim: true } }
+  })
+  #+END_SRC
+* Model(模型)
+  Convert Schema into Model
+  Document is instance of Model, represent a one-to-one mapping to documents
+  Model are reponsible for cerating and reading documents
+* Documents

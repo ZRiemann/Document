@@ -1,0 +1,38 @@
+* rabbitmq
+  (p) --> [Exchange] --> [Queue] --> (c)
+* exchange
+ - direct(routing)
+   多播分类数据,->topic
+   #+BEGIN_SRC js
+   // multicast
+   var ex = 'direct_logs';
+
+   ch.assertExchange(ex, 'direct', {durable: false});
+   ch.publish(ex, severity, new Buffer(msg));
+
+   // subscriber
+   args.forEach(function(severity){
+       ch.bindQueue(q.queue, ex, severity);
+   });
+
+   ch.consume(q.queue, function(msg) {
+     console.log(" [x] %s: '%s'", msg.fields.routingKey, msg.content.toString());
+   }, {noAck: true});
+   #+END_SRC
+ - topic
+   主题，支持任意的routing_key, "tock.usd.nyse", <255Bytes;
+         通配符 *(1 wrod)/#(0+ words)
+ - header
+ - fanout(publish/subscribe)
+   广播所有数据，-> direct
+   #+BEGIN_SRC js
+   ch.assertExchange('logs', 'fanout', {durable: false});
+   let msg = 'hello world!';
+   ch.publish('logs', '', Buffer.from(msg));
+
+   let queue_name = 'log-queue1';
+   ch.bindQueue(queue_name, 'logs', '');
+   ch.consume(q.queue, function(msg){
+       //...
+   }, {noAck: true});
+   #+END_SRC

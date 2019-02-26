@@ -1,0 +1,119 @@
+* docker official
+  https://docs.docker.com/get-started/
+** Get Started
+*** 1. Orientation and setup
+ - Docker concepts
+   开发者/系统管理员用于 开发,部署,运行 的平台.
+   容器化(containerization)
+   优点:灵活,轻量,通用,便携,可扩展,可堆叠
+ - Images and containers(镜像与容器)
+   - 容器: 是镜像运行后的实体
+     $ docker ps ; 显示所有容器
+   - 镜像: 可执行包, 包含所需资源(代码,运行时,库,环境变量,配置文件)
+ - Containers and virtual machines(容器与虚拟机)
+   - container runs *natively* and shares kernel
+   - virtual machine runs a full-blown guest
+ - Prepare your Docker environment(准备Docker环境)
+   Kubernetes + Docker
+   #+BEGIN_SRC sh
+   docker --version
+   # Docker version 17.12.0-ce, build c97c6d6
+   sudo docker info
+   sudo docker run hello-world
+   sudo docker image ls
+   sudo docker container --help
+   sudo docker container ls # 正在运行的容器
+   sudo docker container ls --all # 包含历史数据
+   sudo docker container ls -aq # 安静模式
+   #+END_SRC
+*** 2. Containers
+ - Introduction(介绍)
+   - 层级关系
+     - Stack   ; 定义服务的交互
+     - Service ; 定义容器的表现
+     - Container
+ - Your new development environment(新的开发环境)
+   just grab a portable Python runtime as an image, no installation necessary.
+   定义镜像的文件为 Dockerfile
+ - Define a container with *Dockerfile*
+   - Dockerfile 定义容器的环境
+     访问(网络/磁盘...)资源,由于隔离系统的其他部分,
+     需要对端口进行映射;
+     拷贝文件进入镜像环境;
+   - make Dockfile
+     #+BEGIN_SRC sh
+     mkdir dockfile
+     cd dockfile
+     touch Dockfile
+
+     cat << !END! >> Dockfile
+     # Use an official Python runtime as a parent image
+     FROM python:2.7-slim
+
+     # Set the working directory to /app
+     WORKDIR /app
+
+     # Copy the current directory contents into the container at /app
+     COPY . /app
+
+     # Install any needed packages specified in requirements.txt
+     RUN pip install --trusted-host pypi.python.org -r requirements.txt
+
+     # Make port 80 available to the world outside this container
+     EXPOSE 80
+
+     # Define environment variable
+     ENV NAME World
+
+     # Run app.py when the container launches
+     CMD ["python", "app.py"]
+     !END!
+     #+END_SRC
+ - The app itself
+   #+BEGIN_SRC sh
+   cd dockerfile
+
+   touch requirements.txt app.py
+
+   cat << !REQUIREMENTS! >> requirements.txt
+   Flask
+   Redis
+   !REQUIREMENTS!
+   cat << !APP! >> app.py
+   from flask import Flask
+   from redis import Redis, RedisError
+   import os
+   import socket
+
+   # Connect to Redis
+   redis = Redis(host="redis", db=0, socket_connect_timeout=2, socket_timeout=2)
+
+   app = Flask(__name__)
+
+   @app.route("/")
+   def hello():
+       try:
+           visits = redis.incr("counter")
+       except RedisError:
+           visits = "<i>cannot connect to Redis, counter disabled</i>"
+
+       html = "<h3>Hello {name}!</h3>" \
+              "<b>Hostname:</b> {hostname}<br/>" \
+              "<b>Visits:</b> {visits}"
+       return html.format(name=os.getenv("NAME", "world"), hostname=socket.gethostname(), visits=visits)
+
+   if __name__ == "__main__":
+       app.run(host='0.0.0.0', port=80)
+   !APP!
+   #+END_SRC
+ - Build the app
+   #+BEGIN_SRC sh
+   cd dockfile
+   ls
+   # Dockerfile        app.py          requirements.txt
+   docker build --tag=friendlyhello:v0.0.1 . # 输出 friendlyhello image
+
+   docker image ls
+   #REPOSITORY            TAG                 IMAGE ID
+   #friendlyhello         latest              326387cea398
+   #+END_SRC

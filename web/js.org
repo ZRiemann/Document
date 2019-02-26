@@ -640,6 +640,90 @@
        /* 0 延时，将消息插到队列最后，不表示立刻执行；
         ,*/
        #+END_SRC
+** Working with objects
+ - 遍历所有属性
+   1. for...in
+   2. Object.keys(o)
+   3. Object.getOwnPropertyNames(o)
+ - getter/setter
+   #+BEGIN_SRC js
+   var o = {
+     a: 7,
+     get b() { 
+       return this.a + 1;
+     },
+     set c(x) {
+       this.a = x / 2
+     }
+   };
+
+   console.log(o.a); // 7
+   console.log(o.b); // 8
+   o.c = 50;
+   console.log(o.a); // 25
+   #+END_SRC
+** Details of the object model
+** Promises
+ - example
+   #+BEGIN_SRC js
+   doSomething(function(result){
+       doSomethingElse(result, function(newResult){
+           doThirdThing(newResult, function(finalResult){
+               console.log(`Get the final result ${finalResult}`);
+           });
+       });
+   });
+
+   // use Promises
+   doSomething().then(function(result){
+       return doSomeThingElse(result);
+   }).then(function(newResult){
+       return doThirdThing(newResult);
+   }).then(function(finalResult){
+       console.log(`Got the final result ${fainalResult}`);
+   }).catch(failCallback);
+
+   // arrow function for Promises
+   doSomething()
+       .then(result => doSomething(result))
+       .then(newResult => doThirdThing(newResult))
+       .then(finalResult => {
+           console.log(`Got the final result: ${finalResult}`);
+       })
+       .catch(failureCallback);
+   // catch 后续操作
+   new Promise((resolve, reject)=>{
+       console.log('Initial');
+       resolve();
+   }).then(()=>{
+       throw new Error('Something failed');
+       console.log('Do this');
+   }).catch(()=>{
+       console.log('Do that');
+   }).then(()=>{
+       console.log('Do this whatever happen before');
+   })
+   #+END_SRC
+** iterators and generators
+** Meta programming
+   - Proxy
+     #+BEGIN_SRC js
+     let handler = {
+       get: function(target, name){
+         return name in target ? target[name] : 42;
+     }};
+
+     let p = new Proxy({}, handler);
+     p.a = 1;
+
+     console.log(p.a, p.b); // 1, 42
+     #+END_SRC
+   - Reflect
+     #+BEGIN_SRC js
+     Reflect.has(Object, 'assign'); // true
+     Function.prototype.apply.call(Math.floor, undefined, [1.75]);
+     Reflect.apply(Math.floor, undefined, [1.75]); 
+     #+END_SRC
 * node.js
 ** nvm
    node.js 版本管理
@@ -860,3 +944,39 @@
       });
   });
   #+END_SRC
+* js 面试题
+** 什么是闭包，闭包的特性？
+   1. 函数嵌套，形成一个闭包。
+   2. 闭包拥有外部函数独立的环境和变量，当外部环境释放时，闭包依然保留外部环境和变量；
+
+** auguments对象用途, 及访问？
+ 函数的实际参数会被保存在一个类似数组的arguments对象中;
+ arguments[i];
+ arguments.length;
+#+BEGIN_SRC js
+function myConcat(separator){
+    let result = '';
+    let i;
+    for(i = 1; i < arguments.length; i++){
+        result += arguments[i] + separator;
+    }
+    return result;
+}
+console.log(myConcat(',', 'red','orange','blue'));
+#+END_SRC
+** 默认参数，剩余参数
+#+BEGIN_SRC js
+function multiply(multiplier, ...theArgs) {
+  return theArgs.map(x => multiplier * x);
+}
+
+var arr = multiply(2, 1, 2, 3);
+console.log(arr); // [2, 4, 6]
+#+END_SRC
+** 箭头函数
+ 捕捉闭包上下文的this；
+** 写一个对象打印函数，输出
+** 枚举对象属性的3种方法
+ - for...in
+ - Object.keys(0)
+ - Object.getOwnPropertyNames(o)
