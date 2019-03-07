@@ -477,6 +477,24 @@
     done
     #+END_SRC
 *** break/continue
+*** 输入密码
+ 1. 重定向 ftp -i -n ... << EOF ... EOF
+ 2. 管道 echo <passwd> | sudo -S <cmd...>
+ 3. sshpass
+ 4. expect(不是bash)
+    sudo apt-get install tcl tk expect
+    #!/usr/bin/exprct
+*** 远程执行
+ ssh <user>@<host> "cd /home ; touch remote-create.tst"
+ #+BEGIN_SRC sh
+ #!/bin/bash
+ ssh user@remoteNode > /dev/null 2>&1 << eeooff
+ cd /home
+touch abcdefg.txt
+exit
+eeooff
+echo done!
+ #+END_SRC
 ** 函数(<fun_name>(){<body>})
    #+BEGIN_SRC sh
    funWithParam(){

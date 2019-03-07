@@ -36,3 +36,307 @@
        //...
    }, {noAck: true});
    #+END_SRC
+* Clustering Guide
+** Overview
+ - [[Requirement]] for clustering
+ - What data is and isn't [[replicated between cluster nodes]]
+ - What clustering [[means for clients]]
+ - [[How clusters are formed]]
+ - How nodes [[authenticate to each other]] and with CLI tools
+ - [[Node restarts]] and how nodes rejoin their cluster
+ - How to [[remove a cluster node]]
+ - [[Cluster Formation and Peer Discovery]]
+ - *bloker* is a logical grouping of one or several Elang *nodes*,
+   each running the RabbitMQ application and shring users,
+   virtual hosts, queue, exchanges, bindings, and runtime parameters.
+   Sometimes we refer to the collection of nodes as a *cluster*.
+** Cluster Formation
+*** Ways of Forming a Cluster
+ - Declaratively by listing cluster nodes in [[config file]]
+ - Declaratively using DNS-based discovery
+ - Declaratively using [[AWS(EC2) instance discovery]] (via a plugin)
+ - Declaratively using [[Kubernetes discovery]] (via a plugin)
+ - Declaratively using [[Consol-based discovery]] (via a plugin)
+ - Declaratively using [[etcd-based discovery]] (via a plugin)
+ - Mannually with rabbitmqctl
+ [[Cluster Formation guide]]
+*** Cluster Formation Requirements
+ #<<Requirement>>
+ - using domain names
+   - DNS records
+   - Local host file (/etc/hosts)
+ - all cluster member must be resolvable from all cluster nodes
+*** Port Access
+ - 4369 [[empd]], a peer discovery service used by RabbitMQ nodes and CLIS tools
+ - 5672,5671 AMQP0-9-1/1.0
+ - 25672 inter-node and CLI tools communication
+ - 56572~35682 CLI tools for communication with nodes
+ - 15672 [[HTTP API]]
+ - 6163,6164 [[STOMP clients]] STOMP plugin is enabled
+ - 1883,8883 [[MQTT clients]] , MQTT plugin is enabled
+ - 15674 STOMP-over-WebScockets clients([[Web STOMP plugin]])
+ - 15675 MQTT-over-WebScokets clients([[Web MQTT plugin]])
+** Nodes in a Cluster
+*** What is Replicated?
+    All data/state required for the operation of RabbitMQ broker is replicated accross all nodes.
+    exception to this are message queues. https://www.rabbitmq.com/ha.html
+*** Nodes are Equal Peers
+ [[queue mirroring]]
+ [[CLI tool]] [[HTTP API]]
+
+*** How CLI Tools Authenticate to Nodes: the Erlang Cookie
+ CLI Tools(rabbitmqctl) use a cookie to detemine whether they are allowed to
+ communicate with eacher.
+ For tow nodes to be enable to communicate they must have the same shared
+ secret called the *Erlang cookie*
+ Elang cookie is just a string of alphanumberic characters up to 255 characters in size.
+ It's usually stored in a local file(UNIX permissions 600). 
+ Every cluster node must have the same cookie.
+ If the file does not exists, Erlang VM will try to create one with a randomly
+ generated value when the RabbitMQ server start up.
+ clustered environment Chef, Puppet, BOSH, Docker or simila
+ UNIX kookie typically located in */var/lib/rabbitmq/.erlang.cookie* (used by the server)
+ *$HOME/.erlang.cookie* (used by CLI tools)
+ - alternative: RABBITMQ_SERVER_ADDITIONAL_REL_ARGS="-setcookie cookie-value"
+
+*** Clustering and Clients
+ Assuming all cluster members are available, a client can conect to any ndoe 
+ and perform any operation.
+ Nodes will route operation to the [[queue master node]] transparently to clients.
+ most client libraries *accept a list of endpoints* as a connection option.
+*** Clustering and Observability
+    rabbitmqctl list_*
+    rabbitmq-diagnostics environment/status
+*** Node Failure Handling
+    breakers tolerate([ˈtɑ:ləreɪt]容忍)the failure of individual nodes
+    [[Queue mirroring]] allows queue contents to be replicated across multiple nodes.
+    
+    - LAN(局域网)
+    - WAN(广域网)
+      [[Shovel]] or [[Federation]] 不是集群对等的
+*** Metrics and Statistics
+    [[HTTP API]]
+*** Disk and RAM Nodes
+    - Disk node
+      cluster must contain at least one disk node.
+    - RAM node
+      store internal database tables in RAM only
+      not include: message,queue,node state
+      
+** Clustering Transcript with rabbitmqctl
+ #+BEGIN_SRC sh
+ # on rabbit1
+ rabbitmq-server -detached
+ # on rabbit2
+ rabbitmq-server -detached
+ # on rabbit3
+ rabbitmq-server -detached
+
+ #================================================================================
+ # Three independent RabbitMQ brokers, comfirmed by the cluster_status
+
+ # on rabbit1
+ rabbitmqctl cluster_status
+ # => Cluster status of node rabbit@rabbit1 ...
+ # => [{nodes,[{disc,[rabbit@rabbit1]}]},{running_nodes,[rabbit@rabbit1]}]
+ # => ...done.
+
+ # on rabbit2
+ rabbitmqctl cluster_status
+ # => Cluster status of node rabbit@rabbit2 ...
+ # => [{nodes,[{disc,[rabbit@rabbit2]}]},{running_nodes,[rabbit@rabbit2]}]
+ # => ...done.
+
+ # on rabbit3
+ rabbitmqctl cluster_status
+ # => Cluster status of node rabbit@rabbit3 ...
+ # => [{nodes,[{disc,[rabbit@rabbit3]}]},{running_nodes,[rabbit@rabbit3]}]
+ # => ...done.
+
+ #================================================================================
+ # Creating a Cluster
+
+ # on rabbit2
+ rabbitmqctl stop_app
+ # => Stopping node rabbit@rabbit2 ...done.
+ rabbitmqctl reset
+ # => Resetting node rabbit@rabbit2...
+ rabbitmqctl join_cluster rabbit@rabbit1
+ # => Clustering node rabbit@rabbit2 with [abbit@rabbit1] ...done
+ rabbitmqctl start_app
+ # => Starting node rabbit@rabbit2 ...done.
+
+ #================================================================================
+ # confirm cluster
+ # on rabbit1
+ rabbitmqctl cluster_status
+ # => cluster status of node rabbit@rabbit1 ...
+ # => [{nodes, [{disc, [rabbit@rabbit1, rabbit@rabbit2]}]}],
+ # =>  {running_nodes, [rabbit@rabbit1, rabbit@rabbit2]}
+ # => ...done.
+ rabbitmqctl cluster_sattus
+ # ...
+ # join rabbit@rabbit3 to rabbit@rabbit1 as rabbit@rabbit2
+ # comfirm the cluster ...
+
+ #================================================================================
+ # Restarting Cluster Nodes
+
+ #on rabbit1
+ rabbitmqctl stop
+ rabbitmqctl cluster_status
+ rabbitmq-server -detached
+ rabbitmqctl cluster_status
+
+
+ #================================================================================
+ # Breaking Up a Cluster
+
+ # remove rabbit@rabbit3
+ rabbitmqctl stop_app
+ rabbitmqctl reset
+ rabbitmqctl strt_app
+
+ # remove node remotely
+ # on rabbit1
+ rabbitmqctl stop_app
+ # on rabbit2
+ rabbitmqctl forget_cluster_node rabbit@rabbit1
+ # on rabbit1
+ rabbitmqctl start_app
+ # => Starting node rabbit@rabbit1...
+ # => Error: inconsistent_cluster: ... rabbit@rabbit2 disagrees
+ rabbitmqctl reset
+ rabbitmqctl start_app
+
+ #on rabbit2
+ # reset rabbit2
+ rabbitmqctl stop_app
+ rabbitmqctl reste
+ rabbitmqctl start_app
+ #+End_Src
+
+** A Cluster on a Single Machine
+   make sure distinct node names, data store locations, logfile locations, different ports
+   including those used by plugins.
+   #+BEGIN_SRC sh
+   RABBITMQ_NODE_PORT=5672 RABBITMQ_NODENAME=rabbit rabbitmq-server -detached
+   RABBITMQ_NODE_PORT=5673 RABBITMQ_NODENAME=hare rabbitmq-server -detached
+   rabbitmqctl -n hare stop_app
+   rabbitmqctl -n hare join_cluster rabbit@`hostname -s`
+   rabbitmqctl -n hare start_app
+
+   RABBITMQ_NODE_PORT=5672 RABBITMQ_SERVER_START_ARGS="-rabbitmq_management listener [{port,15672}]" RABBITMQ_NODENAME=rabbit rabbitmq-server -detached
+   RABBITMQ_NODE_PORT=5673 RABBITMQ_SERVER_START_ARGS="-rabbitmq_management listener [{port,15673}]" RABBITMQ_NODENAME=hare rabbitmq-server -detached
+
+   # Creating RAM nodes
+   # on rabbit2
+   rabbitmqctl stop_app
+   rabbitmqctl jon_cluster --ram rabbit@rabbit1
+   rabbitmqctl start_app
+   rabbitmqctl cluster_status
+   # ...
+   # [{nodes,[{disc,[abbbit@rabbit1]},{ram, [rabbit@rabbit2]}},{running_nodes, ...}]
+
+   # Changing node types
+   # on rabbit2
+   rabbitmqctl stop_app
+   rabbitmqctl change_cluster_node_type disc
+   # on rabbit1
+   rabbitmqctl stop_app
+   rabbitmqctl change_cluster_node_type ram
+   rabbitmqctl start_app
+   #+END_SRC
+================================================================================
+* Shovel Plugin 
+  #<<Shovel>>
+  https://www.rabbitmq.com/shovel.html
+  #+BEGIN_SRC ditaa
+       +---------+     +---------+     +-----------+
+       | source  +-----+  Shovel +-----+destination|
+       +---------+     +---------+     +-----------+
+                                           
+  #+END_SRC
+** Primary advantabes of shovel are:
+ - Loose coupling(松耦合)
+   move messages between brokers(or clusters) in different administrative domains
+   - have different users and virtuals hosts;
+   - run on different versions of RabbitMQ and Erlang
+   - different broker products
+ - WAN-friendly
+   The Shovel plugin uses client connections to communicate between brokers,
+   and is designed to tolerate intermittent connectivity without message loss.
+ - Highly tailorable(高可定制)
+ - Support multiple protocols
+   
+** What does it do?
+ - *connects* to the source broker and the destination broker
+ - *comsumes* messges from the queue
+ - *re-publishes* each message to the destination broker
+** Getting started
+ - enable plugin
+   rabbitmq-plugins enable rabbitmq_shovel
+   rabbitmq-plugins enable rabbitmq_shovel_management
+ - static/dynamic shovel
+   - [[Static Shovels]]
+     Defined in the broker [[configuration file]]
+     require a restart of the hosting broker to change
+     Slightly more general: any queues,exhanges or bindigs
+   - [[Dynamic Shovels]]
+     Define using the broker's runtime parameters
+     Can be created and delete at any time
+     Slight more opinionated:
+
+** Configuration Format Difference
+ - #<<Static Shovels>>
+   https://www.rabbitmq.com/shovel-static-legacy.html
+ - #<<Dynamic Shovels>>
+   https://www.rabbitmq.com/shovel-dynamic-legacy.html
+
+
+
+
+
+
+
+
+
+
+** Authentication and Authorization for Shovels
+** Shovels Between Clusters
+* Federation Plugin
+
+* #<<Http API>>
+* #<<CLI tool>>
+  https://www.rabbitmq.com/cli.html
+  - rabbitmqctl
+    - list_connections
+    - list_mqtt_connections
+    - list_stomp_connections
+    - list_users
+    - list_vhosts
+  - rabbitmq-diagnostics 
+    - environment
+    - status
+* #<<Federation>>
+  https://www.rabbitmq.com/federation.html
+* RabbitMQ + Docker + Nodejs + C/C++
+
+  #+BEGIN_SRC ditaa                                                                    
+  +-----------+       +-----------+                                +-----------+
+  |Browser    |       |Browser    +--------+                       | CLI/UI    |
+  +-----------+       +-----------+        |                       +------+----+
+       |                    |              | HTTP                         |
+       |                    |              |                              |
+  +----+----------+---------+-----+     +--------+  +--------+            |
+  |  MQTT         |    STOMP      |     | WebApp |  | CServer|            |
+  +---------------+---------------+     +--------+  +--------+            |
+  |          RabbitMQ             |     | Nodejs |  | Alpine |            |
+  +-------+-------+---------------+     +-----+--+  +-----+--+            |
+  |queue  |topic  |   RPC         |           |           |               |
+  +--+----+---+---+------+--------+           |           |               |
+     |        |          |                    |           |               |
+     |        |          |                    |           |               |
+  ---+--------+----------+--------------------+-----------+---------------+------------
+                              Message Bus 
+  #+END_SRC

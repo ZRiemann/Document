@@ -1116,3 +1116,54 @@
    | enumerate()                       |                      |                |
    | list(iterable-object)             | iterator             | list(range(5)) |
    |                                   |                      |                |
+* more
+** 执行Shell脚本
+   os标准库下直接有相应的方法
+   #+BEGIN_SRC python
+   # 执行并等待脚本结束
+   child = subprocess.Popen(["ping","-c","5","leehao.me"])
+   child.wait()
+   print 'parent finish'
+   # 获取脚本输出
+   def subprocess_cmd(command):
+       process = subprocess.Popen(command,stdout=subprocess.PIPE, shell=True)
+       proc_stdout = process.communicate()[0].strip()
+       print proc_stdout
+
+   subprocess_cmd('echo leehao.me; echo www.leehao.me')
+   #+END_SRC
+   #+BEGIN_SRC python
+   from datetime import datetime
+   import subprocess
+
+
+   def safe_int(s):
+       try:
+           n = int(s)
+       except Exception, ex:
+           n = 0
+       return n
+
+
+   def run():
+       print 'begin to monitor task num, time: %s' % datetime.now()
+       child = subprocess.Popen('grep "socket进入队列" /home/lihao/logs/ksb.txt | tail -n 1 | cut -d "：" -f 3',
+                                shell=True, stdout=subprocess.PIPE)
+       out = child.communicate()[0]
+       out = out.strip()
+       print(out)
+       num = safe_int(out)
+       if num > 5:
+           print 'task num is over limit, num: %s, time: %s' % (num, datetime.now())
+           msg = '%s, 193 task num is over limit, task num: %s' % (datetime.now(), num)
+           cmd = ['/home/soft/SendMsg/SendMsg', '1', '13800138000', msg]
+           print cmd
+           child = subprocess.Popen(cmd, cwd="/home/soft/SendMsg")
+           child.wait()
+       else:
+           print 'task num is ok, num: %s, time: %s' % (num, datetime.now())
+
+
+   if __name__ == '__main__':
+       run()
+   #+END_SRC

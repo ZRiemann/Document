@@ -243,6 +243,26 @@ but not any simpler -- Albert Einstein
     导出PGF需要LaTex支持
     到处html
 
+** 11 画图
+   http://emacser.com/artist-mode.htm
+   Ctl-c Ctl-a ...
+   mouse-2（鼠标中键）,shift mouse-2 弹出一个菜单，从菜单里你可以选择要使用左键画什么类型更改一些设定
+   mouse-1 ( 鼠标左键) , shift-mouse-1 绘制部分由鼠标左键完成，请参考绘制操作。
+   mouse-3 ( 鼠标右键) , shift mouse-3 mouse-3 
+                        删除鼠标下的一个字符 shift mouse-3画出矩形框，删除框选所有字符
+  #+BEGIN_SRC ditaa
+            +-------------------+
+            |                   |
+            |  Swarm manager    |
+            |                   |
+            +-------------------+
+
+       +-------------+   +-------------+     +-------------+
+       | node        |   | node        |     | node        |
+       |  images     |   |  images     |     |  images     |   ....
+       |             |   |             |     |             |
+       +-------------+   +-------------+     +-------------+
+  #+END_SRC
 * Footnotes
 
 [fn:2] The link is: http://orgmode.org

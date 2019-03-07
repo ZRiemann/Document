@@ -26,7 +26,7 @@
    sudo docker container ls --all # 包含历史数据
    sudo docker container ls -aq # 安静模式
    #+END_SRC
-*** 2. Containers
+*** 2. Containers(制作/共享镜像)
  - Introduction(介绍)
    - 层级关系
      - Stack   ; 定义服务的交互
@@ -117,3 +117,703 @@
    #REPOSITORY            TAG                 IMAGE ID
    #friendlyhello         latest              326387cea398
    #+END_SRC
+   - Troubleshooting for linux users
+     #+BEGIN_SRC sh
+     # Proxy server settings
+     # proxy servers can block connections to your web app once it's up and running.
+     # If you are behind a proxy server, add the following lines to your Dockerfile,
+     # using the ENV command to specify the host and port for your proxy servers
+
+     # Set proxy server, replace host:port with values for your servers
+     ENV http_proxy <host:port>
+     ENV https_proxy <host:port>
+
+     # DNS settings
+     # DNS misconfigurations can generate problems with pip.
+     # You need to set your own DNS server address to make pip work properly.
+     # You might want to change the DNS settings of the Docker daemon.
+     # You can edit(or create) the configuration file at /etc/docker/daemon.json
+     # with the dns key, as following:
+     # the first is your DNS server. The second item is Google's DNS Server.
+     {
+         "dns":["<your_dns_address>", "8.8.8.8"]
+     }
+     # Before procedding, save daemon.json and restart the docker service
+     sudo service docker restart
+     # Once fixed, retry to run the build command.
+     #+END_SRC
+ - Run the app
+   #+BEGIN_SRC sh
+   # Run the app, mapping your machine's port 4000 to the container's published prot 80 using -p:
+   docker run -p 4000:80 friendlyhello
+   # You should see a message that python is server you app at http://0.0.0.0:80
+   # But that message coming form inside the container, which doesn't know you mapped port 80
+   # of that container to 4000, making the corrent URL http://localhost:4000
+   curl http://localhost:4000
+   # Note: If you are using Docker Toolbox on Window7, use the Docker Machine IP
+   # instead of localhost. for example http://<machine IP>:4000
+   docker-machine ip
+
+   # Linux
+   # Hit CTRL+C in your terminal to quit.
+   # Window
+   # docker container ls
+   # docker container stop <Container NAME or ID>
+
+   # Now let's run app in the background, in detached mode:
+   # use -d option
+   docker run -d -p 4000:80 friendlyhello
+   docker container ls
+   # CONTAINER ID        IMAGE               COMMAND             CREATED
+   # 1fa4ab2cf395        friendlyhello       "python app.py"     28 seconds ago
+   docker container stop 1fa4ab2cf395
+   #+END_SRC
+ - Share your image
+   To demostrate the portability of what we just created, let's upload our built
+   out build image and run it some where else.
+   After all, you need to know how to push to registries when you want to deploy
+   containers to production.
+   
+   A *registry* is a collenction of *repositories*.
+   A *repository* is a collection of *images*
+   sort of like a GitHub repository, except the code is already built.
+   An *account* on a registry can create many repositories. the docker CLI uses
+   Docker's *public registry* by default.
+
+   *Node:* We use Docker's public registry here just because it's free and
+   pre-configured, but there are many public ones ot choose from, and you can e-
+   ven set up your own private registry using *Docker Trusted Registry*
+   - Docker Trusted Registry(DTR)
+     https://docs.docker.com/ee/dtr/
+     DTR is the enterprise-grade image storage solution from Docker. You instal-
+     l it behind your firewall so that you can securely store and manage the Do-
+     cker images you use in your applications.
+     - Image and job management
+       DTR can be installed on-premises, or on a virtual private cloud. and with
+       it, you can store Docker images securely, behind your firewall.
+
+       You can use DTR as part of your continuous integration, and continous de-
+       liver processes to build, ship, and run your applications.
+
+       DTR has a web user interface that allow authorized users in your organiz-
+       ztion to browse Docker images and _review repository events_. It even al-
+       lows your to see what Dockerfile lines were used to produce the image an-
+       d, if security scanning is enabled, to see a list of all of the software
+       installed in your images. Additionally, you can now review and audit jobs
+       on the web interface.
+     - Availability
+       DTR is highly available through the use of multiple replicas of all cont-
+       ainers and metadata such that if a machine fails, DTR continous to opera-
+       te and can be repaired.
+     - Efficiency
+       DTR has the ability to cache images closer to users to reduce the amount
+       of bandwidth used when pulling Docker images.
+       DTR has the ability to clean up unreferenced manifests and layers.
+     - Built-in access control
+       DTR uses the same authentication mechanism as Docker Universal Control p-
+       lane. Users can be managed manually or synchronized from LDAP or Active 
+       Directory. DTR uses Role Based Access Control to allow you to implement
+       fine-grained access control policies for your Docker images
+     - Security scanning
+       DTR has a built-in security scanner that can be used to discover what ve-
+       rsions of software are used in your images. It scans each layer and aggr-
+       egates  the results is give you a complete picture of what you are shipp-
+       ing as a part of you stack. Most importantly, it correlate this informat-
+       ion with a vulnerability database that is kept up to date through preiod-
+       ic updates. This gives your unprecedented insignt into you exposure to k-
+       nown security threats(安全威胁).
+     - Image signing(镜像签署)
+       DTR ships with *Notary* built in so that you can use Docker Content Trust
+       to sign and verify images. For more information about managing Notary in 
+       DTR see the [[https://docs.docker.com/ee/dtr/user/manage-images/sign-images/][DTR-specific notary documentaion]].
+     - [[https://docs.docker.com/ee/dtr/architecture/][DTR architecture]]
+     - [[https://docs.docker.com/ee/dtr/admin/install/][Install DTR]]
+       DTR is a containerized application that runs on a swarm managed by Unive-
+       rsal Control Plane(UCP). It can be installed on-premises on a cloud infr-
+       astructure
+       1. Validate the system requirement
+          Before install DTR, make sure your infrastructure meets the system re-
+          quirements that DTR needs to run.
+          - Be a worker node managed by UCP(Universal Control Plane)
+            [[https://success.docker.com/article/compatibility-matrix][Compatibility Matrix]]
+          - Have a fixed hostname
+          - 16GB RAM
+          - 2/4 vCPUS
+          - 10/25~100 GB free disk space
+          - 80,443/tcp
+       2. Install UCP
+       3. Install DTR
+       4. Check that DTR is running
+       5. Configure DTR
+       6. Test pushing and pulling
+       7. Join replicas to the cluster
+ - Log in with your Docker ID
+   sign up https://hub.docker.com/
+   zr/rz+dr1
+ - Tag the image
+   The notation for association a local image with a repository on a registry is
+   _username/repository:tag_
+ - summary
+   #+BEGIN_SRC sh
+   sudo docker login
+   # sudo docker tag <image> <username/repository>:<tag>
+   sudo docker tag friendlyhello gordon/get-start:part2
+   # Run docker image ls to see your new tagged image
+   docker image ls
+   # REPOSITORY               TAG                 IMAGE ID            CREATED             SIZE
+   # friendlyhello            latest              d9e555c53008        3 minutes ago       195MB
+   # gordon/get-started       part2               d9e555c53008        3 minutes ago     195MB
+   # python                   2.7-slim            1c7128a655f6        5 days ago          183MB
+   # ...
+
+   # Publish the image
+   # sudo docker push <username>/<username/repository>:tag
+   sudo docker push gordon/get-start:part2
+
+   # Pull and run image from the remote repository
+   docker run -p 4000:80 gordon/get-start:part2
+
+   # save to local
+   sudo docker save -o gordon/get-start:part2 ./dock-images/get-start-part2.tar
+   # load on other machine
+   sudo docker load ./dock-images/get-start-part2.tar
+   #+END_SRC
+*** 3. Services(Docker单机负载均衡)
+ - Prereuisites
+   - install docker
+   - Get [[Docker Compose]], [[Install Docker Compose]]
+     - #<<Docker Compose>>
+       https://docs.docker.com/compose/overview/
+       TODO: docker compose
+     - #<<Install Docker Compose>>
+       #+BEGIN_SRC sh
+       curl -L https://github.com/docker/compose/releases/download/1.24.0-rc1/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+       chmod +x /usr/local/bin/docker-compose
+       #+END_SRC
+ - Introduction
+   we scale our application and enable load-balancing. To do this, we must go o-
+   ne level up in the dierarchy of a distributed application: the *service*.
+ - About services
+   In a distributed application, different pieces of the app are called "servic-
+   es". For example, if you image a video sharing site, it probably includes a 
+   service for storing application data in a database, a service for video tran-
+   scoding in the background after a user uploads something, a service for the 
+   fromt-end, and so on.
+   
+   *Services* are really just "containers in production". A Service only runs o-
+   ne image, but it condifies(篡改) the way that image runs - what paorts it sh-
+   ould use, how many replicas(复制品[ˈreplɪkə]) of the container should run so 
+   the service has the capacity(容量) it needs, and so on. Scaling service chan-
+   ges the number of container instances running that piece of software, assign-
+   ing more computing resources to the service in the process.
+   just write a *docker-compose.yml*
+ - Your first *docker-compose.yml* file
+   Save the file as docker-compose.yml wherever you want.
+   #+BEGIN_SRC yaml
+   version: "3"
+   services:
+     # as a service called web
+     web:
+       # replace username/repo:tag with your name and image details
+       # pull ithe image form the registry
+       image: username/repo:tag
+       deploy:
+         # run 5 instance of the image as a service called web
+         replicas: 5
+         resources:
+           limits:
+             # limiting each one to use at most 10% of a single core of CPU
+             cpus: "0.1"
+             # limit 50MB of RAM
+             memory: 50M
+             restart_policy:
+               # immediatelly restart container if one fails
+               condition: on-failure
+               prots:
+                 # Map port 4000 on the host to wen's port 80
+                 - "4000:80"
+                 networks:
+                   # instruct web's containers to share port 80
+                   # via a load-balanced network called webnet
+                   - webnet
+                   # Define the webnet network with the default settings
+                   # which is a load-balanced overly network
+                   networks:
+                     webnet:
+   #+END_SRC
+ - Run your new load-balanced app
+   Before we can use the docker stack deploy command we first run:
+   #+BEGIN_SRC sh
+
+   docker swarm init
+   # give your app a name called getstartedlab
+   docker stack deploy -c docker-compose.yml getstartedlab
+   # Our single service stack is running 5 container instances of
+   # our deployed image on one host. Let's investigage(调查)
+   # Get the service ID for the one service in our application:
+   docker service ls
+   # getstartedlab_web
+   docker stack services getstartedlab
+   docker stack services getstartedlab
+   #ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+   #bqpve1djnk0x        getstartedlab_web   replicated          5/5                 username/repo:tag   *:4000->80/tcp
+
+   # A single container running in a service is called a TASK.
+   # Tasks are given unique IDs that numerically increment,
+   # up to the number of replicas you defined in docker-compose.yml
+   # List the tasks for your service:
+   docker service ps getstartedlab_web
+   docker container ls -q
+
+   curl -4 http://localhost:4000
+   #+END_SRC
+ - Scale the app
+   You can scale the app by changeing the replicas value in docker-compose.yml,
+   saving the change, and re-running the docer stack deploy command:
+   #+BEGIN_SRC sh
+   docker stack deploy -c docker-compose.yml getstartedlab
+   # Take down the app and the swarm
+   docker stack rm getstartedlab
+   docker swarm leave --force
+   #+END_SRC
+*** 4. Swarms(Docker集群,单堆栈,多机负载均衡)
+ - Introduction
+   you deploy this application onto a *cluster*, running it on multiple machines.
+   Multi-container, multi-machine applications are made possible by joining multiple
+   machines into a "Dockerized" cluster called a "swarm"
+   #+BEGIN_SRC ditaa
+           +--------------------------------------------------------------------+
+           | StackA                                                             |
+           |                                                                    |
+           |          +-------------------+                                     |
+           |          |                   |                                     |
+           |          |  Swarm manager    |                                     |
+           |          |                   |                                     |
+           |          +-------------------+                                     |
+           |                                                                    |
+           |     +-------------+   +-------------+     +-------------+          |
+           |     | node        |   | node        |     | node        |          |
+           |     |  images     |   |  images     |     |  images     |   ....   |
+           |     |             |   |             |     |             |          |
+           |     +-------------+   +-------------+     +-------------+          |
+           +--------------------------------------------------------------------+
+   #+END_SRC
+ - Understanding Swarm clusters
+   A *swarm* is a group of machines that are running Docker and joined into a cluster.
+   A fter that has happen, you continue to run the Docker commands you're used to,
+   but now they are excuted on a cluster by a *swarm manager*.
+   可以继续使用Docker命令来操作集群,就如同单机操作一样;
+   The machines in a swarm can be physical or virtual.
+   After join a swarm, they are reffered to as *nodes*.
+   加入集群的 *主机* 被称作 *节点*, 主机可以是 *物理机* 或 *虚拟机*
+
+   Swarm managers can use several strategies(策略) to run containers,
+   such as *emptiest node(最空节点)* -- which fills the least utilized machines with containers.
+   Or *global* which ensures that each machine gets exactly one instance of the specified container.
+   You instruct(指示) the swarm manager to use these strategies in the Compose file,
+   just like one your have already been using.
+
+   *Swarm managers* are the only machines in a swarm that can execute you commands,
+   or authorize other machines to join the swarm as *workers*.
+   *Workers* are just there to provide capacity and no not have the authority(权力)
+   to tell any other machine what it can and cannot do.
+   
+   single-host --> swarm mode
+ - Set up your swarm
+   #+BEGIN_SRC sh
+   # machine1: enable swarm mode and make your current machine a swarm manager
+   docker swarm init
+   # machine2: join the swarm as workers
+   docker swarm join
+
+   # create a couple of VMs using docker-machine
+   docker-machine create --driver virtualbox myvm1
+   docker-machine create --driver vurtualbox myvm2
+
+   docker-machine ls
+   NAME    ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER        ERRORS
+   myvm1   -        virtualbox   Running   tcp://192.168.99.100:2376           v17.06.2-ce
+   myvm2   -        virtualbox   Running   tcp://192.168.99.101:2376           v17.06.2-ce
+
+   docker-machine ssh myvm1 "docker swarm init --advertise-addr <myvm1 ip>"
+   #docker-machine --native-ssh ssh myvm1 "docker swarm init --advertise-addr <myvm1 ip>"
+
+   docker-machine ssh myvm2 "docker swarm join \
+   --token <token> \
+   <ip>:2377"
+
+   docker-machine ssh myvm1 "docker node ls"
+   # ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS
+   # brtu9urxwfd5j0zrmkubhpkbd     myvm2               Ready               Active
+   # rihwohkh3ph38fhillhhb84sk *   myvm1               Ready               Active              Leader
+
+   docker swarm leave
+   #+END_SRC
+ - Deploy your app on the swarm cluster
+   #+BEGIN_SRC sh
+   # to get and raun a command
+   docker-machine env myvm1
+   export DOCKER_TLS_VERIFY="1"
+   export DOCKER_HOST="tcp://192.168.99.100:2376"
+   export DOCKER_CERT_PATH="/Users/sam/.docker/machine/machines/myvm1"
+   export DOCKER_MACHINE_NAME="myvm1"
+   # Run this command to configure your shell:
+   eval $(docker-machine env myvm1)
+   # in swarm manager
+   docker-machine ls
+
+   # Deploy the app on the swarm manager
+   # myvm1:
+   docker stack deploy -c docker-compose.yml getstartedlab
+   docker service ps <service_name>
+   #+END_SRC
+   The reason both IP addresses work is that 
+   nodes in a swarm participate in an ingress routing mesh.
+   - Having connectivity trouble?
+     open prots
+     - Port 7946 TCP/UDP for container network discovery
+     - Port 4789 UDP for the container ingress network.
+ - Iterating and scaling your app
+ - Cleanup and reboot
+   - Stacks and swarms
+     #+BEGIN_SRC sh
+     docker stack rm gitstartedlab
+
+     # At some point later, you can remove this swarm if you want to with
+     docker-machine ssh myvm2 "docker swarm leave"
+     docker-machine ssh myvm1 "docker swarm leave --force"
+     #+END_SRC
+   - Unsetting docker-machine shell variable settings
+     #+BEGIN_SRC sh
+     # Mac or Linux
+     eval $(docker-machine env -u)
+     # windows
+     & "C:\Program Files\Docker\Docker\Resources\bin\docker-machine.exe" env -u | Invoke-Expression
+     #+END_SRC
+   - Restart Docker machines
+     If you shut down your local host, Docker machines stops running.
+     You can check the status of machine by running docker-machine ls
+     To restart a machine that's stoped, run:
+     docker-machine start <machine-name>
+     #+BEGIN_SRC sh
+     docker-machine ls
+     # NAME    ACTIVE   DRIVER       STATE     URL   SWARM   DOCKER    ERRORS
+     # myvm1   -        virtualbox   Stopped                 Unknown
+     # myvm2   -        virtualbox   Stopped                 Unknown
+     docker-machine start myvm1
+     # Starting "myvm1"...
+     # (myvm1) Check network to re-create if needed...
+     # (myvm1) Waiting for an IP...
+     # Machine "myvm1" was started.
+     # Waiting for SSH to be available...
+     # Detecting the provisioner...
+     #+END_SRC
+*** 5. Stacks(集群编排,多堆栈联合)
+ - Introduction
+   #+BEGIN_SRC ditaa
+   +------------------------------------------------------+
+   |  Stacks  (Swarm)                                     |
+   |                                                      |
+   |                                                      |
+   |                                                      |
+   |    +---------------+       +---------------+         |
+   |    |stackA         |       |stackA         |         |
+   |    |               |       |               | .....   |
+   |    |        nodes  |       |        nodes  |         |
+   |    +---------------+       +---------------+         |
+   |                                                      |
+   +------------------------------------------------------+
+   #+END_SRC
+   We reach the top of the hierarchy(分层[ˈhaɪərɑ:ki]) of distributed applications: the *stack*
+   A *stack* is a group of interrelated(关联的[ˌɪntərɪˈleɪt]) that share dependencies, 
+   and can be orchestrated(编排/策划[ˈɔ:rkɪstreɪt]) and scaled together.
+ - Add new service and redploy
+   #+BEGIN_SRC yaml
+   version: "3"
+   services:
+     web:
+       image: username/repo:tag
+       deploy:
+         replicas: 5
+         restart_policy:
+           condition: on-failure
+           resources:
+             limits:
+               cpus:"0.1"
+               memory: 50M
+               ports:
+                 - "80:80"
+               networks:
+                 - webnet
+     # http://192.168.99.101:8080
+     visualizer:
+       image: dockersamples/visutalizer:stable
+       prots:
+         - "8080:8080"
+       # giving the visualizer access to the host's socket file for Docker
+       volumns:
+         - "/var/run/docker.sock:/var/run/docker.sock"
+       deploy:
+         # ensureing that this service only ever runs on a swarm manager
+         # never a worker
+         placement:
+           constraints: [node.role == manager]
+       networks:
+         - webnet
+     networks:
+       webnet:
+   #+END_SRC
+ - Persist the data(保存数据)
+   Let's go through the same workflow once more to add a Redis dabase for storing app data.
+   #+BEGIN_SRC yaml
+   version: "3"
+   services:
+     web:
+       #...
+     visualizer:
+       #...
+     redis:
+       image: redis
+       port:
+         - "6379:6379"
+       volumes:
+         - "/home/docker/data:/data"
+       deploy:
+         placement:
+           constraints: [node.role == manager]
+         command: redis-server --appendonly yes
+     networks:
+       webnet:
+   #+END_SRC
+   - radis always run on the manager, so it's always using the same filesystem.
+   - redis access an arbitrary directory in the host's file system as /data
+     inside the container, wihch is where redis stores data.
+     数据必须保存到外部,否则重新部署后所有数据将丢失;
+   - The placement constraint you put on the Redis service, 
+     ensureing that it always uses the same host.
+   - The volume you created that lets the container access ./data(on the host)
+     as /data(inside the Redis container). While containers come and go, the files
+     stored on ./data on the specified host persists, enabling continuity.
+   #+BEGIN_SRC sh
+   # 2. Create ./data directory on the manager
+   docker-machine ssh myvm1 "mkdir ./data"
+
+   eval $(docker-machine env myvm1)
+   docker stack deploy -c docker-compose.yml getstartedlab
+   docker service ls
+
+   # http://192.168.99.101
+   # http://192.168.100:8080
+   #+END_SRC
+*** 6. Deploy your app
+ - Docker Engine - Community
+   - install Docker Engine
+   - Create your swarm
+   - Deploy your app
+   - Run some Swarm commands to verify the deployment
+     #+BEGIN_SRC sh
+     # list the nodes in your swarm
+     docker node ls
+     # list services
+     docker service ls
+     # view tasks for a service
+     docker service ps vy7n2piyqrtr
+     #+END_SRC
+   - Open ports to service on cloud provider machines
+     - if using many nodes, allow communication between the redis 
+       service and web service
+     - allow inbound traffic(入站流量) to the web service on any 
+       worker nodes so that Hello World and Visualizer are accessiable
+       from a web browser
+     - allow inbound SSH traffic on the server that is running the manager
+     - docker stack rm getstartlab
+** Product manuals
+*** Compose file version 3 reference
+**** Network configuration reference
+***** Networking guide
+  [[Networking in Compose]]
+  https://docs.docker.com/compose/networking/
+  
+  https://github.com/docker/labs/blob/master/README.md
+  https://github.com/docker/labs/blob/master/networking/README.md
+***** driver
+ - bridge
+   on a single host
+   https://github.com/docker/labs/blob/master/networking/A2-bridge-networking.md
+ - overlay
+   on a Swarm
+   creates a nemed network across multiple nodes in a swarm
+   https://github.com/docker/labs/blob/master/networking/A3-overlay-networking.md
+   https://github.com/docker/labs/blob/master/networking/concepts/06-overlay-networks.md
+ - host/node
+   - docker stack
+     #+BEGIN_SRC sh
+     run --net=host
+     run --net=none
+     #+END_SRC
+     #+BEGIN_SRC yaml
+     services:
+       web:
+         ...
+         networks:
+           nostnet: {}
+       none:
+         ...
+         networks:
+           nonet: {}
+     networks:
+       hostnet:
+         external: true
+         name: nost
+       nonet:
+         external: true
+         name: node
+
+       driver_opts:
+         foo: "bar"
+         baz: 1
+       # >= 3.2
+       mynet1:
+         driver: overlay
+         attachable: true
+
+       ipam:
+         driver: default
+         comfig:
+           - subnet: 172.28.0.0/16
+
+       bridgenet:
+         driver: bridge
+         # create an internally isoland overlay network
+         internal: true
+         # default
+         internal: false
+
+     labels:
+       com.example.description: "Financial transaction network"
+       com.example.department: "Finance"
+       com.example.label-with-empty-value: ""
+
+     labels:
+       - "com.example.description=Financial transaction network"
+       - "com.example.department=Finance"
+       - "com.example.label-with-empty-value"
+
+       external: true # this network has been created outside of Compose
+     #+END_SRC
+     #+BEGIN_SRC yaml
+     version: '3'
+     services:
+       proxy:
+         build: ./proxy
+         networks:
+           - outside
+           - default
+       app:
+         build: ./app
+         networks:
+           - default
+     networks:
+       outside:
+         external: true
+     #+END_SRC
+   - docker-compose
+     network_mode
+*** Networking in Compose
+**** Introduction
+ #<<Networking in Compose>>
+ 
+ <dir>/myapp/docker-compose.yml
+ #+BEGIN_SRC yaml
+ version: "3"
+ services:
+   web:
+     build: .
+     ports:
+       - "8000:8000"
+   db:
+     image: postgres
+     ports:
+       - "8001:5432"
+ #+END_SRC
+
+ When you dun docker-compose up, the following happens:
+ 1. A network called *myapp_default* is created.
+ 2. A container is created using *web*'s configuration. 
+    and join the network *myapp_default* under the name web.
+ 3. *db* join the network *myapp_default*
+ 4. myapp_default ; network
+    - web ; host
+      connect db with URL: postgres://db:5432
+    - db  ; host
+      - HOST_PORT : 8001
+      - CONTAINER_PORT : 5432
+ 5. service-to-service communication use the CONTAINER_PORT
+ 6. HOST_PORT the service is accessible outside the swarm as well
+    web: postgres://db:5432
+    host: postgres://<DOCKER_IP>:8001
+**** Update containers
+ if one container changes configuration and restart
+ ohter containers will reconnect to the container.
+**** Links(using [[networks]] instead)
+ allow you to define extra aliases by which a service is reachable from other service.
+ #+BEGIN_SRC yaml
+ version: "3"
+ services:
+
+   web:
+     build: .
+     links:
+       - "db:database"
+   db:
+     image: postgres
+ #+END_SRC
+**** Multi-host networking
+ When [[deploying a Compose application to a Swarm cluster]]
+ [[Getting started with multi-host networking]]
+**** Specify custom networks
+- introduction
+  #+BEGIN_SRC yaml
+  version: "3"
+  services:
+    proxy:
+      build: ./proxy
+      networks:
+        - frontend
+    app:
+      build: ./app
+      networks:
+        - frontend
+        - backend
+      db:
+        image: postgres
+        networks:
+          - backend
+  networks:
+    frontend:
+      name: custom_fronted
+      # use a custom driver
+      driver: custom-driver-1
+    backend:
+      # Use a custom driver which takes special option
+      driver: custom-driver-2
+      driver_opts:
+        foo: "1"
+        bar: 2
+  #+END_SRC
+*
+#<<networks>>
+#+BEGIN_SRC yaml
+services:
+  some-service:
+    networks:
+     - some-network
+     - other-network
+#+END_SRC
+**** Use a pre-existing network
+ #+BEGIN_SRC yaml
+ networks:
+   default:
+     external:
+       name: my-pre-existing-network
+ #+END_SRC
