@@ -116,3 +116,13 @@ UI定制
   A package in a league of its own:Helm
   Helm is a incremental completion and selection narrowing framework for Emacs.
   
+* misc
+** 设置缩进
+** C缩进
+~/.emacs.d/init.el
+#+BEGIN_SRC scheme
+(setq default-tab-width 4)
+(setq-default indent-tabs-mode nil)
+(setq c-default-style "linux")
+(setq c-basic-offset 4)
+#+END_SRC

@@ -1,0 +1,1225 @@
+* webpack
+
+https://www.webpackjs.com
+
+** 概念
+*** entry(入口)
+
+指示 webpack 应该使用哪个模块，来作为构建其内部依赖图的开始。
+最后输出到称之为 bundles 的文件中。
+#+BEGIN_SRC js
+// webpack.config.js
+module.exports = {
+    entry: './path/to/my/entry/file.js'
+}
+#+END_SRC
+*** output(输出)
+output 属性告诉 webpack 在哪里输出它所创建的 bundles。
+default: ./distaff
+#+BEGIN_SRC js
+const path = require('path');
+modules.exports = {
+    entry: './path/to/my/entry/file.js',
+    output: {
+        path: path.resolve(__dirname, 'dist'),
+        filename: 'my-first-webpack.bundle.js'
+    }
+};
+#+END_SRC
+*** loader(加载器)
+loader 让 webpack 能够去处理那些非 JavaScript 文件（webpack 自身只理解 JavaScript）
+loader 可以将所有类型的文件转换为 webpack 能够处理的有效模块，然后你就可以利用 webpack 的打包能力，对它们进行处理。
+
+test 属性，用于标识出应该被对应的 loader 进行转换的某个或某些文件。
+use 属性，表示进行转换时，应该使用哪个 loader。
+
+#+BEGIN_SRC js
+const path = require('path');
+const config = {
+    output: {
+        filename: 'my-first-webpack.bundle.js'
+    },
+    module: {
+        rules: [
+            {test: /\.txt$/, use: 'raw-loader'}
+        ]
+    }
+}
+#+END_SRC
+*** plugins(插件)
+loader 被用于转换某些类型的模块，而插件则可以用于执行范围更广的任务。
+从打包优化和压缩，一直到重新定义环境中的变量。
+想要使用一个插件，你只需要 require() 
+#+BEGIN_SRC js
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
+
+const config = {
+    module: {
+        rules: [
+            {test: /\.txt$/, use: 'raw-loader'}
+        ]
+    },
+    plugins: [
+        new HtmlWebpackPlugin({template: './src/index.html'})
+    ]
+};
+
+module.exports = config;
+/*
+  module.exprots = {
+  mode: 'production'
+}
+ ,*/
+#+END_SRC
+** 起步
+*** 基本安装
+#+BEGIN_SRC sh
+mkdir webpack-demo && cd webpack-demo
+npm init -y
+npm install webpack webpack-cli --save-dev
+#+END_SRC
+
+使用这种方式去管理 JavaScript 项目会有一些问题：
+- 无法立即体现，脚本的执行依赖于外部扩展库(external library)。
+- 如果依赖不存在，或者引入顺序错误，应用程序将无法正常运行。
+- 如果依赖被引入但是并没有使用，浏览器将被迫下载无用代码。
+
+*** 创建一个bundle文件
+#+BEGIN_SRC sh
+mkdir dist
+touch dist/index.html
+
+npm install --save lodash
+# modify index.html, index.js
+
+npx webpack
+#+END_SRC
+
+
+*** 模块
+import/export
+
+*** 使用配置文件
+#+BEGIN_SRC sh
+cfg=webpack.config.js
+touch $cfg
+
+cat << !END! >> $cfg
+const path = require('path');
+
+module.exports = {
+  entry: './src/index.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist')
+  }
+};
+!END!
+
+npx webpack --config webpack.config.js
+#+END_SRC
+
+*** NPM Scripts
+添加 "build": "webpack"
+使用 npm run build 来替代 npx webpack --config webpack.config.js
+#+BEGIN_SRC json
+  {
+    "name": "webpack-demo",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "build": "webpack"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "webpack": "^4.0.1",
+      "webpack-cli": "^2.0.9",
+      "lodash": "^4.17.5"
+    }
+  }
+#+END_SRC
+** 管理资源(loader)
+在 webpack 出现之前，前端开发人员会使用 grunt 和 gulp 等工具来处理资源，并将它们从 /src 文件夹移动到 /dist 或 /build 目录中。
+#+BEGIN_SRC sh
+npm install --save-dev style-loader css-loader
+
+cat << !END! > src/style.css
+.hello {
+  color: red;
+}
+!END!
+#+END_SRC
+#+BEGIN_SRC json
+  const path = require('path');
+
+  module.exports = {
+    entry: './src/index.js',
+    output: {
+      filename: 'bundle.js',
+      path: path.resolve(__dirname, 'dist')
+    },
++   module: {
++     rules: [
++       {
++         test: /\.css$/,
++         use: [
++           'style-loader',
++           'css-loader'
++         ]
++       }
++     ]
++   }
+  };
+#+END_SRC
+#+BEGIN_SRC js
+  import _ from 'lodash';
++ import './style.css';
+
+  function component() {
+    var element = document.createElement('div');
+
+    // lodash 是由当前 script 脚本 import 导入进来的
+    element.innerHTML = _.join(['Hello', 'webpack'], ' ');
++   element.classList.add('hello');
+
+    return element;
+  }
+
+  document.body.appendChild(component());
+#+END_SRC
+** 输出管理(output)
+*** 预先准备
+** 开发
+*** 使用source map
+ *本指南中的工具仅用于开发环境，请不要在生产环境中使用它们！*
+source map 解决代码追踪问题.
+#+BEGIN_SRC js
+ const path = require('path');
+  const HtmlWebpackPlugin = require('html-webpack-plugin');
+  const CleanWebpackPlugin = require('clean-webpack-plugin');
+
+  module.exports = {
+    entry: {
+      app: './src/index.js',
+      print: './src/print.js'
+    },
++   devtool: 'inline-source-map',
+    plugins: [
+      new CleanWebpackPlugin(['dist']),
+      new HtmlWebpackPlugin({
+        title: 'Development'
+      })
+    ],
+    output: {
+      filename: '[name].bundle.js',
+      path: path.resolve(__dirname, 'dist')
+    }
+  };
+#+END_SRC
+*** 选择开发工具
+- 自动编译代码
+  1. webpack's Watch Mode
+     不能自动刷新浏览器
+     #+BEGIN_SRC json
+     {
+         "name": "development",
+         "version": "1.0.0",
+         "description": "",
+         "main": "webpack.config.js",
+         "scripts": {
+           "test": "echo \"Error: no test specified\" && exit 1",
+     +     "watch": "webpack --watch",
+           "build": "webpack"
+         },
+         "keywords": [],
+         "author": "",
+         "license": "ISC",
+         "devDependencies": {
+           "clean-webpack-plugin": "^0.1.16",
+           "css-loader": "^0.28.4",
+           "csv-loader": "^2.1.1",
+           "file-loader": "^0.11.2",
+           "html-webpack-plugin": "^2.29.0",
+           "style-loader": "^0.18.2",
+           "webpack": "^3.0.0",
+           "xml-loader": "^1.2.1"
+         }
+       }
+     #+END_SRC
+     
+     npm run watch
+
+  2. webpack-dev-server (推荐)
+     提供实时重新加载(live reloading)
+     localhost:8080
+     npm install --save-dev webpack-dev-servers
+     #+BEGIN_SRC js
+       const path = require('path');
+       const HtmlWebpackPlugin = require('html-webpack-plugin');
+       const CleanWebpackPlugin = require('clean-webpack-plugin');
+
+       module.exports = {
+         entry: {
+           app: './src/index.js',
+           print: './src/print.js'
+         },
+         devtool: 'inline-source-map',
+     +   devServer: {
+     +     contentBase: './dist'
+     +   },
+         plugins: [
+           new CleanWebpackPlugin(['dist']),
+           new HtmlWebpackPlugin({
+             title: 'Development'
+           })
+         ],
+         output: {
+           filename: '[name].bundle.js',
+           path: path.resolve(__dirname, 'dist')
+         }
+       };
+     #+END_SRC
+     #+BEGIN_SRC json
+     {
+         "name": "development",
+         "version": "1.0.0",
+         "description": "",
+         "main": "webpack.config.js",
+         "scripts": {
+           "test": "echo \"Error: no test specified\" && exit 1",
+           "watch": "webpack --watch",
+     +     "start": "webpack-dev-server --open",
+           "build": "webpack"
+         },
+         "keywords": [],
+         "author": "",
+         "license": "ISC",
+         "devDependencies": {
+           "clean-webpack-plugin": "^0.1.16",
+           "css-loader": "^0.28.4",
+           "csv-loader": "^2.1.1",
+           "file-loader": "^0.11.2",
+           "html-webpack-plugin": "^2.29.0",
+           "style-loader": "^0.18.2",
+           "webpack": "^3.0.0",
+           "xml-loader": "^1.2.1"
+         }
+       }
+     #+END_SRC
+     npm start
+  3. webpack-dev-middleware
+     npm install --save-dev express webpack-dev-middleware
+     #+BEGIN_SRC js
+     const path = require('path');
+       const HtmlWebpackPlugin = require('html-webpack-plugin');
+       const CleanWebpackPlugin = require('clean-webpack-plugin');
+
+       module.exports = {
+         entry: {
+           app: './src/index.js',
+           print: './src/print.js'
+         },
+         devtool: 'inline-source-map',
+         plugins: [
+           new CleanWebpackPlugin(['dist']),
+           new HtmlWebpackPlugin({
+             title: 'Output Management'
+           })
+         ],
+         output: {
+           filename: '[name].bundle.js',
+           path: path.resolve(__dirname, 'dist'),
+     +     publicPath: '/'
+         }
+       };
+     #+END_SRC
+     #+BEGIN_SRC js
+     // webpack-demo/server.js
+
+     const express = require('express');
+     const webpack = require('webpack');
+     const webpackDevMiddleware = require('webpack-dev-middleware');
+
+     const app = express();
+     const config = require('./webpack.config.js');
+     const compiler = webpack(config);
+
+     // Tell express to use the webpack-dev-middleware and use the webpack.config.js
+     // configuration file as a base.
+     app.use(webpackDevMiddleware(compiler, {
+       publicPath: config.output.publicPath
+     }));
+
+     // Serve the files on port 3000.
+     app.listen(3000, function () {
+       console.log('Example app listening on port 3000!\n');
+     });
+     #+END_SRC
+     #+BEGIN_SRC json
+      {
+         "name": "development",
+         "version": "1.0.0",
+         "description": "",
+         "main": "webpack.config.js",
+         "scripts": {
+           "test": "echo \"Error: no test specified\" && exit 1",
+           "watch": "webpack --watch",
+           "start": "webpack-dev-server --open",
+     +     "server": "node server.js",
+           "build": "webpack"
+         },
+         "keywords": [],
+         "author": "",
+         "license": "ISC",
+         "devDependencies": {
+           "clean-webpack-plugin": "^0.1.16",
+           "css-loader": "^0.28.4",
+           "csv-loader": "^2.1.1",
+           "express": "^4.15.3",
+           "file-loader": "^0.11.2",
+           "html-webpack-plugin": "^2.29.0",
+           "style-loader": "^0.18.2",
+           "webpack": "^3.0.0",
+           "webpack-dev-middleware": "^1.12.0",
+           "xml-loader": "^1.2.1"
+         }
+       }
+     #+END_SRC
+     localhost:3000
+
+** 模块热替换
+*HMR 不适用于生产环境，这意味着它应当只在开发环境使用*
+#+BEGIN_SRC js
+const path = require('path');
+  const HtmlWebpackPlugin = require('html-webpack-plugin');
+  const CleanWebpackPlugin = require('clean-webpack-plugin');
++ const webpack = require('webpack');
+
+  module.exports = {
+    entry: {
+-      app: './src/index.js',
+-      print: './src/print.js'
++      app: './src/index.js'
+    },
+    devtool: 'inline-source-map',
+    devServer: {
+      contentBase: './dist',
++     hot: true
+    },
+    plugins: [
+      new CleanWebpackPlugin(['dist']),
+      new HtmlWebpackPlugin({
+        title: 'Hot Module Replacement'
+      }),
++     new webpack.NamedModulesPlugin(),
++     new webpack.HotModuleReplacementPlugin()
+    ],
+    output: {
+      filename: '[name].bundle.js',
+      path: path.resolve(__dirname, 'dist')
+    }
+  };
+#+END_SRC
+#+BEGIN_SRC js
+// index.js
+
+import _ from 'lodash';
+  import printMe from './print.js';
+
+  function component() {
+    var element = document.createElement('div');
+    var btn = document.createElement('button');
+
+    element.innerHTML = _.join(['Hello', 'webpack'], ' ');
+
+    btn.innerHTML = 'Click me and check the console!';
+    btn.onclick = printMe;
+
+    element.appendChild(btn);
+
+    return element;
+  }
+
+  document.body.appendChild(component());
++
++ if (module.hot) {
++   module.hot.accept('./print.js', function() {
++     console.log('Accepting the updated printMe module!');
++     printMe();
++   })
++ }
+#+END_SRC
+
+- Node.js API
+  #+BEGIN_SRC js
+  const webpackDevServer = require('webpack-dev-server');
+  const webpack = require('webpack');
+
+  const config = require('./webpack.config.js');
+  const options = {
+    contentBase: './dist',
+    hot: true,
+    host: 'localhost'
+  };
+
+  webpackDevServer.addDevServerEntrypoints(config, options);
+  const compiler = webpack(config);
+  const server = new webpackDevServer(compiler, options);
+
+  server.listen(5000, 'localhost', () => {
+    console.log('dev server listening on port 5000');
+  });
+  #+END_SRC
+- 问题
+  需要更新代码
+  #+BEGIN_SRC js
+  import _ from 'lodash';
+    import printMe from './print.js';
+
+    function component() {
+      var element = document.createElement('div');
+      var btn = document.createElement('button');
+
+      element.innerHTML = _.join(['Hello', 'webpack'], ' ');
+
+      btn.innerHTML = 'Click me and check the console!';
+      btn.onclick = printMe;  // onclick 事件绑定原始的 printMe 函数上
+
+      element.appendChild(btn);
+
+      return element;
+    }
+
+  - document.body.appendChild(component());
+  + let element = component(); // 当 print.js 改变导致页面重新渲染时，重新获取渲染的元素
+  + document.body.appendChild(element);
+
+    if (module.hot) {
+      module.hot.accept('./print.js', function() {
+        console.log('Accepting the updated printMe module!');
+  -     printMe();
+  +     document.body.removeChild(element);
+  +     element = component(); // 重新渲染页面后，component 更新 click 事件处理
+  +     document.body.appendChild(element);
+      })
+    }
+  #+END_SRC
+- HMR 修改样式表
+  #+BEGIN_SRC sh
+  npm install --save-dev style-loader css-loader
+  #+END_SRC
+  #+BEGIN_SRC js
+  const path = require('path');
+    const HtmlWebpackPlugin = require('html-webpack-plugin');
+    const webpack = require('webpack');
+
+    module.exports = {
+      entry: {
+        app: './src/index.js'
+      },
+      devtool: 'inline-source-map',
+      devServer: {
+        contentBase: './dist',
+        hot: true
+      },
+  +   module: {
+  +     rules: [
+  +       {
+  +         test: /\.css$/,
+  +         use: ['style-loader', 'css-loader']
+  +       }
+  +     ]
+  +   },
+      plugins: [
+        new CleanWebpackPlugin(['dist'])
+        new HtmlWebpackPlugin({
+          title: 'Hot Module Replacement'
+        }),
+        new webpack.HotModuleReplacementPlugin()
+      ],
+      output: {
+        filename: '[name].bundle.js',
+        path: path.resolve(__dirname, 'dist')
+      }
+    };
+  #+END_SRC
+** tree shaking
+tree shaking 是一个术语，通常用于描述移除 JavaScript 上下文中的未引用代码(dead-code)
+*** 添加通用模块
+#+BEGIN_SRC js
+// src/math.js
+
+export function square(x) {
+  return x * x;
+}
+
+export function cube(x) {
+  return x * x * x;
+}
+#+END_SRC
+#+BEGIN_SRC text
+webpack-demo
+|- package.json
+|- webpack.config.js
+|- /dist
+  |- bundle.js
+  |- index.html
+|- /src
+  |- index.js
++ |- math.js
+|- /node_modules
+#+END_SRC
+#+BEGIN_SRC js
+// src/index.js
+- import _ from 'lodash';
++ import { cube } from './math.js';
+
+  function component() {
+-   var element = document.createElement('div');
++   var element = document.createElement('pre');
+
+-   // lodash 是由当前 script 脚本 import 导入进来的
+-   element.innerHTML = _.join(['Hello', 'webpack'], ' ');
++   element.innerHTML = [
++     'Hello webpack!',
++     '5 cubed is equal to ' + cube(5)
++   ].join('\n\n');
+
+    return element;
+  }
+
+  document.body.appendChild(component());
+#+END_SRC
+#+BEGIN_SRC js
+// dist/bundle.js
+/* 1 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* unused harmony export square */
+/* harmony export (immutable) */ __webpack_exports__["a"] = cube;
+function square(x) { // 未加载，但代码存在
+  return x * x;
+}
+
+function cube(x) {
+  return x * x * x;
+}
+#+END_SRC
+*** 将文本标记为无副作用(side-effect-free)
+package.json:
+#+BEGIN_SRC json
+{
+  "name": "your-project",
+  "sideEffects": false
+}
+
+{
+    "name": "your-project",
+    "siedeEffects": [
+        "./src/some-side-effectful-file.js",
+        "*.css"
+    ]
+}
+#+END_SRC
+在module.rules中设置 "sideEffects"
+
+*** 压缩输出
+我们将使用 -p(production) 这个 webpack 编译标记，来启用 uglifyjs 压缩插件。
+注意，--optimize-minimize 标记也会在 webpack 内部调用 UglifyJsPlugin
+#+BEGIN_SRC js
+const path = require('path');
+
+module.exports = {
+  entry: './src/index.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist')
+- }
++ },
++ mode: "production"
+};
+#+END_SRC
+** 生产环境构建
+*** 配置
+开发环境(development)和生产环境(production)的构建目标差异很大。
+- development
+  我们需要具有强大的、具有实时重新加载(live reloading)
+  或热模块替换(hot module replacement)能力的 source map 和 localhost server。
+- production
+  我们的目标则转向于关注更小的 bundle，更轻量的 source map，
+  以及更优化的资源，以改善加载时间。
+由于要遵循逻辑分离，我们通常建议为每个环境编写彼此 *独立的 webpack 配置*
+- webpack-merge
+  保留一个“通用”配置。为了将这些配置合并在一起，
+  我们将使用一个名为 webpack-merge 的工具。通过“通用”配置，
+  我们不必在环境特定(environment-specific)的配置中重复代码。
+  #+BEGIN_SRC sh
+  npm install --save-dev webpack-merge
+  #+END_SRC
+  #+BEGIN_SRC text
+  webpack-demo
+    |- package.json
+  - |- webpack.config.js
+  + |- webpack.common.js
+  + |- webpack.dev.js
+  + |- webpack.prod.js
+    |- /dist
+    |- /src
+      |- index.js
+      |- math.js
+    |- /node_modules
+  #+END_SRC
+  #+BEGIN_SRC js
+  //webpack.common.js
+  + const path = require('path');
+  + const CleanWebpackPlugin = require('clean-webpack-plugin');
+  + const HtmlWebpackPlugin = require('html-webpack-plugin');
+  +
+  + module.exports = {
+  +   entry: {
+  +     app: './src/index.js'
+  +   },
+  +   plugins: [
+  +     new CleanWebpackPlugin(['dist']),
+  +     new HtmlWebpackPlugin({
+  +       title: 'Production'
+  +     })
+  +   ],
+  +   output: {
+  +     filename: '[name].bundle.js',
+  +     path: path.resolve(__dirname, 'dist')
+  +   }
+  + };
+  #+END_SRC
+  #+BEGIN_SRC js
+  // webpack.dev.js
+  + const merge = require('webpack-merge');
+  + const common = require('./webpack.common.js');
+  +
+  + module.exports = merge(common, {
+  +   devtool: 'inline-source-map',
+  +   devServer: {
+  +     contentBase: './dist'
+  +   }
+  + });
+  #+END_SRC
+  #+BEGIN_SRC js
+  // webpack.prod.js
+  + const merge = require('webpack-merge');
+  + const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+  + const common = require('./webpack.common.js');
+  +
+  + module.exports = merge(common, {
+  +   plugins: [
+  +     new UglifyJSPlugin()
+  +   ]
+  + });
+  #+END_SRC
+*** NPM scripts
+#+BEGIN_SRC json
+  {
+    "name": "development",
+    "version": "1.0.0",
+    "description": "",
+    "main": "webpack.config.js",
+    "scripts": {
+-     "start": "webpack-dev-server --open",
++     "start": "webpack-dev-server --open --config webpack.dev.js",
+-     "build": "webpack"
++     "build": "webpack --config webpack.prod.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "clean-webpack-plugin": "^0.1.17",
+      "css-loader": "^0.28.4",
+      "csv-loader": "^2.1.1",
+      "express": "^4.15.3",
+      "file-loader": "^0.11.2",
+      "html-webpack-plugin": "^2.29.0",
+      "style-loader": "^0.18.2",
+      "webpack": "^3.0.0",
+      "webpack-dev-middleware": "^1.12.0",
+      "webpack-dev-server": "^2.9.1",
+      "webpack-merge": "^4.1.0",
+      "xml-loader": "^1.2.1"
+    }
+  }
+#+END_SRC
+*** Minification
+- BabelMinifyWebpackPlugin
+- ClosureCompilerPlugin
+*** Source map
+#+BEGIN_SRC js
+// webpack.prod.js
+  const merge = require('webpack-merge');
+  const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+  const common = require('./webpack.common.js');
+
+  module.exports = merge(common, {
++   devtool: 'source-map',
+    plugins: [
+-     new UglifyJSPlugin()
++     new UglifyJSPlugin({
++       sourceMap: true
++     })
+    ]
+  });
+#+END_SRC
+*** 指定环境
+#+BEGIN_SRC js
+// 环境变量读取 process.env.*
+process.env.NODE_ENV
+#+END_SRC
+#+BEGIN_SRC js
++ const webpack = require('webpack');
+  const merge = require('webpack-merge');
+  const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+  const common = require('./webpack.common.js');
+
+  module.exports = merge(common, {
+    devtool: 'source-map',
+    plugins: [
+      new UglifyJSPlugin({
+        sourceMap: true
+-     })
++     }),
++     new webpack.DefinePlugin({
++       'process.env.NODE_ENV': JSON.stringify('production')
++     })
+    ]
+  });
+#+END_SRC
+*** Split CSS
+使用ExtractTextPlugin将CSS分离成单独的文件。
+
+*** CLI
+CLI选项可以实现上述优化
+
+** 代码分离
+
+project:
+#+BEGIN_SRC text
+webpack-demo
+|- package.json
+|- webpack.config.js
+|- /dist
+|- /src
+  |- index.js
++ |- another-module.js
+|- /node_modules
+#+END_SRC
+
+another-module.js:
+#+BEGIN_SRC js
+import _ from 'lodash';
+
+console.log(
+  _.join(['Another', 'module', 'loaded!'], ' ')
+);
+#+END_SRC
+
+webpack.config.js
+#+BEGIN_SRC js
+const path = require('path');
+const HTMLWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+  entry: {
+    index: './src/index.js',
+    another: './src/another-module.js'
+  },
+  plugins: [
+    new HTMLWebpackPlugin({
+      title: 'Code Splitting'
+    })
+  ],
+  output: {
+    filename: '[name].bundle.js',
+    path: path.resolve(__dirname, 'dist')
+  }
+};
+#+END_SRC
+
+问题：
+- 如果入口 chunks 之间包含重复的模块，那些重复模块都会被引入到各个 bundle 中。
+- 这种方法不够灵活，并且不能将核心应用程序逻辑进行动态拆分代码。
+
+*** 防止重复(CommonsChunkPlugin)
+webpack.config.js
+#+BEGIN_SRC js
+const path = require('path');
++ const webpack = require('webpack');
+  const HTMLWebpackPlugin = require('html-webpack-plugin');
+
+  module.exports = {
+    entry: {
+      index: './src/index.js',
+      another: './src/another-module.js'
+    },
+    plugins: [
+      new HTMLWebpackPlugin({
+        title: 'Code Splitting'
+-     })
++     }),
++     new webpack.optimize.CommonsChunkPlugin({
++       name: 'common' // 指定公共 bundle 的名称。
++     })
+    ],
+    output: {
+      filename: '[name].bundle.js',
+      path: path.resolve(__dirname, 'dist')
+    }
+  };
+#+END_SRC
+
+- ExtractTextPlugin
+- bundle-loader
+- promise-loader
+*** 动态倒入(dynamic imports)
+先从配置中移除掉多余的 entry 和 CommonsChunkPlugin，因为接下来的演示中并不需要它们：
+
+webpack.config.js
+#+BEGIN_SRC js
+ const path = require('path');
+- const webpack = require('webpack');
+  const HTMLWebpackPlugin = require('html-webpack-plugin');
+
+  module.exports = {
+    entry: {
++     index: './src/index.js'
+-     index: './src/index.js',
+-     another: './src/another-module.js'
+    },
+    plugins: [
+      new HTMLWebpackPlugin({
+        title: 'Code Splitting'
+-     }),
++     })
+-     new webpack.optimize.CommonsChunkPlugin({
+-       name: 'common' // 指定公共 bundle 的名称。
+-     })
+    ],
+    output: {
+      filename: '[name].bundle.js',
++     chunkFilename: '[name].bundle.js',
+      path: path.resolve(__dirname, 'dist')
+    }
+  };
+#+END_SRC
+#+BEGIN_SRC text
+webpack-demo
+|- package.json
+|- webpack.config.js
+|- /dist
+|- /src
+  |- index.js
+- |- another-module.js
+|- /node_modules
+#+END_SRC
+#+BEGIN_SRC js
+- import _ from 'lodash';
+-
+- function component() {
++ function getComponent() {
+-   var element = document.createElement('div');
+-
+-   // Lodash, now imported by this script
+-   element.innerHTML = _.join(['Hello', 'webpack'], ' ');
+    // 不能忽略注释，制定了到处的 bundle 名称
++   return import(/* webpackChunkName: "lodash" */ 'lodash').then(_ => {
++     var element = document.createElement('div');
++
++     element.innerHTML = _.join(['Hello', 'webpack'], ' ');
++
++     return element;
++
++   }).catch(error => 'An error occurred while loading the component');
+  }
+
+- document.body.appendChild(component());
++ getComponent().then(component => {
++   document.body.appendChild(component);
++ })
+#+END_SRC
+
+由于 import() 会返回一个 promise，因此它可以和 async 函数一起使用。但是，需要使用像 Babel 这样的预处理器和Syntax Dynamic Import Babel Plugin。下面是如何通过 async 函数简化代码：
+
+#+BEGIN_SRC js
+- function getComponent() {
++ async function getComponent() {
+-   return import(/* webpackChunkName: "lodash" */ 'lodash').then(_ => {
+-     var element = document.createElement('div');
+-
+-     element.innerHTML = _.join(['Hello', 'webpack'], ' ');
+-
+-     return element;
+-
+-   }).catch(error => 'An error occurred while loading the component');
++   var element = document.createElement('div');
++   const _ = await import(/* webpackChunkName: "lodash" */ 'lodash');
++
++   element.innerHTML = _.join(['Hello', 'webpack'], ' ');
++
++   return element;
+}
+getComponent().then(component => {
+    document.body.appendChild(component);
+});
+#+END_SRC
+
+*** bundle分析
+https://github.com/webpack/analyse
+webpack-chart: webpack 数据交互饼图。
+webpack-visualizer: 可视化并分析你的 bundle，检查哪些模块占用空间，哪些可能是重复使用的。
+webpack-bundle-analyzer: 一款分析 bundle 内容的插件及 CLI 工具，以便捷的、交互式、
+                         可缩放的树状图形式展现给用户。
+** 延迟加载
+https://alexjover.com/blog/lazy-load-in-vue-using-webpack-s-code-splitting/
+** 缓存
+*** 输出文件和文件名
+- project:
+  #+BEGIN_SRC text
+  webpack-demo
+  |- package.json
+  |- webpack.config.js
+  |- /dist
+  |- /src
+    |- index.js
+  |- /node_modules
+  #+END_SRC
+- webpack.config.js
+  #+BEGIN_SRC js
+  const path = require('path');
+    const CleanWebpackPlugin = require('clean-webpack-plugin');
+    const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+    module.exports = {
+      entry: './src/index.js',
+      plugins: [
+        new CleanWebpackPlugin(['dist']),
+        new HtmlWebpackPlugin({
+  -       title: 'Output Management'
+  +       title: 'Caching'
+        })
+      ],
+      output: {
+  -     filename: 'bundle.js',
+  +     filename: '[name].[chunkhash].js',
+        path: path.resolve(__dirname, 'dist')
+      }
+    };
+  #+END_SRC
+- build
+  #+BEGIN_SRC text
+  $ npm run build
+  Hash: f7a289a94c5e4cd1e566
+  Version: webpack 3.5.1
+  Time: 835ms
+                         Asset       Size  Chunks                    Chunk Names
+  main.7e2c49a622975ebd9b7e.js     544 kB       0  [emitted]  [big]  main
+                    index.html  197 bytes          [emitted]
+     [0] ./src/index.js 216 bytes {0} [built]
+     [2] (webpack)/buildin/global.js 509 bytes {0} [built]
+     [3] (webpack)/buildin/module.js 517 bytes {0} [built]
+      + 1 hidden module
+  Child html-webpack-plugin for "index.html":
+       1 asset
+         [2] (webpack)/buildin/global.js 509 bytes {0} [built]
+         [3] (webpack)/buildin/module.js 517 bytes {0} [built]
+          + 2 hidden modules
+
+  $ npm run build
+  Hash: f7a289a94c5e4cd1e566
+  Version: webpack 3.5.1
+  Time: 835ms
+                         Asset       Size  Chunks                    Chunk Names
+  main.205199ab45963f6a62ec.js     544 kB       0  [emitted]  [big]  main
+                    index.html  197 bytes          [emitted]
+     [0] ./src/index.js 216 bytes {0} [built]
+     [2] (webpack)/buildin/global.js 509 bytes {0} [built]
+     [3] (webpack)/buildin/module.js 517 bytes {0} [built]
+      + 1 hidden module
+  Child html-webpack-plugin for "index.html":
+       1 asset
+         [2] (webpack)/buildin/global.js 509 bytes {0} [built]
+         [3] (webpack)/buildin/module.js 517 bytes {0} [built]
+          + 2 hidden modules
+  #+END_SRC
+*** 提取模板(extracting Boilerplate)
+CommonChunkPlugin 特性
+- webpack.config.js
+  #+BEGIN_SRC js
+  const path = require('path');
+  + const webpack = require('webpack');
+    const CleanWebpackPlugin = require('clean-webpack-plugin');
+    const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+    module.exports = {
+      entry: './src/index.js',
+      plugins: [
+        new CleanWebpackPlugin(['dist']),
+        new HtmlWebpackPlugin({
+          title: 'Caching'
+  -     })
+  +     }),
+  +     new webpack.optimize.CommonsChunkPlugin({
+  +       name: 'manifest'
+  +     })
+      ],
+      output: {
+        filename: '[name].[chunkhash].js',
+        path: path.resolve(__dirname, 'dist')
+      }
+    };
+  #+END_SRC
+- webpack.config.js
+  #+BEGIN_SRC js
+  var path = require('path');
+    const webpack = require('webpack');
+    const CleanWebpackPlugin = require('clean-webpack-plugin');
+    const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+    module.exports = {
+  -   entry: './src/index.js',
+  +   entry: {
+  +     main: './src/index.js',
+  +     vendor: [
+  +       'lodash'
+  +     ]
+  +   },
+      plugins: [
+        new CleanWebpackPlugin(['dist']),
+        new HtmlWebpackPlugin({
+          title: 'Caching'
+        }),
+  +     new webpack.optimize.CommonsChunkPlugin({
+  +       name: 'vendor'
+  +     }),
+        new webpack.optimize.CommonsChunkPlugin({
+          name: 'manifest'
+        })
+      ],
+      output: {
+        filename: '[name].[chunkhash].js',
+        path: path.resolve(__dirname, 'dist')
+      }
+    };
+  #+END_SRC
+*** 模块标识符(Module Identifiers)
+- project
+  #+BEGIN_SRC text
+  webpack-demo
+  |- package.json
+  |- webpack.config.js
+  |- /dist
+  |- /src
+    |- index.js
+  + |- print.js
+  |- /node_modules
+  #+END_SRC
+- print.js
+  #+BEGIN_SRC js
+  + export default function print(text) {
+  +   console.log(text);
+  + };
+  #+END_SRC
+- src/index.js
+  #+BEGIN_SRC js
+    import _ from 'lodash';
+  + import Print from './print';
+
+    function component() {
+      var element = document.createElement('div');
+
+      // lodash 是由当前 script 脚本 import 导入进来的
+      element.innerHTML = _.join(['Hello', 'webpack'], ' ');
+  +   element.onclick = Print.bind(null, 'Hello webpack!');
+
+      return element;
+    }
+
+    document.body.appendChild(component());
+  #+END_SRC
+- build
+  #+BEGIN_SRC text
+  Hash: d38a06644fdbb898d795
+  Version: webpack 3.3.0
+  Time: 1445ms
+                             Asset       Size  Chunks                    Chunk Names
+    vendor.a7561fb0e9a071baadb9.js     541 kB       0  [emitted]  [big]  vendor
+      main.b746e3eb72875af2caa9.js    1.22 kB       1  [emitted]         main
+  manifest.1400d5af64fc1b7b3a45.js    5.85 kB       2  [emitted]         manifest
+                        index.html  352 bytes          [emitted]
+     [1] ./src/index.js 421 bytes {1} [built]
+     [2] (webpack)/buildin/global.js 509 bytes {0} [built]
+     [3] (webpack)/buildin/module.js 517 bytes {0} [built]
+     [4] ./src/print.js 62 bytes {1} [built]
+     [5] multi lodash 28 bytes {0} [built]
+      + 1 hidden module
+  #+END_SRC
+main bundle 会随着自身的新增内容的修改，而发生变化。
+*vendor bundle 会随着自身的 module.id 的修改，而发生变化。*
+manifest bundle 会因为当前包含一个新模块的引用，而发生变化。
+第一个和最后一个都是符合预期的行为 -- 而 vendor 的 hash 发生变化是我们要修复的。
+- NamedModulesPlugin
+- HashedModuleIdsPlugin(生产环境)
+  #+BEGIN_SRC js
+   const path = require('path');
+    const webpack = require('webpack');
+    const CleanWebpackPlugin = require('clean-webpack-plugin');
+    const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+    module.exports = {
+      entry: {
+        main: './src/index.js',
+        vendor: [
+          'lodash'
+        ]
+      },
+      plugins: [
+        new CleanWebpackPlugin(['dist']),
+        new HtmlWebpackPlugin({
+          title: 'Caching'
+        }),
+  +     new webpack.HashedModuleIdsPlugin(),
+        new webpack.optimize.CommonsChunkPlugin({
+          name: 'vendor'
+        }),
+        new webpack.optimize.CommonsChunkPlugin({
+          name: 'manifest'
+        })
+      ],
+      output: {
+        filename: '[name].[chunkhash].js',
+        path: path.resolve(__dirname, 'dist')
+      }
+    };
+  #+END_SRC
+https://github.com/dear-lizhihua/webpack.js.org-demos/tree/webpack.js.org/guides/caching
+** 创建library
+https://github.com/kalcifer/webpack-library-example
+除了打包应用程序代码，webpack 还可以用于打包 JavaScript library。
+以下指南适用于希望流水线化(streamline)打包策略的 library 作者。
+*** 创建一个library
+假设你正在编写一个名为 webpack-numbers 的小的 library，
+可以将数字 1 到 5 转换为文本表示，反之亦然，例如将 2 转换为 'two'。
+- project
+  #+BEGIN_SRC text
+  +  |- webpack.config.js
+  +  |- package.json
+  +  |- /src
+  +    |- index.js
+  +    |- ref.json
+  #+END_SRC
+  #+BEGIN_SRC sh
+  npm init -y
+  npm install --save-dev webpack lodash
+  #+END_SRC

@@ -1,0 +1,92 @@
+#+TITLE: Unix Network Programming V1
+#+DESCRIPTION: Unix 网络编程
+#+LANGUAGE: cn
+
+* (一) 简介和TCP/IP
+  https://github.com/ryuever/unix-network-programming-v3
+** 1. 简介
+- 1.1 概述
+  #+BEGIN_SRC ditaa
+  +-----------+    +-----------+       +-----------+
+  | client    |    | client    |...    | client    |
+  +-----+-----+    +-----+-----+       +------+----+
+        |                |                    |
+        +----------------+--------------------+
+                         |
+                         |
+                    +----+-------+
+                    |  Server    |
+                    +------------+
+          一个服务器同时处理多个客户请求
+
+
+   +-----------+    应用协议         +-----------+
+   | WebClient | <-----------------> | WebClient |
+   +-----------+                     +------+----+
+        |                                   |             用户空间
+  ------+-----------------------------------+-----------------------
+   +------------+                    +------+-----+       内核空间
+   |   TCP      | <----------------> |   TCP      |
+   +------------+                    +------------+
+        |                                   |
+        |                                   |
+   +------------+                    +------+-----+
+   |   IP       |<------------------>|   IP       |
+   +------------+                    +------+-----+
+        |                                   |
+   +----+-------+                    +------+-----+
+   |  LINK      |<------------------>|  LINK      |
+   +----+-------+                    +------------+
+        |                                    |
+        |                                    |
+        |                                    |
+   -----+----+----   ..............    --+---+------------
+     LAN     |        WAN                | LAN
+             |       +------------+      |
+             +-------|  Routers   +------+
+                     +------------+
+  #+END_SRC
+- 1.2 一个简单的时间获取客户程序
+  #+BEGIN_SRC c
+  # include "unp.h"
+
+  int main(int argc, char **argv){
+      int sockfd, n;
+      char recvline[MAXLINE + 1];
+      struct sockaddr_in servaddr;
+
+      if(argc != 2){
+          err_quit("usage: a.out <IPaddress>");
+      }
+
+      if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+          sys_err("socket error");
+      }
+
+      bzero(&servaddr, sizeof(servaddr));
+      servaddr.sin_family = AF_INET;
+      servaddr.sin_port = htons(13); /* daytime server */
+      if(inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <= 0){
+          err_quit("inet_pton error for %s", argv[1]);
+      }
+
+      if(connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) < 0){
+          err_sys("connect error");
+      }
+
+      while((n = read(sockfd, recvline, MAXLINE)) > 0){
+          recvline[n] = 0; /* null terminate */
+          if(fputs(recvline, stdout) == EOF){
+              err_sys("fputs error");
+          }
+      }
+      if(n < 0){
+          err_sys("read error");
+      }
+
+      exit(0);
+  }
+  #+END_SRC
+* (二) 基本套接字编程
+
+* (三) 高级套接字编程

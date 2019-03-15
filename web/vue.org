@@ -1,0 +1,1898 @@
+* Vue(2.x)
+** 计算属性&监听属性
+ - HTML中使用 *声明式逻辑* ,尽量使用 computed (计算属性)
+   避免复杂逻辑
+   #+BEGIN_SRC html
+   <div id="example">
+     <!-- 非声明式逻辑 应该避免 -->
+     {{message.split('').reverse().join('')}}
+     <!-- 鼓励声明式逻辑 -->
+     <p>Origin message: "{{ message }}"</p>
+     <!-- 计算属性，来避免非声明式逻辑-->
+     <p>Origin message: "{{ reversedMessage }}"</p>
+
+     <div id="demo">{{fullName}}</div>
+   </div>
+   #+END_SRC
+   #+BEGIN_SRC js
+   let vm = new Vue({
+       el: 'example',
+       data: {
+           message: 'Hello'
+       },
+       // computed: 优点是，绑定属性(message)不变，不会导致重新计算；
+       // methods: 可以实现reversedMessage,但是每次调用均发生计算；
+       computed:{
+           reversedMessage: function(){
+               return this.message.split('').reversed().join('');
+           }
+       }
+   })
+
+   // 避免滥用监听属性，能用计算属性实现的尽量使用计算属性
+   let vm_watch_name =new Vue({
+       el: '#demon',
+       data: {
+           firstName: 'Foo',
+           lastName: 'Foo Bar',
+           fullName: 'Foo Bar'
+       },
+       watch: {
+           firstName: function(val){
+               this.fullName = `${val} ${this.lastName}`;
+           },
+           lastName: function(val){
+               this.fullName = `${this.firstName} ${val}`;
+           }
+       }
+   });
+   // 更简洁的计算属性实现
+   let vm_computed_name = new Vue({
+       el: '#demo',
+       data: {
+           firstName: 'Foo',
+           lastName: 'Bar'
+       },
+       computed: {
+           fullName: function(){
+               return `${this.firstName} ${this.lastName}`;
+           }
+       }
+   });
+   #+END_SRC
+ - 计算属性的setter
+   #+BEGIN_SRC js
+   let vm = new Vue({
+       //...
+       computed:{
+           fullName:{
+               get: function(){
+                   return `${this.firstName} ${this.lastName}`;
+               },
+               set: function(newValue){
+                   let names = newValue.split(' ');
+                   this.firstName = names[0];
+                   this.lastName = names[names.length -1];
+               }
+           }
+       }
+   });
+   #+END_SRC
+ - 侦听器(watch)
+   - 适合执行一部，开销大的操作
+   #+BEGIN_SRC html
+   <div id="watch-example">
+     <p>
+       Ask a yes/no questiong:
+       <input v-model="question">
+     </p>
+     <p>
+       {{ answer }}
+     </p>
+   </div>
+   <!-- 因为 AJAX 库和通用工具的生态已经相当丰富，Vue 核心代码没有重复 -->
+   <!-- 提供这些功能以保持精简。这也可以让你自由选择自己更熟悉的工具。 -->
+   <script src="https://cdn.jsdelivr.net/npm/axios@0.12.0/dist/axios.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/lodash@4.13.1/lodash.min.js"></script>
+   #+END_SRC
+   #+BEGIN_SRC js
+   let watchExampleVM = new Vue({
+       el: '#watch-example',
+       data: {
+           question: '',
+           answer: 'I cannot give you an answer until you ask a question!'
+       },
+       watch: {
+           // 如果question 发生变化，函数就会运行
+           question: function(newQestion, oldQuestion){
+               this.answer = 'Waiting for you to stop typing...'
+               this.debouncedGetAnswer();
+           }
+       },
+       created: function(){
+           // `_.debounce` 是一个通过 Lodash 限制操作频率的函数。
+           // 在这个例子中，我们希望限制访问 yesno.wtf/api 的频率
+           // AJAX 请求直到用户输入完毕才会发出。想要了解更多关于
+           // `_.debounce` 函数 (及其近亲 `_.throttle`) 的知识，
+           // 请参考：https://lodash.com/docs#debounce
+           this.debouncedGetAnswer = _.debounce(this.getAnswer, 500);
+       },
+       methods: {
+           getAnswer: function(){
+               if(this.question.indexof('?' === -1)){
+                   this.answer = 'Questions usually contain a question mark. ;-)'
+                   return;
+               }
+               this.answer = 'Thinking...'
+               let vm = this;
+               axios.get('https://yesno.wtf/api')
+                   .then(function (response){
+                       vm.answer = _.capitalize(response.data.answer);
+                   }).catch(function (error){
+                      vm.answer = `Error! Could not reach the API. \n${error.message}`
+                   });
+           }
+       }
+   });
+   #+END_SRC
+   - 还可以使用vm.$watch API
+** Class与Style绑定
+ - 绑定HTML Class
+   v-bind:class 动态切换class:
+   #+BEGIN_SRC html
+   <div v-bind:class="{active: isAction}"></div>
+   <!-- 绑定多个class -->
+   <div
+     class="static"
+     v-bind:class="{active: isActive, 'text-danger': hasError}"></div>
+   <script type=javascript>
+     data: {
+     isActive: true,
+     hasError: false
+     }
+   </script>
+   <!-- result is -->
+   <div class="static active"></div>
+
+   <!-- 改进： 利用计算属性，实现绑定 -->
+   <div v-bind:class="classObject"></div>
+   <script>
+     let vm = new Vue({
+     data:{
+     isActive: true,
+     error: null
+     },
+     computed:{
+     classObject: function(){
+     return{
+     active: this.isActive && !this.error,
+     'text-danger': this.error && this.error.type === 'fatal'
+     }
+     }
+     }
+     });
+   </script>
+   #+END_SRC
+ - 数组语法
+   #+BEGIN_SRC html
+   <div v-bind:class="[activeClass, errorClass]"></div>
+   <!-- 改进 条件切换 -->
+   <div v-bind:class="[{active: isActive}, errorClass]"></div>
+   #+END_SRC
+   #+BEGIN_SRC js
+   let vm = new Vue({
+       data: {
+           activeClass: 'active',
+           errorClass: 'text-danger'
+       }
+   })
+   #+END_SRC
+*** 应用到组件
+ #+BEGIN_SRC js
+ Vue.component('my-component', {
+     template: '<p class="foo bar">Hi</p>'
+ })
+ #+END_SRC
+ #+BEGIN_SRC html
+ <my-component class="baz boo"></my-component>
+ <my-component v-band:class="{active: isActive}"></my-component>
+ <!-- rend result -->
+ <p class="foo bar baz boo"></p>
+ <p class="foo bar active"></p>
+ #+END_SRC
+
+*** 绑定内联样式
+- 对象语法
+  #+BEGIN_SRC html
+  <div v-bind:style="{color: activeColor, fontSize: fontSize + 'px'}"></div>
+  <div v-bind:style="sytleObject"><div>
+  #+END_SRC
+  #+BEGIN_SRC js
+  let vm = new Vue({
+      data:{
+          styleObject:{
+              color: 'red',
+              fontSize: '13px'
+          }
+      }
+  });
+  #+END_SRC
+- 数组语法
+  #+BEGIN_SRC html
+  <div v-bind:stype="[baseStyles, overridingStyle]"></div>
+  #+END_SRC
+  #+BEGIN_SRC js
+
+  #+END_SRC
+- 多重值
+  #+BEGIN_SRC html
+  <div :style="{display: ['-webkit-box', '-ms-flexbox, 'flex]}"></div>
+  #+END_SRC
+** 条件渲染
+*** v-if
+v-if 指令用于条件性地渲染一块内容。这块内容只会在指令的表达式返回 truthy 值的时候被渲染。
+#+BEGIN_SRC html
+<h1 v-if="awsome">Vue is awesome</h1>
+<h1 v-else>On no！</h1>
+#+END_SRC
+#+BEGIN_SRC js
+let vm = new Vue({
+    data:{
+        awesome: true
+    }
+});
+#+END_SRC
+
+*** 在<template>上使用v-if
+<template>解决渲染多个元素问题
+#+BEGIN_SRC js
+<template v-if="ok">
+    <h1>Title</h1>
+    <p>Paragraph 1</p>
+    <p>Paragraph 2</p>
+</template>
+#+END_SRC
+*** v-else
+对应v-if
+#+BEGIN_SRC html
+<div v-if="Math.random() > 0.5">
+  Now your see me
+</div>
+<div v-else>
+  Now you don't
+</div>
+#+END_SRC
+
+*** v-else-if
+#+BEGIN_SRC html
+<div v-if="type === 'A'">A</div>
+<div v-else-if="type === 'B'">B</div>
+<div v-else-if=type"type === 'c'">C</div>
+<div v-else>Not A/B/C</div>
+#+END_SRC
+*** 用key管理可复用的元素
+复用已有元素不从头渲染
+#+BEGIN_SRC html
+<!--
+    切换时不会清除用户数据
+    因为使用了相同的元素<input>
+  -->
+<template v-if="loginType === 'username'">
+  <label>Username</label>
+  <input placeholder="Enter your username">
+</template>
+<template v-else>
+  <label>Email</label>
+  <input placeholder="Enter your email address">
+</template>
+<!--
+    input 避免复用元素场景
+    lable 继续复用
+  -->
+<template v-if="loginType === 'username'">
+  <label>Username</label>
+  <input placeholder="Enter your username" key="username-input">
+</template>
+<template v-else>
+  <label>Email</label>
+  <input placeholder="Enter your email address" key="email-input">
+</template>
+
+#+END_SRC
+*** v-show
+v-show 始终被渲染并保存，v-show只是简单的切换display属性
+#+BEGIN_SRC html
+<h1 v-show="ok">Hello!</h1>
+#+END_SRC
+*** v-if vs v-show
+v-if 是“真正”的条件渲染，因为它会确保在切换过程中条件块内的事件监听器和子组件适当地被销毁和重建。
+也是惰性的：如果在初始渲染时条件为假，则什么也不做——直到条件第一次变为真时，才会开始渲染条件块
+一般来说，v-if 有更高的切换开销，而 v-show 有更高的初始渲染开销。因此，如果需要非常频繁地切换，则使用 v-show 较好；如果在运行时条件很少改变，则使用 v-if 较好。
+*** v-if and v-for(不推荐同时使用)
+当 v-if 与 v-for 一起使用时，v-for 具有比 v-if 更高的优先级
+** 列表渲染(v-for="item [in|of] items")
+*** v-for
+#+BEGIN_SRC html
+<ul id="example-1">
+  <li v-for="item in items">
+    {{item.message}}
+  </li>
+</ul>
+
+<!-- 支持可选参数为当前索引 -->
+<ul id="example-2">
+  <li v-for="(item, index) in items">
+    {{parentMessage}} - {{index}} - {{item.message}}
+  </li>
+</ul>
+
+<!-- 迭代对象属性 -->
+<ul id="v-for-object" class="demo">
+  <li v-for="(value, key, index) in object">
+    {{index}}.{{key}}: {{value}}
+  </li>
+</ul>
+#+END_SRC
+#+BEGIN_SRC js
+let vm = new Vue({
+    el: '#example-1',
+    data: {
+        items:[
+            {message: 'Foo'},
+            {message: 'Bar'}
+        ]
+    }
+});
+let vm2 = new Vue({
+    el: '#example-2',
+    data: {
+        parentMessage: 'Parent',
+        items:[
+            {message: 'Foo'},
+            {message: 'Bar'}
+        ]
+    }
+});
+let vm3 = new Vue({
+    el: '#v-for-object',
+    data: {
+        object: {
+            firstName: 'John',
+            lastName: 'Doe',
+            age: 30
+        }
+    }
+});
+#+END_SRC
+
+*** key
+#+BEGIN_SRC html
+<div v-for="item in items" :key="item.id"></div>
+#+END_SRC
+*** 数组更新检测
+- 变异方法
+  #+BEGIN_SRC js
+  example1.items.push({message: 'Baz'});
+  #+END_SRC
+  - push()
+  - pop()
+  - shift()
+  - unshift()
+  - splice()
+  - sort()
+  - reverse()
+- 替换数组
+  #+BEGIN_SRC js
+  example1.items = example1.items.filter(function(item){
+      return item.message.match(/Foo/);
+  });
+  #+END_SRC
+- 注意事项
+  由于 JavaScript 的限制，Vue 不能检测以下变动的数组：
+  1. 当你利用索引直接设置一个项时，例如：vm.items[indexOfItem] = newValue
+  2. 当你修改数组的长度时，例如：vm.items.length = newLength
+  3. example
+     #+BEGIN_SRC js
+     let vm = new Vue({
+         data:{
+             items:['a', 'b', 'c']
+         }
+     });
+     vm.items[1] = 'x'; // vue not reaponse
+     vm.items.length = 2; // vue not response
+     #+END_SRC
+  4. 解决方案
+     #+BEGIN_SRC js
+     Vue.set(vm.items, indexOfItem, newValue);
+     vm.items.splice(indexOfItem, 1, newValue);
+
+     vm.$set(vm.items, indexOfItem, newValue);
+     vm.items.splice(newLength);
+     #+END_SRC
+- 对象更改检测注意事项
+  1. 还是由于 JavaScript 的限制，Vue 不能检测对象属性的添加或删除：
+     #+BEGIN_SRC js
+     let vm = new Vue({
+         data: {
+             a: 1
+         }
+     });
+     vm.b = 2; // vm.b 不是响应式的
+
+     // 利用Vue.set(object,key, value)方法向嵌入对象j体啊你啊响应式属性
+     vm.$set(vm.userProfile, 'age', 27);
+
+     // 添加多个属性
+     // Object.assign(), _.extend()
+     /*
+       错误示范
+     Object.assign(vm.userProfile, {
+         age: 27,
+         favorityColor: 'Vue Green'
+     })
+     ,*/
+     // 正确示范
+     vm.userProfile = Object.assign({}, vm.userProfile, {
+         age:27,
+         favoriteColor: 'Vue Green'
+     })
+     #+END_SRC
+- 显示过滤/排序结果
+  #+BEGIN_SRC js
+  // computed 方案(惰性求值，更高效)
+  // metnods 方案(每次都执行)
+  let vm = new Vue({
+      data: {
+          numbers: [1, 2, 3, 4, 5]
+      },
+      computed: {
+          evenNumbers: function(){
+              return this.numbers.filter(function(number){
+                  return number %2 === 0;
+              })
+          }
+      },
+      methods: {
+          even: function(numbers){
+              return numbers.filter(function (number){
+                  return number % 2 === 0;
+              });
+          }
+      }
+  });
+  #+END_SRC
+- 一段范围ie的v-for
+  #+BEGIN_SRC html
+  <div>
+    <span v-for="n in 10">{{n }}</span>
+  </div>
+  <!-- 1 2 3 4 5 6 7 8 9 10 -->
+
+  <!-- v-for on a <template> -->
+  <ul>
+    <template v-for="item in items">
+      <li>{{item.msg}}</li>
+      <li class="driver" role="presentation"></li>
+    </template>
+  </ul>
+
+  <!-- v-for with v-if -->
+  <li v-for="todo in todos" v-if="!todo.isComplete">
+    {{todo}}
+  </li>
+
+  <ul v-if="todos.length">
+    <li v-for="todo in todos">{{ todo }}</li>
+  </ul>
+  <p v-else>No todos left!</p>
+
+  <!-- v-for 组件-->
+  <my-component v-for="item in items" :key="item.id"></my-component>
+  <my-component1
+    v-for="(item, index) in items"
+    v-bind:item="item"
+    v-bind:index="index"
+    v-bind:key="item.id"></my-component1>
+
+  <!-- example -->
+  <div id="todo-list-example">
+    <form v-on:submit.prevent="addNewTodo">
+      <label for="new-todo">Add a todo</label>
+      <input
+        v-mode="newTodoText"
+        id="new-todo"
+        placeholder="E.g. Feed the cat">
+      <button>Add</button>
+    </form>
+    <ul>
+      <li
+        <!-- 必要的 is=... -->
+        is="todo-item"
+        v-for="(todo, index) in todos"
+        v-bind:key="todo.id"
+        v-bind:title="todo.title"
+        v-on:remove="todos.splice(index, 1)"
+        ></li>
+    </ul>
+  </div>
+  #+END_SRC
+  #+BEGIN_SRC js
+  Vue.component('todo-item', {
+      template: '\
+  <li>\
+  {{title}}\
+  <button v-on:click="$emit(\'remove\')">Remove</button>\
+  </li>\
+  ',
+      props: ['title']
+  });
+
+  new Vue({
+      el: '#todo-list-example',
+      data: {
+          newTodoText:'',
+          todos:[
+              {
+                  id: 1,
+                  title: 'Do the dishes'
+              },{
+                  id: 2,
+                  title: 'Take out the trash'
+              },{
+                  id: 3,
+                  title: 'Mow the lawn'
+              }
+          ],
+          nextTodoId: 4
+      },
+      methods:{
+          addNewTodo: function(){
+              this.todos.push({
+                  id: this.nextTodoId++,
+                  title: this.newTodoText
+              });
+              this.newTodoText = '';
+          }
+      }
+  })
+  #+END_SRC
+** 事件处理
+*** 监听事件(v-on)
+#+BEGIN_SRC html
+<div id="v-on-demo">
+  <button v-on:click="counter += 1">Add 1</button>
+  <p>The button above has been clicked {{counter}} times.</p>
+</div>
+#+END_SRC
+#+BEGIN_SRC js
+let vOnDemo = new Vue({
+    el: '#example-1',
+    data: {
+        counter: 0
+    }
+});
+#+END_SRC
+*** 事件处理方法
+#+BEGIN_SRC html
+<div id="v-on-demo2">
+  <!-- `greet` 是下面定义的方法名 -->
+  <button v-on:click="greet">Greet</button>
+</div>
+#+END_SRC
+#+BEGIN_SRC js
+let vOnDemo2 = new Vue({
+    el: 'v-on-demo2',
+    data: {
+        name: 'Vue.js'
+    },
+    // 在 `methods` 对象中定义方法
+    methons: {
+        greet: function(event){
+            // `this` 在方法李指向当前Vue实例
+            alert(`Hello ${this.name}!`);
+            // `event` 是DOM事件
+            if(event){
+                alert(event.target.tagName);
+            }
+        }
+    }
+});
+#+END_SRC
+*** 内联处理器中的方法
+#+BEGIN_SRC html
+<div id="example-3">
+  <button v-on:click="say('hi')">Say hi</button>
+  <button v-on:click="say('what')">Say what</button>
+  <button v-on:click="warn('Form cannot be submitted yet.', $event)">
+    Submit
+  </button>
+</div>
+#+END_SRC
+#+BEGIN_SRC js
+let example3 = new Vue({
+    el: '#example-3',
+    methods:{
+        say: function(message){
+            alert(message);
+        },
+        swan: function(message, event){
+            if(event){
+                event.preventDefault()
+            }
+            alert(message)
+        }
+    }
+});
+#+END_SRC
+*** 事件修饰符
+- event.preventDefault()
+- event.stopPropagation()
+- .stop 阻止单击事件继续传播
+- .prevent (阻止) 提交事件不再重载页面
+- .capture 事件预先捕获处理
+- .self 自身触发时调用
+- .once 只触发一次，也可作用到 *组件事件上*
+- .passive (被动) 能提升移动端性能，立即触发
+*** 按键修饰符
+#+BEGIN_SRC html
+<!-- 只有在 `key` 是 `Enter` 时调用 `vm.submit()` -->
+<input v-on:keyup.enter="submit">
+<input v-on:keyup.page-down="onPageDown">
+#+END_SRC
+*** 按键码
+- .entry
+- .tab
+- .delete
+- .esc
+- .space
+- .up
+- .down
+- .left
+- .right
+- Vue.config.keyCodes.f1 = 112 ; 自定义按键码
+*** 系统修饰键
+- .ctrl
+- .alt
+- .shift
+- .meta
+#+BEGIN_SRC html
+<!-- Alt + C -->
+<input @keyup.alt.67="clear">
+<div @click.ctrl="doSomething">Do something</div>
+#+END_SRC
+
+*** .exact 修饰符
+.exact 修饰符允许你控制由精确的系统修饰符组合触发的事件。
+#+BEGIN_SRC html
+<!-- 即使 Alt 或 Shift 被一同按下时也会触发 -->
+<button @click.ctrl="onClick">A</button>
+<!-- 有且只有 Ctrl 被按下的时候才触发 -->
+<button @click.ctrl.exact="onCtrlClick">A</button>
+<!-- 没有任何系统修饰符被按下的时候才触发 -->
+<button @click.exact="onClick">A</button>
+#+END_SRC
+
+*** 鼠标修饰符
+- .left
+- .right
+- .middle
+** 表单输入绑定(v-model)
+你可以用 v-model 指令在表单 <input>、<textarea>及<select>元素上创建双向数据绑定。
+- text 和 textarea 元素使用 value 属性和 input 事件；
+  #+BEGIN_SRC html
+  <!-- 单行文本 -->
+  <input v-mode="message" placeholder="edit me">
+  <p>Message is: {{message}}</p>
+  <!-- 多行文本 -->
+  <span>Multiline message is:</span>
+  <p style="white-space: pre-line;">{{messaeg}}</p>
+  <br>
+  <textarea v-mode="message" placeholder="add multiple line"></textarea>
+  #+END_SRC
+- checkbox 和 radio 使用 checked 属性和 change 事件；
+  #+BEGIN_SRC html
+  <input type="checkbox" id="checkbox" v-model="checked">
+  <label for="checkbox">{{checked}}</label>
+
+  <div id="example-3">
+    <input type="checkbox" id="jack" value="Jack" v-model="checkedNames">
+    <label for="jack">Jack</label>
+    <input type="checkbox" id="john" value="John" v-model="checkedNames">
+    <label for="john">John</label>
+    <input type="checkbox" id="mike" value="Mike" v-model="checkedNames">
+    <label for="mike">Mike</label>
+    <br>
+    <span>Checked names: {{ checkedNames }}</span>
+  </div>
+
+  <!-- radio -->
+  <div id="example-4">
+    <input type="radio" id="one" value="One" v-model="picked">
+    <label for="one">One</label>
+    <br>
+    <input type="radio" id="two" value="Two" v-model="picked">
+    <label for="two">Two</label>
+    <br>
+    <span>Picked: {{ picked }}</span>
+  </div>
+  #+END_SRC
+- select 字段将 value 作为 prop 并将 change 作为事件。
+  #+BEGIN_SRC html
+  <div id="example-5">
+    <select v-model="selected">
+      <option disabled value="">请选择</option>
+      <option>A</option>
+      <option>B</option>
+      <option>C</option>
+    </select>
+    <span>Selected: {{ selected }}</span>
+  </div>
+
+  <div id="example-6">
+    <select v-model="selected" multiple style="width: 50px;">
+      <option>A</option>
+      <option>B</option>
+      <option>C</option>
+    </select>
+    <br>
+    <span>Selected: {{ selected }}</span>
+  </div>
+
+  <select v-model="selected">
+    <option v-for="option in options" v-bind:value="option.value">
+      {{ option.text }}
+    </option>
+  </select>
+  <span>Selected: {{ selected }}</span>
+  <!--
+  new Vue({
+    el: '...',
+    data: {
+      selected: 'A',
+      options: [
+        { text: 'One', value: 'A' },
+        { text: 'Two', value: 'B' },
+        { text: 'Three', value: 'C' }
+      ]
+    }
+  })
+    -->
+
+  <input
+    type="checkbox"
+    v-model="toggle"
+    true-value="yes"
+    false-value="no"
+  >
+  <!--
+  // 当选中时
+  vm.toggle === 'yes'
+  // 当没有选中时
+  vm.toggle === 'no'
+    -->
+
+  <input type="radio" v-model="pick" v-bind:value="a">
+  <!--
+  // 当选中时
+  vm.pick === vm.a
+    -->
+
+  <select v-model="selected">
+      <!-- 内联对象字面量 -->
+    <option v-bind:value="{ number: 123 }">123</option>
+  </select>
+  <!--
+  // 当选中时
+  typeof vm.selected // => 'object'
+  vm.selected.number // => 123
+  -->
+  #+END_SRC
+- 修饰符
+  - .lazy
+    #+BEGIN_SRC html
+    <!-- 在“change”时而非“input”时更新 -->
+    <input v-model.lazy="msg" >
+    #+END_SRC
+  - .number
+    #+BEGIN_SRC html
+    <input v-model.number="age" type="number">
+    #+END_SRC
+  - .trim
+    #+BEGIN_SRC html
+    <!--如果要自动过滤用户输入的首尾空白字符，可以给 v-model 添加 trim 修饰符：-->
+    <input v-mode.trim="msg">
+    #+END_SRC
+** 组件基础
+*** 基本示例
+#+BEGIN_SRC js
+Vue.component('button-counter', {
+    // data 必须是函数，否则多个组件共享一份数据
+    data: function(){
+        return{
+            count: 0
+        }
+    },
+    template: '<button v-on:click="count++"> You clicked me
+{{count}}times.</button>'
+})
+#+END_SRC
+#+BEGIN_SRC html
+<div id="component-demo">
+  <button-counter></button-counter>
+  <button-counter></button-counter>
+  <button-counter></button-counter>
+</div>
+new Vue({el: '#components-demo'})
+#+END_SRC
+*** 组件的组织
+通常一个应用会以一棵嵌套的组件树的形式来组织：
+例如，你可能会有页头、侧边栏、内容区等组件，每个组件又包含了其它的像导航链接、博文之类的组件。
+- 注册类型
+  - 全局注册
+  - 局部注册
+*** 通过Prop向子组件传递数据
+#+BEGIN_SRC js
+Vue.component('blog-post', {
+    props: ['title'],
+    template: '<h3>{{title}}</h3>'
+})
+
+new Vue({
+    el: '#blog-post-demo',
+    data: {
+        posts: [
+            {id: 1, title: 'My journey with Vue'},
+            {id: 2, title: 'Blogging with Vue'},
+            {id: 3, title: 'Why Vue is so fun'},
+        ]
+    }
+})
+#+END_SRC
+#+BEGIN_SRC html
+<blog-post title="My journey with Vue"></blog-post>
+<blog-post title="Blogging with Vue"></blog-post>
+<blog-post title="Why Vue is so fun"></blog-post>
+
+<blog-post
+  v-for="post in posts"
+  v-bind:key="post.id"
+  v-bind:title="post.title">
+#+END_SRC
+*** 单个根元素
+#+BEGIN_SRC html
+<div class="blog-post">
+  <h3>{{title}}</h3>
+  <div v-html="content"></div>
+</div>
+
+<!--
+    单property越来越复杂
+    导致绑定太多
+  -->
+<blog-post
+  v-for="post in posts"
+  v-bind:key="post.id"
+  v-bind:title="post.title"
+  v-bind:content="post.content"
+  v-bind:publishedAt="post.publishedAt"
+  v-bind:comments="post.comments"
+  ></blog-post>
+<!-- 解决过多绑定 -->
+<blog-post
+  v-for="post in posts"
+  v-bind:key="post.id"
+  v-bind:post="post">
+#+END_SRC
+#+BEGIN_SRC js
+Vue.component('blog-post',{
+    props: ['post'],
+    template:'
+<div class="blog-post">
+<h3>{{post.title}}</h3>
+<div v-html="post.content"></div>
+</div>
+'
+})
+#+END_SRC
+*** 监听子组件事件
+- 向父组件发送事件
+- 如： 放大某博文字号，让其他页面保持默认
+  #+BEGIN_SRC js
+  Vue.component('blog-post', {
+    props: ['post'],
+    template: `
+      <div class="blog-post">
+        <h3>{{ post.title }}</h3>
+        <!-- 添加单独放大字号的按钮 -->
+        <button v-on:click="$emit('enlarge-text', 0.1)">
+          Enlarge text
+        </button>
+        <div v-html="post.content"></div>
+      </div>
+    `
+  })
+  new Vue({
+      el: '#blog-posts-event-demo'
+      data: {
+          posts: [/*...*/],
+          postFontSize: 1
+      }
+  })
+  #+END_SRC
+  #+BEGIN_SRC html
+  <div id="blog-posts-events-demo">
+    <div :style="{fontSize: postFontSize + 'em'}">
+      <blog-post
+        v-for="post in posts"
+        v-bind:key="post.id"
+        v-bind:post="post"
+        <!-- v-on:enlarge-text="onEnlargeText" -->
+        v-on:enlarge-text="postFontSize += $event"
+        ></blog-post>
+    </div>
+  </div>
+  #+END_SRC
+
+*** 在组件上使用 v-model
+#+BEGIN_SRC html
+<input v-mode="searchText">
+<!-- 等价 -->
+<input
+  v-bind:value="searchText"
+  v-on:input="searchText=$event.target.value>">
+
+<!-- 在组件上应用 -->
+<custom-input
+  v-bind:value="searchText"
+  v-on:input="searchText=$event">
+#+END_SRC
+#+BEGIN_SRC js
+Vue.component('custom-input',{
+    props: ['value'],
+    template:`
+<input
+  v-bind:value="value"
+  v-on:input="$emit('input', $event.target.value)"
+`
+})
+#+END_SRC
+
+*** 通过插槽分发内容
+
+#+BEGIN_SRC html
+<alert-box>
+  Something bad happen
+</alert-box>
+#+END_SRC
+#+BEGIN_SRC js
+Vue.component('alert-box', {
+    template:`
+<div class="demo-alert-box">
+<strong>Error!</strong>
+<slot></slot>
+</div>
+`
+}) 
+#+END_SRC
+
+*** 动态组件
+
+#+BEGIN_SRC html
+<!-- 组件会在 `currentTabComponent` 改变时改变 -->
+<component v-bind:is="currentTabComponent"></component>
+#+END_SRC
+
+*** 解析DOM模板时的注意事项
+
+**** 元素约束
+#+BEGIN_SRC html
+<table>
+  <!-- 对组件没有条件约束 -->
+  <blog-post-row></blog-post-row>
+</table>
+<table>
+  <!-- 解决条件约束 -->
+  <tr is="blog-post-row"></tr>
+</table>
+#+END_SR
+
+需要注意的是如果我们从以下来源使用模板的话，这条限制是不存在的：
+- 字符串 (例如：template: '...')
+- 单文件组件 (.vue)
+- <script type="text/x-template">
+** 组件注册
+*** 组件名
+- 全局注册Vue.component('my-component-name', {...})
+- kebab-case(推荐) 'my-component-name'
+- PascalCase 'MyComponentName'
+*** 全局注册
+*** 局部注册
+#+BEGIN_SRC js
+var ComponentA = {/*...*/}
+var ComponentB = {/*...*/}
+var ComponentC = {/*...*/}
+
+new Vue({
+    el: '#app',
+    components: {
+        // component-a 不能在 component-b 中使用
+        'component-a': ComponentA,
+        'component-b': ComponentB
+    }
+})
+
+/* 组件嵌套
+ ,*/
+let ComponentA = {/*...*/}
+let ComponentB = {
+    components: {
+        'component-a': ComponentA
+    }
+}
+#+END_SRC
+*** 模块系统
+- 在模块系统中局部注册
+  - dirs(webpack)
+    - components
+      - ComponentB.[js|vue]
+        #+BEGIN_SRC js
+        // ComponentB.js
+        import ComponentA from './ComponentA'
+        import ComponentC from './ComponentC'
+
+        export default {
+            components: {
+                ComponentA,
+                ComponentC
+            }
+        }
+        #+END_SRC
+- 基础组件的自动化全局注册
+  #+BEGIN_SRC js
+  // src/main.js
+  import Vue from 'vue'
+  import upperFirst from 'lodash/upperFirst'
+  import camelCase from 'loadash/camelCase'
+
+  const requireComponent = require.context(
+      // 其组件目录的相对路径
+      './components',
+      // 是否查询其子目录
+      false,
+      // 匹配基础组件文件名的正则表达式
+      /Base[A-Z]\w+\.(vue|js)$/
+  )
+
+  requireComponent.keys().forEach(fileName =>{
+      // 获取组件配置
+      const componentConfig = requireComponent(fileName)
+      // 获取组件的 PascalCase 命名
+      const componentName = upperFirst(
+          camelCase(
+              // 剥去文件名开头的 `./` 和结尾的扩展名
+              fileName.replace(/^\.\/(.*)\.\w+$/, '$1')
+          )
+      )
+      // 全局注册组件
+      Vue.component(
+          componentName,
+          // 如果这个组件选项是通过 `export default` 导出的，
+          // 那么就会优先使用 `.default`，
+          // 否则回退到使用模块的根。
+          componentConfig.default || componentConfig
+      )
+  })
+  #+END_SRC
+** Prop
+*** Prop的大小写(camelCase vs kebab-case)
+#+BEGIN_SRC js
+Vue.component('blog-post', {
+  // 在 JavaScript 中是 camelCase 的
+  props: ['postTitle'],
+  template: '<h3>{{ postTitle }}</h3>'
+})
+#+END_SRC
+#+BEGIN_SRC html
+<!-- 在 HTML 中是 kebab-case 的 -->
+<blog-post post-title="hello!"></blog-post>
+#+END_SRC
+*** Prop类型
+#+BEGIN_SRC js
+Vue.component('blog-post',{
+    props:{
+        title: String,
+        likes: Number,
+        isPublished: Boolean,
+        commandIds: Array,
+        author: Object
+    }
+})
+#+END_SRC
+#+BEGIN_SRC html
+<blog-post title="My journey with Vue"></blog-post>
+
+<!-- 动态赋予一个变量的值 -->
+<blog-post v-bind:title="post.title"></blog-post>
+
+<!-- 动态赋予一个复杂表达式的值 -->
+<blog-post
+  v-bind:title="post.title + ' by ' + post.author.name"
+  ></blog-post>
+
+<!-- 即便 `42` 是静态的，我们仍然需要 `v-bind` 来告诉 Vue -->
+<!-- 这是一个 JavaScript 表达式而不是一个字符串。-->
+<blog-post v-bind:likes="42"></blog-post>
+
+<!-- 用一个变量进行动态赋值。-->
+<blog-post v-bind:likes="post.likes"></blog-post>
+
+<!-- 传入boolean值 -->
+<!-- 包含该 prop 没有值的情况在内，都意味着 `true`。-->
+<blog-post is-published></blog-post>
+
+<!-- 即便 `false` 是静态的，我们仍然需要 `v-bind` 来告诉 Vue -->
+<!-- 这是一个 JavaScript 表达式而不是一个字符串。-->
+<blog-post v-bind:is-published="false"></blog-post>
+
+<!-- 用一个变量进行动态赋值。-->
+<blog-post v-bind:is-published="post.isPublished"></blog-post>
+
+
+<!-- 即便数组是静态的，我们仍然需要 `v-bind` 来告诉 Vue -->
+<!-- 这是一个 JavaScript 表达式而不是一个字符串。-->
+<blog-post v-bind:comment-ids="[234, 266, 273]"></blog-post>
+
+<!-- 用一个变量进行动态赋值。-->
+<blog-post v-bind:comment-ids="post.commentIds"></blog-post>
+
+
+<!-- 即便对象是静态的，我们仍然需要 `v-bind` 来告诉 Vue -->
+<!-- 这是一个 JavaScript 表达式而不是一个字符串。-->
+<blog-post
+  v-bind:author="{
+    name: 'Veronica',
+    company: 'Veridian Dynamics'
+  }"
+></blog-post>
+
+<!-- 用一个变量进行动态赋值。-->
+<blog-post v-bind:author="post.author"></blog-post>
+#+END_SRC
+*** 单向数据流
+所有的 prop 都使得其父子 prop 之间形成了一个 *单向下行绑定*
+这意味着你 *不应该* 在一个子组件内部 *改变 prop*
+*** Prop验证
+- 提倡
+- demo
+  #+BEGIN_SRC js
+  Vue.component('my-component',{
+      props: {
+          // 基础的类型检查 (`null` 和 `undefined` 会通过任何类型验证)
+          propA: Number,
+          // 多个可能的类型
+          propB: [String, Number],
+          // 必填的字符串
+          propC: {
+              type: String,
+              require: true
+          },
+          // 带有默认值的数字
+          propD: {
+              type: Number,
+              default: 100
+          },
+          // 带有默认值的对象
+          propE: {
+              type: Object,
+              // 对象或数组默认值必须从一个工厂函数获取
+              default: function(){
+                  return {message: 'hello'}
+              }
+          },
+          // 自定义验证函数
+          propF: {
+              validator: function(value){
+                  // 这个值必须匹配下列字符串中的一个
+                  return ['success', 'warning', 'danger'].indexOf(value) !== -1
+              }
+          }
+      }
+  })
+  #+END_SRC
+- 类型检查
+  instanceof
+*** 非Prop的特性
+想象一下你通过一个 Bootstrap 插件使用了一个第三方的 <bootstrap-date-input> 组件，这个插件需要在其 <input> 上用到一个 data-date-picker 特性。我们可以将这个特性添加到你的组件实例上：
+然后这个 data-date-picker="activated" 特性就会自动添加到 <bootstrap-date-input> 的根元素上。
+- 替换合并已有的特性
+- 禁用特性继承 *inheritAttrs: false*
+  #+BEGIN_SRC js
+  Vue.component('base-input',{
+      inherityAttrs: false,
+      props: ['label', 'value'],
+      template:`
+  <label>
+  {{label}}
+  <input
+  v-bind="$attrs"
+  v-bind:value="value"
+  v-on:input="$emit('input', $event.target.value)"
+  >
+  </label>
+  `
+  })
+  #+END_SRC
+** 自定义事件
+- 大小写敏感(推荐始终用kebab-case)
+  #+BEGIN_SRC js
+  this.$emit('myEvent')
+  #+END_SRC
+  #+BEGIN_SRC html
+  <!-- 没有效果 -->
+  <my-component v-on:my-event="doSomething"></my-component>
+  #+END_SRC
+- v-model
+  #+BEGIN_SRC js
+  Vue.component('base-checkbox', {
+    model: {
+      prop: 'checked',
+      event: 'change'
+    },
+    props: {
+      checked: Boolean
+    },
+    template: `
+      <input
+        type="checkbox"
+        v-bind:checked="checked"
+        v-on:change="$emit('change', $event.target.checked)"
+      >
+    `
+  })
+  #+END_SRC
+- 将原生事件绑定到组件
+  #+BEGIN_SRC html
+  <!-- 但是无法解决 父类是label的情况-->
+  <base-input v-on:focus.native="onFocus"></base-input>
+  #+END_SRC
+  为了解决这个问题，Vue 提供了一个 $listeners
+  属性，它是一个对象，里面包含了作用在这个组件上的所有监听器。例如：
+  #+BEGIN_SRC js
+  Vue.component('base-input', {
+    inheritAttrs: false,
+    props: ['label', 'value'],
+    computed: {
+      inputListeners: function () {
+        var vm = this
+        // `Object.assign` 将所有的对象合并为一个新对象
+        return Object.assign({},
+          // 我们从父级添加所有的监听器
+          this.$listeners,
+          // 然后我们添加自定义监听器，
+          // 或覆写一些监听器的行为
+          {
+            // 这里确保组件配合 `v-model` 的工作
+            input: function (event) {
+              vm.$emit('input', event.target.value)
+            }
+          }
+        )
+      }
+    },
+    template: `
+      <label>
+        {{ label }}
+        <input
+          v-bind="$attrs"
+          v-bind:value="value"
+          v-on="inputListeners"
+        >
+      </label>
+    `
+  })
+  #+END_SRC
+- .sync 双向绑定prop
+  v-bind不能和表达式一起使用
+** 插槽
+- 插槽内容(内容分发)
+  #+BEGIN_SRC html
+  <navigation-link url="/profile">Your Profile</navigation-link>
+
+  <!-- navigation template -->
+  <a
+    v-bind:href="url"
+    class="nav-link">
+    <slot></slot>
+  </a>
+
+  <!-- 可能扩展 -->
+  <navigation-link url="/profile">
+    <!-- 添加一个 Font Awesome 图标 -->
+    <span class="fa fa-user"></span>
+    Your Profile
+  </navigation-link>
+  #+END_SRC
+- 编译作用域
+  #+BEGIN_SRC html
+  <navigation-link url="/profile">
+    <!-- 无法访问 {{url}} -->
+    Logged in as {{ user.name }}
+  </navigation-link>
+  #+END_SRC
+- 后备内容
+  #+BEGIN_SRC html
+  <button type="submit">
+    <slot>Submit</slot>
+  </button>
+
+  <!-- default -->
+  <submit-button></submit-button>
+  <button type="submit">
+    Submit
+  </button>
+
+  <!-- set default to Save -->
+  <submit-button>Save</submit-button>
+  <!-- result -->
+  <button type="submit">
+    Save
+  </button>
+  #+END_SRC
+* @vue/cli(3.x)
+** 介绍
+- @vue/cli + @vue/cli-server-global
+  0配置原型开发
+- @vue/cli-service
+  运行时依赖，基于webpack
+*** 系统组件
+- CLI(@vue/cli)
+  npm install -g @vue/cli
+  需要全局安装
+  vue 构建框架
+  vue serve 构建想法原型
+  vue ui 通过一套图形化的界面管理所有的项目
+- CLI(@vue/cli-service) 服务
+  它是一个 npm 包，局部安装在每个 @vue/cli 创建的项目中。
+  CLI 服务是构建于 webpack 和 webpack-dev-server 之上的。
+  项目内部的 vue-cli-service 命令，提供 serve、build 和 inspect 命令。
+- CLI插件
+  - name: 
+    内建插件： @vue/cli-plugin-*
+    社区插件： vue-cli-plugin-*
+  - Babel/TypeScript
+  - ESLint
+  - end-to-end
+  - unit test
+** 安装
+   #+BEGIN_SRC sh
+   # npm uninstall vue-cli -g
+   # yarn global remove vue-cli
+   npm install -g @vue/cli
+   # OR
+   yarn global add @vue/cli
+   vue --version
+   #+END_SRC
+** 基础
+*** 快速原型开发
+**** 前言
+    vue serve/build
+    *.vue
+    npm install -g @vue/cli-service-global
+    vue serve 的缺点就是它需要安装全局依赖，
+    这使得它在不同机器上的一致性不能得到保证。因此这只适用于快速原型开发。
+**** vue serve
+     #+BEGIN_SRC text
+     Usage: serve [options] [entry]
+
+     在开发环境模式下零配置为 .js 或 .vue 文件启动一个服务器
+
+
+     Options:
+
+       -o, --open  打开浏览器
+       -c, --copy  将本地 URL 复制到剪切板
+       -h, --help  输出用法信息
+     #+END_SRC
+     vue server [main.js/index.js/App.vue/app.vue]
+     vue server MyComponent.vue
+**** vue build
+     #+BEGIN_SRC text
+     Usage: build [options] [entry]
+
+     在生产环境模式下零配置构建一个 .js 或 .vue 文件
+
+
+     Options:
+
+       -t, --target <target>  构建目标 (app | lib | wc | wc-async, 默认值：app)
+       -n, --name <name>      库的名字或 Web Components 组件的名字 (默认值：入口文件名)
+       -d, --dest <dir>       输出目录 (默认值：dist)
+       -h, --help             输出用法信息
+     #+END_SRC
+*** 创建项目
+**** vue create
+     vue create <project-name>
+     preset default/manually
+     ~/.vuerc 保存preset配置
+     vue create --help
+     #+BEGIN_SRC text
+     用法：create [options] <app-name>
+
+     创建一个由 `vue-cli-service` 提供支持的新项目
+
+
+     选项：
+
+       -p, --preset <presetName>       忽略提示符并使用已保存的或远程的预设选项
+       -d, --default                   忽略提示符并使用默认预设选项
+       -i, --inlinePreset <json>       忽略提示符并使用内联的 JSON 字符串预设选项
+       -m, --packageManager <command>  在安装依赖时使用指定的 npm 客户端
+       -r, --registry <url>            在安装依赖时使用指定的 npm registry
+       -g, --git [message]             强制 / 跳过 git 初始化，并可选的指定初始化提交信息
+       -n, --no-git                    跳过 git 初始化
+       -f, --force                     覆写目标目录可能存在的配置
+       -c, --clone                     使用 git clone 获取远程预设选项
+       -x, --proxy                     使用指定的代理创建项目
+       -b, --bare                      创建项目时省略默认组件中的新手指导信息
+       -h, --help                      输出使用帮助信息
+     #+END_SRC
+*** 插件和Preset
+**** 在现有项目中添加插件
+     vue add @vue/eslint
+     vue add @vue-plugin-eslint
+     vue add apollo # 社区包
+     #特殊情况
+     vue add router
+     vue add vuex
+     vue invoke <plugin> ; 跳过安装，直接调用生成器；
+     我们推荐在运行 vue add 之前将项目的最新状态提交，
+     因为该命令可能调用插件的文件生成器并很有可能更改你现有的文件。
+**** 指定其他配置
+     如果出于一些原因你的插件列在了该项目之外的其它 package.json 文件里，
+     你可以在自己项目的 package.json 里设置 vuePlugins.resolveFrom 
+     选项指向包含其它 package.json 的文件夹。
+     例如，如果你有一个 .config/package.json 文件：
+     #+BEGIN_SRC json
+     {
+         "vuePlugins": {
+             "resolveFrom": ".config"
+         }
+     }
+     #+END_SRC
+**** 项目本地插件
+     如果你需要在项目里直接访问插件 API 而不需要创建一个完整的插件，
+     你可以在 package.json 文件中使用 vuePlugins.service 选项：
+     你也可以通过 vuePlugins.ui 选项添加像 UI 插件一样工作的文件：
+     package.json
+     #+BEGIN_SRC json
+     {
+       "vuePlugins": {
+         "service": ["my-commands.js"],
+           "ui": ["my-ui.js"]
+       }
+     }
+     #+END_SRC
+**** Preset
+     ~/.vuerc
+     
+     #+BEGIN_SRC json
+     {
+         "useConfigFiles": true,
+         "router": true,
+         "vuex": true,
+         "cssPreprocessor": "sass",
+         "plugins":{
+             "@vue/cli-plugin-babel":{},
+             "@vue/cli-plugin-eslint":{
+                 "config": "airbnb",
+                 "lintOn": ["save", "commit"]
+             }
+         },
+         "configs":{
+             "vue":{},
+             "postcss":{},
+             "eslintConfig":{},
+             "jest":{}
+         }
+     }
+     #+END_SRC
+
+     如果useConfigFiles = true 将合并到package.json或相应配置文件中。
+     configs 值将被合并到vue.config.js中。
+***** 插件版本管理
+      #+BEGIN_SRC json
+      {
+          "plugins": {
+              "@vue/cli-plugin-eslint":{
+                  // 版本管理
+                  "version": "^3.0.0",
+                  // 名列提示
+                  "prompts": true
+              }
+          }
+      }
+      #+END_SRC
+***** 远程Preset
+      - git repo
+        - preset.json 包含 preset 数据的主要文件（必需）。
+        - generator.js 一个可以注入或是修改项目中文件的 Generator。
+        - prompts.js 一个可以通过命令行对话为 generator 收集选项的 prompts 文件。
+      - vue create --preset username/repo my-project
+        vue create --preset gitlab:username/repo --clone my-project
+        vue create --preset bitbucket:username/repo --clone my-project
+        # ./my-preset 应当是一个包含 preset.json 的文件夹
+        vue create --preset ./my-preset my-project
+        # 或者，直接使用当前工作目录下的 json 文件：
+        vue create --preset my-preset.json my-project
+*** CLI 服务
+**** 使用命令
+     #+BEGIN_SRC sh
+     # @vue/cli-service
+     # npm run vue-cli-service
+     # ./node_modules/.bin/vue-cli-serivce
+     #+END_SRC
+     #+BEGIN_SRC json
+     // package.json
+     {
+         "secripts":{
+             "serve": "vue-cli-service serve",
+             "build": "vue-cli-service build"
+         }
+     }
+     #+END_SRC
+     #+BEGIN_SRC sh
+     npm run serve
+     # or
+     npx vue-cli-service serve
+     #+END_SRC
+     #+BEGIN_SRC text
+     用法：vue-cli-service serve [options] [entry]
+
+     选项：
+
+       --open    在服务器启动时打开浏览器
+       --copy    在服务器启动时将 URL 复制到剪切版
+       --mode    指定环境模式 (默认值：development)
+       --host    指定 host (默认值：0.0.0.0)
+       --port    指定 port (默认值：8080)
+       --https   使用 https (默认值：false)
+
+     用法：vue-cli-service build [options] [entry|pattern]
+
+     选项：
+
+       --mode        指定环境模式 (默认值：production)
+       --dest        指定输出目录 (默认值：dist)
+       --modern      面向现代浏览器带自动回退地构建应用
+       --target      app | lib | wc | wc-async (默认值：app)
+       --name        库或 Web Components 模式下的名字
+                     (默认值：package.json 中的 "name" 字段或入口文件名)
+       --no-clean    在构建项目之前不清除目标目录
+       --report      生成 report.html 以帮助分析包内容
+       --report-json 生成 report.json 以帮助分析包内容
+       --watch       监听文件变化
+
+     用法：vue-cli-service inspect [options] [...paths]
+
+     选项：
+
+       --mode    指定环境模式 (默认值：development)
+     #+END_SRC
+**** 缓存和并行处理
+****** cache-loader
+       会默认为 Vue/Babel/TypeScript 编译开启。
+       文件会缓存在 node_modules/.cache 中——如果你遇到了编译方面的问题，
+       *记得先删掉缓存目录之后再试试看*
+****** thread-loader 会在多核 CPU 的机器上为 Babel/TypeScript 转译开启。
+**** Git Hook(yorkie)
+     #+BEGIN_SRC json
+     // package.json
+     {
+         "gitHooks": {
+             "pre-commit": "lint-staged"
+         }
+     }
+     #+END_SRC
+** 开发
+*** 浏览器兼容性
+**** browserslist
+     - package.json => browserslist
+     - .browserslistrc
+     - @babel/preset-env & Autoprefixer
+**** Polyfill
+***** useBuiltIns:'usage'
+      @vue/babel-preset-app
+***** Lib,Component
+      @vue/babel-preset-env useBuiltIns: false
+**** 现代模式
+     vue-cli-service build --modern
+     - <script type="module"> 现代版
+     - <script nomodule> 旧版本
+     #+BEGIN_SRC text
+     <script type="module"> 需要配合始终开启的 CORS 进行加载。这意味着你的服务器必须返回诸如 Access-Control-Allow-Origin: * 的有效的 CORS 头。如果你想要通过认证来获取脚本，可使将 crossorigin 选项设置为 use-credentials。
+     同时，现代浏览器使用一段内联脚本来避免 Safari 10 重复加载脚本包，所以如果你在使用一套严格的 CSP，你需要这样显性地允许内联脚本：
+     Content-Security-Policy: script-src 'self' 'sha256-4RS22DYeB7U14dra4KcQYxmwt5HkOInieXK1NUMBmQI='
+     #+END_SRC
+*** HTML和静态资源
+**** HTML
+***** index文件
+       public/index.html 文件是一个会被 html-webpack-plugin 处理的模板。
+***** 插值
+       因为 index 文件被用作模板，所以你可以使用 lodash template 语法插入内容：
+       <%= VALUE %> 用来做不转义插值；
+       <%- VALUE %> 用来做 HTML 转义插值；
+       <% expression %> 用来描述 JavaScript 流程控制。
+       <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+***** Preload
+       <link rel="preload"> 是一种 resource hint，用来指定页面加载后很快会被用到的资源，
+       所以在页面加载的过程中，我们希望在浏览器开始主体渲染之前尽早 preload。
+***** Prefetch
+       <link rel="prefetch"> 是一种 resource hint，用来告诉浏览器在页面加载完成后，
+       利用空闲时间提前获取用户未来可能会访问的内容。
+       #+BEGIN_SRC js
+       // vue.config.js
+       module.exports = {
+         chainWebpack: config => {
+           // 移除 prefetch 插件
+           config.plugins.delete('prefetch')
+
+           // 或者
+           // 修改它的选项：
+           config.plugin('prefetch').tap(options => {
+             options[0].fileBlacklist = options[0].fileBlacklist || []
+             options[0].fileBlacklist.push(/myasyncRoute(.)+?\.js$/)
+             return options
+           })
+         }
+       }
+
+       //当 prefetch 插件被禁用时，你可以通过 webpack 的内联注释手动选定要提前获取的代码区块：
+       import(/* webpackPrefetch: true */ './someAsyncComponent.vue')
+       #+END_SRC
+***** 不生成index
+       #+BEGIN_SRC js
+       // vue.config.js
+       module.exports = {
+         // 去掉文件名中的 hash
+         filenameHashing: false,
+         // 删除 HTML 相关的 webpack 插件
+         chainWebpack: config => {
+           config.plugins.delete('html')
+           config.plugins.delete('preload')
+           config.plugins.delete('prefetch')
+         }
+       }
+       // 然而这样做并不是很推荐
+       #+END_SRC
+***** 构建一个多页应用
+       构建好的应用将会在不同的入口之间高效共享通用的 chunk 以获得最佳的加载性能。
+       #+BEGIN_SRC js
+       module.exports = {
+         pages: {
+           index: {
+             // page 的入口
+             entry: 'src/index/main.js',
+             // 模板来源
+             template: 'public/index.html',
+             // 在 dist/index.html 的输出
+             filename: 'index.html',
+             // 当使用 title 选项时，
+             // template 中的 title 标签需要是 <title><%= htmlWebpackPlugin.options.title %></title>
+             title: 'Index Page',
+             // 在这个页面中包含的块，默认情况下会包含
+             // 提取出来的通用 chunk 和 vendor chunk。
+             chunks: ['chunk-vendors', 'chunk-common', 'index']
+           },
+           // 当使用只有入口的字符串格式时，
+           // 模板会被推导为 `public/subpage.html`
+           // 并且如果找不到的话，就回退到 `public/index.html`。
+           // 输出文件名会被推导为 `subpage.html`。
+           subpage: 'src/subpage/main.js'
+         }
+       }
+       #+END_SRC
+
+**** 处理静态资源
+     - JavaScript 被导入或在 template/CSS 中通过相对路径被引用
+       这类引用会被 webpack 处理
+     - 放置在 public 目录下或通过绝对路径被引用
+       这类资源将会直接被拷贝，而不会经过 webpack 的处理。
+***** 从相对路径导入
+      当你在 JavaScript、CSS 或 *.vue 文件中使用相对路径 
+      (必须以 . 开头) 引用一个静态资源时，该资源将会被包含进入 webpack 的依赖图中。
+      #+BEGIN_SRC js
+      // vue.config.js
+      module.exports = {
+        chainWebpack: config => {
+          config.module
+            .rule('images')
+              .use('url-loader')
+                .loader('url-loader')
+                .tap(options => Object.assign(options, { limit: 10240 }))
+        }
+      }
+      #+END_SRC
+***** URL转换规则
+      - 绝对路径
+      - ./* 基于文件系统相对路径
+      - ~* 这意味着你甚至可以引用 Node 模块中的资源：
+      - @* 它的用处在于 Vue CLI 默认会设置一个指向 <projectRoot>/src 
+           的别名 @。(仅作用于模版中)
+***** public文件夹
+      任何放置在 public 文件夹的静态资源都会被简单的复制
+      *而不经过 webpack*
+      你需要通过绝对路径来引用它们。
+      public 目录提供的是一个 *应急手段*
+      <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+      #+BEGIN_SRC js
+      data () {
+        return {
+          publicPath: process.env.BASE_URL
+        }
+      }
+      #+END_SRC
+      <img :src="`${publicPath}my-image.png`">
+
+      何时使用 public 文件夹
+      你需要在构建输出中指定一个文件的名字。
+      你有上千个图片，需要动态引用它们的路径。
+      有些库可能和 webpack 不兼容，这时你除了将其用一个独立的 <script> 标签引入没有别的选择。
+**** CSS相关
+***** 原生支持
+      PostCSS
+      CSS Modules
+      Sass
+      Less
+      Stylus
+***** 引用静态资源
+      所有编译后的 CSS 都会通过 css-loader 来解析其中的 url() 引用
+      另外要注意的是如果你想要引用一个 npm 依赖中的文件，
+      或是想要用 webpack alias，则需要在路径前加上 ~ 的前缀来避免歧义。
+***** 预处理器
+      你可以在创建项目的时候选择预处理器 (Sass/Less/Stylus)。
+      #+BEGIN_SRC sh
+      # Sass
+      npm install -D sass-loader node-sass
+
+      # Less
+      npm install -D less-loader less
+
+      # Stylus
+      npm install -D stylus-loader stylus
+      #+END_SRC
+      #+BEGIN_SRC html
+      // *.vue
+      <style lang="scss">
+        $color: red;
+      </style>
+      #+END_SRC
+***** 自动化导入
+      style-resource-loader
+      vue-cli-plugin-style-resource-loader
+***** PostCSS
+      .prostcssrc
+      postcss-load-config
+      vue.config.js => css.loaderOptions.postcss
+      autoprefixer
+***** CSS Modules
+      <style module>
+      .module.[css|less|sass|styl]
+      #+BEGIN_SRC js
+      import styles from './foo.module.css'
+      // 所有支持的预处理器都一样工作
+      import sassStyles from './foo.module.scss'
+      #+END_SRC
+**** webpack相关
+***** 简单的配置方式
+      #+BEGIN_SRC js
+      // vue.config.js
+      module.exports = {
+        configureWebpack: {
+          plugins: [
+            new MyAwesomeWebpackPlugin()
+          ]
+        }
+      }
+
+      module.exports = {
+        configureWebpack: config => {
+          if (process.env.NODE_ENV === 'production') {
+            // 为生产环境修改配置...
+          } else {
+            // 为开发环境修改配置...
+          }
+        }
+      }
+      #+END_SRC
+**** 环境变量和模式
+***** 环境变量
+.env                # 在所有的环境中被载入
+.env.local          # 在所有的环境中被载入，但会被 git 忽略
+.env.[mode]         # 只在指定的模式中被载入
+.env.[mode].local   # 只在指定的模式中被载入，但会被 git 忽略
+
+FOO=bar
+VUE_APP_SECRET=secret
+***** 模式
+****** development vue-cli-service serve
+****** proeuction  vue-cli-service build 和 vue-cli-service test:e2e
+****** test        vue-cli-service test:unit
+***** Sample: Staging
+      .env
+      VUE_APP_TITLE=My App
+      
+      .env.staging
+      NODE_ENV=production
+      VUE_APP_TITLE=My App (staging)
+***** 客户端侧代码中使用环境变量
+      只有以 VUE_APP_ 开头的变量会被 webpack.DefinePlugin 静态嵌入到客户端侧的包中。
+      你可以在应用的代码中这样访问它们：
+      console.log(process.env.VUE_APP_SECRET)
+      NODE_ENV: development/production/test
+      BASE_URL: vue.config.js => publicPath
+
+**** 构建目标(vue-cli-service build --target <name>)
+***** 应用
+      index.html 会带有注入的资源和 resource hint
+      第三方库会被分到一个独立包以便更好的缓存
+      小于 4kb 的静态资源会被内联在 JavaScript 中
+      public 中的静态资源会被复制到输出目录中
+***** 库
+**** 部署
+***** 通用指南
+      如果你用 Vue CLI 处理静态资源并和后端框架一起作为部署的一部分，
+      那么你需要的仅仅是确保 Vue CLI 生成的构建文件在正确的位置，
+      并遵循后端框架的发布方式即可。
+
+      如果你独立于后端部署前端应用——
+      也就是说后端暴露一个前端可访问的 API，然后前端实际上是纯静态应用。
+      那么你可以将 dist 目录里构建的内容部署到任何静态文件服务器中，
+      但要确保正确的 publicPath。
+***** 本地预览
+***** history.pushState
+***** CORS
+***** PWA
+***** Platform Guides
+***** GitHub Pages
+****** https://<username>.github.io
+      如果打算将项目部署到 https://<USERNAME>.github.io/ 上 , 
+      publicPath 将默认被设为 "/"，你可以忽略这个参数。
+****** https://github.com/<username>/<repo>
+       可将 publicPath 设为 "/<REPO>/" 。 举个例子， 
+       如果仓库名字为 "my-project"，vue.config.js 的内容应如下所示:
+       #+BEGIN_SRC js
+       module.exports = {
+         publicPath: process.env.NODE_ENV === 'production'
+           ? '/my-project/'
+           : '/'
+       }
+       #+END_SRC
+       #+BEGIN_SRC sh
+       #!/usr/bin/env sh
+
+       # 当发生错误时中止脚本
+       set -e
+
+       # 构建
+       npm run build
+
+       # cd 到构建输出的目录下 
+       cd dist
+
+       # 部署到自定义域域名
+       # echo 'www.example.com' > CNAME
+
+       git init
+       git add -A
+       git commit -m 'deploy'
+
+       # 部署到 https://<USERNAME>.github.io
+       # git push -f git@github.com:<USERNAME>/<USERNAME>.github.io.git master
+
+       # 部署到 https://<USERNAME>.github.io/<REPO>
+       # git push -f git@github.com:<USERNAME>/<REPO>.git master:gh-pages
+
+       cd -
+
+       #您还可以在 CI 设置中配置上述脚本，以便在每次推送时启用自动部署。
+       #+END_SRC

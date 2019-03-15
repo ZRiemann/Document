@@ -806,6 +806,37 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
  https://bitnami.com/stack/gitlab 
  https://gitlab.com/gitlab-org/gitlab-ce/tree/master
 * 7 Git工具
+** 7.3 存储与清理
+   #+BEGIN_SRC sh
+   git status
+   # Changes to be committed:
+   # (use "git reset HEAD <file>..." to unstage)
+   # modified:
+   # index.html
+   # Changes not staged for commit:
+   # (use "git add <file>..." to update what will be committed)
+   # (use "git checkout -- <file>..." to discard changes in working
+   # directory)
+   # modified:
+   # lib/simplegit.rb
+
+   # 推送到栈上
+   # git stach save
+   git stach
+
+   git status
+   # On branch master
+   # nothing to commit, working directory clean
+
+   git stash list
+   # stash@{0}: WIP on master: 049d078 added the index file
+   # stash@{1}: WIP on master: c264051 Revert "added file_size"
+   # stash@{2}: WIP on master: 21d80a5 added number to log
+
+   git stash apply stash@{2}
+
+   git clean -d -n
+   #+END_SRC
 ** 7.11 子模块
  - 概述
    子模块允许你将一个 Git 仓库作为另一个 Git 仓库的子目录。 
@@ -940,3 +971,7 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
    
    
 
+* tips
+** emacs
+*** WARNING: terminal is not fully functional
+    $ git config --global core.pager ""

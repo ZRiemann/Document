@@ -2968,3 +2968,192 @@
  - 模板引擎
  - MVC模式
 
+* MDN
+================================================================================
+  https://developer.mozilla.org/zh-CN/docs/Web/HTML
+  - HTML 网页内容的含义和结构(意)
+    - introduction
+      - 将文档结构化
+    - HyperText 站内、站间彼此链接
+    - Markup(tag) 标记/标签 标注内容类型
+      element(元素) 标记元素(内容)
+      - 元素结构(Element) 
+        <p>element data</p>
+        - <p> 开始标签(Opening tag)
+          - 属性(attribute)
+            - definition
+              - demo
+                #+BEGIN_SRC html
+                <p class="editor-note">hello world!</p>
+                #+END_SRC
+              - 元素名和属性间有空格
+              - 属性后紧跟 =
+              - 属性内容用""包含
+            - keywords(关键字)
+              - general
+                - class(类)
+              - anchor <a>
+                - href: 声明超链接的web地址
+                - title: 超链接声明额外的信息,当鼠标悬浮时，将出现一个工具提示。
+                - target: 指定将用于显示链接的浏览上下文
+                  - "_blank": 将在新标签页中显示链接
+              - boolean
+                - 没有值的属性
+                - demo
+                  #+BEGIN_SRC html
+                  <input type="text" disabled="disabled">
+                  <input type="text" disabled>
+                  <input type="text">
+                  #+END_SRC
+            - 引号风格 ''/"" ; 均合法，属性必须用引号包含
+        - content 内容(Content)
+        - </p> 结束标签(Closing tag)
+      - 元素类型
+        - https://developer.mozilla.org/zh-CN/docs/Web/HTML/Element
+        - Paragraph <p> ; 段落
+        - Strong <strong> ; 强调
+        - Emergent <em>   ; 紧急
+        - Anchor[ˈæŋkɚ] <a> ; 锚
+        - Meta <meta> ; 元数据
+          - definition
+          - DOM HTMLMetaElement
+          - demo
+            #+BEGIN_SRC html
+            <!-- Defining the charset in HTML4 -->
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <!-- In HTML5 -->
+            <meta charset="utf-8">
+            <!-- Redirect page after 3 seconds -->
+            <meta http-equiv="refresh" content="3;url=http://www.mozilla.org/">
+
+            #+END_SRC
+        - <!-- ... --> ; 注释
+        - <span> ; 内联标签
+          <p>Japanese example: <span lang="jp">ご飯が熱い。</span>.</p>
+      - 元素组合
+        - 嵌套元素
+          - 把元素放到其他元素当中
+          - Sample
+            #+BEGIN_SRC html
+            <p>hello <strong>world!</strong></p>
+            #+END_SRC
+      - 类别
+        - 块元素
+          - 出现在新行
+          - 其他非块内元素被挤到下一行
+          - 无法嵌套到内联元素，可嵌套如其他块
+        - 内联元素
+          - 包含文档的一部分内容
+          - 不单独换行
+          - Sample
+            <em>,<strong>,<a>
+        - 空元素(Empty/void element)
+          - 无内容，五结束标签
+          - <img src="...">
+      - 字符引用
+        - definition
+          处理内容中的特殊字符(<,>,",',&)，否则会被解释为标签；
+        - keywords
+          https://en.wikipedia.org/wiki/List_of_XML_and_HTML_character_entity_references
+          - < : &lt;
+          - > : &gt;
+          - " : &quot;
+          - ' : &qpos;
+          - & : &amp;
+    - 结构
+      - <!DOCTYPE html>
+      - <html>
+        - attributs
+          - <html lang="en-US">
+            - HTML文档就会被搜索引擎更有效地索引
+              例如，允许它在特定于语言的结果中正确显示
+            - 使用屏幕阅读器的视障人士也很有用
+              比如， 法语和英语中都有“six”这个单词，但是发音却完全不同
+            - 可以分段设置语言
+              <p>Japanese example: <span lang="jp">ご飯が熱い。</span>.</p>
+        - <head>
+          - definition
+            - 内容不显示
+          - option contents(可选嵌套元素)
+            - <title>(标题)
+              - 浏览器标签栏内容，表示整个HTML文档大致内容元素
+                区别与<h1> : 表示也没内容标题
+              - 如果被收藏，收藏栏内容
+            - <meta>(元数据)
+              - <meta charset="utf-8"> ; 制定页面字符集
+              - SEO(Search Engine Optimization)
+                <meta name="author" content="Chris Mils">
+                <meta name="description" content=".......">
+              - Facebook(Open Graph Data)/Twitter
+                #+BEGIN_SRC html
+                <meta property="og:image" content="https://developer.cdn.mozilla.net/static/img/opengraph-logo.dc4e08e2f6af.png">
+                <meta property="og:description" content="The Mozilla Developer Network (MDN) provides
+                information about Open Web technologies including HTML, CSS, and APIs for both Web sites
+                and HTML5 Apps. It also documents Mozilla products, like Firefox OS.">
+                <meta property="og:title" content="Mozilla Developer Network">
+                <meta name="twitter:title" content="Mozilla Developer Network">
+                #+END_SRC                
+              #+BEGIN_SRC html
+              <!DOCTYPE html>
+              <html>
+              <head>
+              <title>base-test</title>
+              <!-- <meta charset="utf-8"> -->
+              <!-- english: 中文 -->
+              <meta charset="ISO-8859-1">
+              <!-- english: ä¸­æ–‡ -->
+              </head>
+              <body>
+              <p>english: 中文</p>
+              </body>
+              </html>
+              #+END_SRC
+            - <link>(连接)
+              - icons
+                *.icon/gif/png
+                <link rel="shortcut icon" href="favicon.icon" type="image/x-icon">
+              - CSS
+                #+BEGIN_SRC html
+                <link rel="stylesheet" href="my-css-file.css">
+                #+END_SRC
+              - demo
+                #+BEGIN_SRC html
+                <!-- third-generation iPad with high-resolution Retina display: -->
+                <link rel="apple-touch-icon-precomposed" sizes="144x144" href="https://developer.cdn.mozilla.net/static/img/favicon144.a6e4162070f4.png">
+                <!-- iPhone with high-resolution Retina display: -->
+                <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://developer.cdn.mozilla.net/static/img/favicon114.0e9fabd44f85.png">
+                <!-- first- and second-generation iPad: -->
+                <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://developer.cdn.mozilla.net/static/img/favicon72.8ff9d87c82a0.png">
+                <!-- non-Retina iPhone, iPod Touch, and Android 2.1+ devices: -->
+                <link rel="apple-touch-icon-precomposed" href="https://developer.cdn.mozilla.net/static/img/favicon57.a2490b9a2d76.png">
+                <!-- basic favicon -->
+                <link rel="shortcut icon" href="https://developer.cdn.mozilla.net/static/img/favicon32.e02854fdcf73.png">
+                #+END_SRC
+            - <script>(脚本)
+              - demo
+                #+BEGIN_SRC html
+                <!-- 可以放在 文档尾部 -->
+                <script sec="my-js-file.js"></script>
+                #+END_SRC
+        - <body>
+      #+BEGIN_SRC html
+      <!-- 声明文档类型 -->
+      <!DOCTYPE html>
+      <!-- 唯一根元素 -->
+      <html>
+      <!-- 容器，不展示给用户 -->
+      <head>
+      <!-- 制定文档使用UTF-8 字符集 -->
+      <meta charset="utf-8">
+      <!-- 页面标题
+      1. 出现在浏览器标签上
+      2. 标记/收藏页面时用来描述页面
+      -->
+      <title>DocTitle</title>
+      </head>
+      <!-- 页面内容 -->
+      <body></body>
+      </html>
+      #+END_SRC
+  - CSS  内容的表现与展示效果(静)
+  - JavaScript 功能与行为(动)
