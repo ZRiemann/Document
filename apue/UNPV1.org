@@ -3,7 +3,7 @@
 #+LANGUAGE: cn
 
 * (一) 简介和TCP/IP
-  https://github.com/ryuever/unix-network-programming-v3
+
 ** 1. 简介
 - 1.1 概述
   #+BEGIN_SRC ditaa

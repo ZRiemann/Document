@@ -842,22 +842,303 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
    子模块允许你将一个 Git 仓库作为另一个 Git 仓库的子目录。 
    它能让你将另一个仓库克隆到自己的项目中，同时还保持提交的独立。
  - 开始使用子模块
-   $ git submodule add https://github.com/chanconinc/DbCounnector <path>
-   $ git status 
-   ...
-   new file: .gitmodules
-   new file: DbConnector
-   $ cat .gitmodules
-   [submodule "DbConnector"]
-     path = DbConnecter
-     url = https://github.com/chaconinc/DbConnector 
-   
-   $ git submodule init 
-   ...
+   #+BEGIN_SRC sh
+   git submodule add https://github.com/chanconinc/DbCounnector <path>
+   git status 
+   #...
+   #new file: .gitmodules
+   #new file: DbConnector
+   cat .gitmodules
+   #[submodule "DbConnector"]
+   #path = DbConnecter
+   #url = https://github.com/chaconinc/DbConnector 
+
+   git clone https://github.com/chaconics/MainProject
+
+   cd MainProject
+   cd DbConnector
+   ls
+   # (DbConnector is empty directory)
+   git submodule init 
+   # Submodule 'DbConnector' (https://github.com/chaconinc/DbConnector)
+   # registered for path 'DbConnector'
+   git submodule update
+   # Cloning into 'DbConnector'...
+   # remote: Counting objects: 11, done.
+   # remote: Compressing objects: 100% (10/10), done.
+   # remote: Total 11 (delta 0), reused 11 (delta 0)
+   # Unpacking objects: 100% (11/11), done.
+   # Checking connectivity... done.
+   # Submodule path 'DbConnector': checked out
+   # 'c3f01dc8862123d317dd46284b05b6892c7b29bc'
+
+   #===============================================================================
+   # 一次性拉取所有子项目
+   git clone --recursive https://github.com/chaconics/MainProject
+   # Cloning into 'MainProject'...
+   # remote: Counting objects: 14, done.
+   # remote: Compressing objects: 100% (13/13), done.
+   # remote: Total 14 (delta 1), reused 13 (delta 0)
+   # Unpacking objects: 100% (14/14), done.
+   # Checking connectivity... done.
+   # Submodule 'DbConnector' (https://github.com/chaconinc/DbConnector)
+   # registered for path 'DbConnector'
+   # Cloning into 'DbConnector'...
+   # remote: Counting objects: 11, done.
+   # remote: Compressing objects: 100% (10/10), done.
+   # remote: Total 11 (delta 0), reused 11 (delta 0)
+   # Unpacking objects: 100% (11/11), done.
+   # Checking connectivity... done.
+   # Submodule path 'DbConnector': checked out
+   # 'c3f01dc8862123d317dd46284b05b6892c7b29bc'
+   #+END_SRC
+- 在包含子模块的项目上工作
+  #+BEGIN_SRC sh
+  # cd <submodule>
+  cd  DbConnector
+  git fetch
+  # From https://github.com/chaconinc/DbConnector
+  # c3f01dc..d0354fc master -> origin/master
+
+  git merge origin/master
+  # Updating c3f01dc..d0354fc
+  # Fast-forward
+  # scripts/connect.sh | 1 +
+  # src/db.c           | 1 +
+  # 2 files changed, 2 insertions(+)
+
+  git diff --submodule
+  # 简化
+  git config --global diff.submodule log
+  git diff
+  # Submodule DbConnector 03f01dc..d0354fc:
+  # > more efficient db routine
+
+  ################################################################################
+  # 简化拉取
+  git submodule update --remote DbConnector
+
+  ################################################################################
+  # 不拉取master分支，制定其他分支(如：stable)
+
+  # 在.gitmodule文件中设置
+  # -f .gitmodule 可以提交给别人
+  git config -f .gitmodules submodule.DbConnector.branch stable
+  git submodule update --remote
+  # remote: Counting objects: 4, done.
+  # remote: Compressing objects: 100% (2/2), done.
+  # remote: Total 4 (delta 2), reused 4 (delta 2)
+  # Unpacking objects: 100% (4/4), done.
+  # From https://github.com/chaconinc/DbConnector
+  # 27cf5d3..c87d55d stable -> origin/stable
+  # Submodule path 'DbConnector': checked out
+  # 'c87d55d4c6d4b05ee34fbc8cb6f7bf4585ae6687'
+
+  # 显示子模块更改摘要
+  git config status.submodulesymmary 1
+  git status
+
+  :<<!
+  On branch master
+  Your branch is up-to-date with 'origin/master'.
+  Changes not staged for commit:
+  (use \"git add <file>...\" to update what will be committed)
+  (use \"git checkout -- <file>...\" to discard changes in working
+  directory)
+  modified:
+  modified:
+  .gitmodules
+  DbConnector (new commits)
+  Submodules changed but not updated:
+  ,* DbConnector c3f01dc...c87d55d (4):
+  > catch non-null terminated lines
+  !
+  #+END_SRC
+- 在子模块上工作
+  #+BEGIN_SRC sh
+  # 游离HEAD，意味着本地工作分支不会被跟踪
+  git submodule update
+
+  git checkout stable
+  git submodule update --remote --merg
+  :<<!
+  remote: Counting objects: 4, done.
+  remote: Compressing objects: 100% (2/2), done.
+  remote: Total 4 (delta 2), reused 4 (delta 2)
+  Unpacking objects: 100% (4/4), done.
+  From https://github.com/chaconinc/DbConnector
+  c87d55d..92c7337 stable
+  -> origin/stable
+  Updating c87d55d..92c7337
+  Fast-forward
+  src/main.c | 1 +
+  1 file changed, 1 insertion(+)
+  Submodule path 'DbConnector': merged in
+  '92c7337b30ef9e0893e758dac2459d07362ab5ea'
+  !
+
+  vim src/db.c # modify code
+  git commit -am 'unicode support'
+  git submodule update --remote --rebase
+
+  # 发布子模块改动
+  git push --recurse-submodules=check
+  git push --recurse-submodules=no-demand
+  #+END_SRC
+- 子模块技巧
+  #+BEGIN_SRC sh
+  # 子模块遍历
+  git submodule foreach 'git stash' # 保存所有子模块进度
+  git submodule foreadh 'git checkout -b featureA'
+  git diff; git submodule foreach 'git diff'
+
+  # 有用的别名
+  git config alias.sdiff '!'"git diff && git submodule foreach 'git diff'"
+  git config alias.spush 'push --recurse-submodules=no-demand'
+  git config alias.supdate 'submodule update --remote --merge'
+  # git supdate
+  # git spush
+
+  ################################################################################
+  # 不同分支引用不同子模块问题
+
+  # 创建add-crypto分支
+  git checkout -b add-crypto
+  # 添加新的加密子模块
+  git submodule add https://github.com/chaconinc/CryptoLibrary
+  # 提交分支改动
+  git commit -am 'add crypto library'
+
+  # 检出master分支
+  git checkout master
+  # WARNING unable torm dir CryptoLibrary: Directory not empty
+  git status
+  # Untracked files CryptoLabrary
+
+  #----------------------------------------
+  # 解决方案
+  git clean -fdx # Removing CryptoLibrary/
+  git checkout add-crypto
+  git submodule update --init # 重新初始化，和下载
+  #+END_SRC
+
+  将子目录转换为子模块
+  #+BEGIN_SRC sh
+  
+  #+END_SRC
 ** 7.12 打包
+   #+BEGIN_SRC sh
+   # A 打包
+   git bundle create repo.bundle HEAD master # 打包,HEAD指定检出的分支
+
+   # B 导入
+   git clone repo.bundle repo # 从他打包的项目克隆，自动检出HEAD指向的分支master
+   cd repo
+   git log
+
+   # B 修改并提交源码
+   # ...
+   # B 手动计算提交区间
+   git log --oneline
+   :<<!
+   71b84da last commit - second repo
+   c99cf5b fourth commit - second repo
+   7011d3d third commit - second repo
+   9a466c5 second commit
+   b1ec324 first commit
+   !
+   git log --oneline master ^origin/master
+   git boundle create commits.bundle master ^9a466c5
+
+   # A 导入B提交的代码
+   git bundle verify ../commits.bundle # 检测是否合法的提交
+   git bundle list-heads ../commits.bundle
+   git fetch ../commits.bundle master:other-master
+   :<<!
+   git log --oneline --decorate --graph --all
+   ,* 8255d41 (HEAD, master) third commit - first repo
+   | * 71b84da (other-master) last commit - second repo
+   | * c99cf5b fourth commit - second repo
+   | * 7011d3d third commit - second repo
+   |/
+   ,* 9a466c5 second commit
+   ,* b1ec324 first commit
+   !
+
+   #+END_SRC
    $ git bundle create repo.bundle HEAD master 
    $ git clone repo.bundle repo 
    $ git bundle create repo.bundl -b master 
+** 7.13 替换
+- replace 命令可以让你在 Git 中指定一个对象并可以声称
+  “每次你遇到这个 Git 对象时,假装它是其他的东西”。
+- 简化提交历史，缩小下载数据
+- sample
+  #+BEGIN_SRC sh
+  # 将一个仓库分成2个仓库
+  git log --oneline
+  :<<!
+  ef989d8 fifth commit
+  c6e1e95 fourth commit
+  9c68fdc third commit
+  945704c second commit
+  c1822cf first commit
+  !
+  # 创建一个历史分支 history
+  git branch history c6e195
+  git log --oneline --decorate
+  :<<!
+  ef989d8 (HEAD, master) fifth commit
+  c6e1e95 (history) fourth commit
+  9c68fdc third commit
+  945704c second commit
+  c1822cf first commit
+  !
+  # 推送历史分支到新的仓库
+  git remote add project-history https://github.com/schacon/project-history
+  git push project-history history:master
+
+  # 删减最近的历史让他变小
+  echo 'get history from https://github.com/schacon/project-history' | \
+      git commit-tree 9c68fdc^{tree}
+
+  # 获得基础提交 622e88
+  # 通过 git rebase --onto 变基到基础体提交上
+  git rebase --onto 622e88 9c68fdc
+
+  ################################################################################
+  # 拼接历史
+  git clone https://github.com/schacon/project
+  cd project
+  git log --oneline master
+  :<<!
+  e146b5f fifth commit
+  81a708d fourth commit
+  622e88e get history from blah blah blah
+  !
+
+  git remote add project-history https://github.com/schacon/project-history
+  git fetch project-history
+  git log --oneline master
+  git log --oneline project-history/master
+  :<<!
+  c6e1e95 fourth commit
+  9c68fdc third commit
+  945704c second commit
+  c1822cf first commit
+  !
+
+  # 合并
+  git replace 81a708d c631396
+  git log --oneline master
+  :<<!
+  e146b5f fifth commit
+  81a708d fourth commit
+  9c68fdc third commit
+  945704c second commit
+  c1822cf first commit
+  !
+  #+END_SRC
 * 8 自定义Git
 ** 8.1 配置Git
  - 客户端基本配置
