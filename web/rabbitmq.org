@@ -306,6 +306,52 @@
 ** Shovels Between Clusters
 * Federation Plugin
 
+* Monitoring
+** What is monitoring
+   process: health checks + metrics over time
+   anomaly -> MonitoringSystem -(alarm)-> AlertingSystem -(notify)-> parties(tot)
+   60~30s frequency
+
+** What infrastructure and kernel metrics are important to monitor
+*** infrastructure    
+*** kernel
+    CPU stats
+    Memory usage
+    Virutal Memory
+    Disk I/O
+    Free disk space
+    File descriptors used
+    TCP connections by state
+    Network throughput
+    Network latency
+** RabbitMQ meatrics
+   [[Management Plugin]]
+** Monitoring of Clusters
+*** Cluster-wide Metrics(集群指标)
+*** Node Metrics(节点指标)
+*** Individual Queue Metrics(队列指标)
+    判断指标异常
+*** Application-level Metrics(应用层指标)
+    有助判断指标异常源头
+*** Health Checks
+*** Individual Node Checks
+    #+BEGIN_SRC sh
+    rabbitmq-diagnostics ping -q
+    # => Ping succeeded if exit code is 0
+    rabbitmq-diagnostics -q status
+    # => [output elided for brevity]
+    rabbitmq-diagnostics -q alarms
+    rabbitmq-diagnostics -q check_running
+    rabbitmq-diagnostics -q check_local_alarms
+    curl --silent -u guest:guest -X GET http://127.0.0.1:15672/api/nodes/rabbit@hostname/memory | jq
+    #+END_SRC
+** How frequently should monitoring checks be performed?
+** Application-level metrics
+** How to check a node's health and why it's more involved than a single CLI
+* Management Plugin
+  #<<Management Plugin>>
+  https://www.rabbitmq.com/management.html
+
 * #<<Http API>>
 * #<<CLI tool>>
   https://www.rabbitmq.com/cli.html
