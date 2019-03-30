@@ -838,5 +838,889 @@
     利用 SO_KEEPALIVE
 *** 5.16 服务器主机关机
     系统关机是 init 向所有进程发送 SIGTERM 过5~20秒(留时间清理数据) 发送 SIGKILL;
+*** 5.17 TCP程序例子小结
+    - [{localip:port},{remoteip:port}]
+    - getsockname(),getpeername() 获取IP，端口
+*** 5.18 数据格式
+**** 5.18.1 传递文本串
+**** 5.18.2 传递二进制
+** 6 I/O(Multiplexing)复用：select/pool
+*** 6.1 概述
+    - 5.12问题，客户阻塞与单一调用上；
+    应用场景
+    - 同时处理多个fd
+    - TCP + UDP
+    - 如inetd,多服务多协议
+*** 6.2 I/O模型
+    - 阻塞IO
+    - 非阻塞IO
+    - IOmultiplexing(select/pool)
+    - SIGIO
+    - 异步io，aio_*
+**** 6.2.1 blocking IO
+     #+BEGIN_SRC ditaa
+     client                            kernel
+       |                                 | no data ready
+       |  recvfrom()   syscall           |
+       +-------------------------------->|
+       |                                 | wait data
+       |                                 |
+       |                                 | data ready
+       |                                 |
+       |  recvfrom() return              | copy data from kernel to user space
+       |<--------------------------------+
+       |                                 |
+       |                                 |
+     #+END_SRC
+**** 6.2.2 nonblocking IO
+     #+BEGIN_SRC ditaa
+       +---------------+                   +-------------+
+       |  process      |                   |   kernel    |
+       +-----+---------+                   +------+------+
+             |  recvfrom                          |
+             +----------------------------------->|    
+             |<-----------------------------------+ no data
+             |  EAGAIN                            |
+             |  recvfrom()                        |
+             +----------------------------------->|
+             |  EAGAIN                            | no data
+             |<-----------------------------------+
+             |    .....                           |
+             |                                    |
+             +----------------------------------->| data ready
+             |                                    | copy to process
+             |<-----------------------------------+
+             |  return datas                      |
+             |                                    |
+     #+END_SRC
+**** 6.2.3 IO multiplexing
+     #+BEGIN_SRC ditaa
+       +------------+                 +---------+
+       |  process   |                 | kernel  |
+       +---+--------+                 +----+----+
+           |                               |
+           | select()                      |
+           +------------------------------>|  no data
+           |  return()                     |
+           |<------------------------------+  data ready
+           +------------------------------>|  
+           | recvfrom()                    | copy data to process
+           |                               |
+           |<------------------------------+
+           |  return(data)                 |
+           |                               |
+           |                               |
+     #+END_SRC
+**** 6.2.4 SIGIO(signal-driven I/O)
+     #+BEGIN_SRC ditaa
+        +-----------+               +---------+
+        | process   |               | kernel  |
+        +---+-------+               +---+-----+
+            | sigaction(SIGIO)          |
+            +-------------------------->|
+            |                           | wait data
+            | SIGIO                     |
+            |<--------------------------+  data ready
+            |recvfrom                   |
+            +-------------------------->|
+            |                           | copy data to process
+            |<--------------------------+
+            | return(data)              |
+            |                           |
+     #+END_SRC
+**** 6.2.5 asynchronous IO
+     #+BEGIN_SRC ditaa
+      +----------+             +----------+
+      |process   |             | kernel   |
+      +--+-------+             +------+---+
+         | aio_read                   |
+         +--------------------------->|  no data
+         |<---------------------------+
+         |                            |
+         |                            |  wait data
+         |                            |
+         |                            |  data ready
+         |  aio_read().signal         |  copy to process
+         |<---------------------------+
+         |                            |
+         |                            |
+     #+END_SRC
+***** 6.2.5.1 AIO in Ubuntu18.04
+- NAME
+  AIO - POXIS asynchronous I/O overview
+- DESCRIPTION
+  - Initiate one/more IO operations that are performed asynchronously
+  - Notified ways:(通知方式)
+    - delivery of a signal(发送信号)
+    - instantiation of a thread(实例化一个线程)
+    - no notivication(无通知)
+- FUNCTIONS
+  - aio_read(3)
+    Enqueue a read request.
+  - aio_write(3)
+    Enqueue a write request.
+  - aio_fsync(3)
+    Enqueue a sync request for the IO operations on a file descriptor.
+  - aio_error(3)
+    Obtain the error status of an enqueued IO request.
+  - aio_return(3)
+    Obtain the return status of a complete IO request.
+  - aio_suspend(3)
+    Suspend the caller untile one or more of a specified set of IO requests completes.
+  - aio_cancel(3)
+    Attempt to cancel outstanding IO requests on a specified file descriptor.
+  - lio_listio(3)
+    Enqueue mutiple IO requests using a single function call.
+  - aio_init(3)
+    Set parameters for tuning the behavior of the glibc POSIX AIO implementation.
 
+- AIOCB(asynchronous IO control block)
+  Defines parameters that control an IO operation.
+  #+BEGIN_SRC c
+  struct aiocb {
+      /* The order of these fields is implementation-dependent */
+      
+      int             aio_fildes;     /* File descriptor */
+      off_t           aio_offset;     /* File offset */
+      volatile void  *aio_buf;        /* Location of buffer */
+      size_t          aio_nbytes;     /* Length of transfer */
+      int             aio_reqprio;    /* Request priority */
+      struct sigevent aio_sigevent;   /* Notification method */
+      int             aio_lio_opcode; /* Operation to be performed;
+                                         lio_listio() only */    
+      /* Various implementation-internal fields not shown */
+  };
+  #+END_SRC
+  - aio_fildes
+    The file descriptor on which the IO operation is to be performed.(指定文件描述符)
+  - aio_offset
+    The file offset at which the IO operation is to be performed.(指定操作偏移量)
+  - aio_buf
+    Used to transfer data for a read or write operation(读/写缓冲区)
+  - aio_nbytes
+    The size of the <aio_buf>(缓冲区大小)
+  - aio_reqprio
+    - value 0 ~ sysconf(SC_AIO_PRIO_DELTA_MAX)
+    - IGNORED for file synchronization operations(aio_fsync()操作忽略该优先级)
+  - aio_sigevent
+    - Specifies hot the caller is to be notified when aio completes.
+    - aio_sigevent.sigev_notify
+      - SIGEV_NONE
+      - SIGEV_SIGNAL
+      - SIGEV_THREAD
+    - see [[sigevent(7)]] for further details.
+  - aio_lio_opcode
+    The type of opeartion to be performed;
+    ONLY used for lio_listio(3)
+- ERRORS
+- NOTES
+  - bzero(aiocb*);初始化未0,后使用；
+  - aiocb*, aiocb.aio_buf MUST NOT be changed while IO operation is in progress.
+    aiocb生命周期内，不要变动；
+  - aiocb, aiocb.aio_buf MUST valid until the IO opeartion completes.
+    aiocb生命周期内，必须保持内存合法；
+  - Simutaneous async read/write ops using the same aiocb yield undefined results.
+    不要共用一个aiocb进行同时读写操作，否则结果是不可预测的；
+  - AIO is provided in user space by glibc.
+    由glibc在用户空间提供，不是在内核空间实现；
+  - 限制
+    - Maintaining multiple threads to perform IO ops is expensive and scales poorly
+      维护多线程IO是昂贵和不易扩展的
+    - Kernel stat-machine-based implementation of AIO has been in progress
+      But 未成熟
+- EXAMPLE
+  - overview
+    - open files and queues a request using *aio_read(3)*.
+    - Periodically monitoring each ios using *aio_error(3)*.
+    - Each requests set to provide notification by delivery of a *signal*.
+    - After all IO request have completed, the program retrieves their status using *aio_return(3)*
+    - *SIGQUIT <= control-\* cause the program to request cancellation of each of the
+      outstanding requests using *aio_cancel(3)*
+    - usecase
+      #+BEGIN_SRC sh
+                 $ ./a.out /dev/stdin /dev/stdin
+                 opened /dev/stdin on descriptor 3
+                 opened /dev/stdin on descriptor 4
+                 aio_error():
+                     for request 0 (descriptor 3): In progress
+                     for request 1 (descriptor 4): In progress
+                 abc
+                 I/O completion signal received
+                 aio_error():
+                     for request 0 (descriptor 3): I/O succeeded
+                     for request 1 (descriptor 4): In progress
+                 aio_error():
+                     for request 1 (descriptor 4): In progress
+                 x
+                 I/O completion signal received
+                 aio_error():
+                     for request 1 (descriptor 4): I/O succeeded
+                 All I/O requests completed
+                 aio_return():
+                     for request 0 (descriptor 3): 4
+                     for request 1 (descriptor 4): 2
+      #+END_SRC
+  #+BEGIN_SRC c
+  #include <fcntl.h>
+  #include <stdlib.h>
+  #include <unistd.h>
+  #include <stdio.h>
+  #include <errno.h>
+  #include <aio.h>
+  #include <signal.h>
+
+  #define BUF_SIZE 20 /* Size of buffers for read operations */
+  #define errExit(msg) do{perror(msg); exit(EXIT_FAILURE);}while(0)
+  #define errMsg(msg) do{perror(msg);}while(0)
+
+  /**
+   ,* Application-defined struct for tracking IO requests
+   ,*/
+  struct ioRequest{
+      int reqNum;
+      int status;
+      struct aiocb *aiocbp;
+  };
+
+  /**
+   ,* On deliver of SIGQUIT, we attempt to cancell all
+   ,* outstanding IO requests
+   ,*/
+  static volatile sig_atomic_t gotSIGQUIT = 0;
+
+  static void quitHandler(int sig){
+      gotSIGQUIT = 1;
+  }
+
+  #define IO_SIGNAL SIGUSR1 /* Signal used to notify IO completion */
+
+  /**
+   ,* Handler for IO completion signal
+   ,*/
+  static void aioSigHandler(int sig, siginfo_t *si, void *ucontent){
+      if(si->si_code == SI_ASYNCIO){
+          write(STDOUT_FILENO, "I/O completion signal received\n", 31);
+          /* The corresponding ioRequest structure would be available as struct
+             ioRequest *ioReq = si->si_value.sival_ptr;
+             and the file descriptor would then be available via
+             ioReq->aiocbp->aio_filds
+           ,*/
+      }
+  }
+
+  int main(int argc, char **argv){
+      struct ioRequest *ioList;
+      struct aiocb *aiocbList;
+      struct sigaction sa;
+      int s, j;
+      int numReqs; /* Total number of queued IO requests */
+      int openReqs; /* Number of io requests still in progress */
+      
+      if(argc < 2){
+          fprintf(stderr, "Usage: %s <pathname> <pathname>...\n", argv[0]);
+          exit(EXIT_FAILURE);
+      }
+      nimReqs = argc -1;
+
+      /* Alocate out arrays */
+      ioList = calloc(numReqs, sizeof(struct ioRequest));
+      if(ioList == NULL){
+          errExit("calloc");
+      }
+      aiocbList = calloc(nunReqs, sizeof(struct aiocb));
+      if(aiocbList == NULL){
+          errExit("calloc");
+      }
+
+      /* Establish handlers for SIGQUIT and IO completion signal */
+      sa.sa_flags = SA_RESTART;
+      sigemptyset(&sa.sa_mask);
+      sa.sa_handler = quitHandler;
+      if(sigaction(SIGQUIT, &sa, NULL) == -1){
+          errExit("sigaction");
+      }
+
+      sa.sa_flags = SA_RESTART | SA_SIGINFO;
+      sa.sa_sigaction = aioSigHandler;
+      if(sigaction(IO_SIGNAL, &sa, NULL) == -1){
+          errExit("sigaction");
+      }
+
+      /* Open each file specified on the command line,
+       ,* and queue a read request on the resulting file descriptor
+       ,*/
+      for(j = 0; j < numReqs; j++){
+          ioList[j].reqNum = j;
+          ioList[j].status = EINPROGRESS;
+          ioList[j].aiocbp = &aiocbList[j];
+
+          ioList[j].aiocbp->aio_fildes = open(argv[j+1], O_RDONLY);
+          if(ioList[j].aiocbp->aio_fildes == -1){
+              errExit("open");
+          }
+          printf("opend %s on descriptor %d\n", argv[j + 1], ioList[j].aiocbp->aio_fildes);
+          ioList[j].aiocbp->aio_buf = malloc(BUF_SIZE);
+          // assert aio_buf
+          ioList[j].aiocbp->aio_nbytes = BUF_SIZE;
+          ioList[j].aiocbp->aio_reqprio = 0;
+          ioList[j].aiocbp->aio_offset = 0;
+          ioList[j].aiocbp->aio_sigevent.sigev_notify = SIGEV_SIGNAL;
+          ioList[j].aiocbp->aio_sigevent.sigev_signo = IO_SIGNAL;
+          ioList[j].aiocbp->aio_sigevent.sigev_value.sival_ptr = &ioList[j];
+
+          s = aio_read(ioList[j].aiocbp);
+          if(s == -1){
+              errExit("aio_read");
+          }
+      }
+
+      /* Loop, monitoring status of IO requests */
+      openReqs = numReqs;
+      while(openReqs > 0){
+          sleep(3); /* Delay between each monitoring step */
+          if(gotSIGQUIT){
+              printf("get SIGQUIT; canceling IO requests:\n");
+              for(j = 0; j < numReqs; j++){
+                  if(ioList[j].status == EINPROGRESS){
+                      printf("    Require %d on fd %d:", j, ioList[j].aiocbp->aio_fildes);
+                      s = aio_cancel(ioList[j].aiocbp->aio_fildes,
+                                     aioLi[j].aiocbp);
+                      if(s == AIO_CANCELED){
+                          printf("IO canceled\n");
+                      }else if(s == AIO_NOTCANCELED){
+                          printf("IO not canceled\n");
+                      }else if(s == AIO_ALLDONE){
+                          printf("IO all done\n");
+                      }else{
+                          errMsg("aio_cancel");
+                      }
+                  }
+              }
+              gotSIGQUIT = 0;
+          }
+
+          /* Check the status of each IO request that is still in progress */
+          printf("aio_error():\n");
+          for(j = 0; j < numReqs; j++){
+              if(ioList[j].status == EINPROGRESS){
+                  ioList[j].status = aio_error(ioList[j].aiocbp);
+                  switch(ioList[j].status){
+                  case 0:
+                      printf("IO succsed\n");
+                      break;
+                  case EINPROGRESS:
+                      printf("In progress\n");
+                      break;
+                  case ECANCELED:
+                      printf("canceled\n");
+                      break;
+                  default:
+                      errMsg("aio_error");
+                      break;
+                  }
+
+                  if(ioList[j].status != EINPROGRESS){
+                      openReqs--;
+                  }
+              }
+          } // for openReqs
+      } //3sec loop
+      printf("All IO request completed\n");
+      printf("aio_return():\n");
+      for(j = 0; j < numReqs; j++){
+          ssize_t s;
+          s = aio_return(ioList[j].aiocbp);
+          //...
+      }
+      exit(EXIT_SUCCESS);
+  }
+  #+END_SRC
+****** sigevent(7)
+#<<sigevent(7)>>
+- NAME
+  sigevent - structure for notification from asynchronous routine
+- SYNOPSIS
+  #+BEGIN_SRC c
+  #include <signal.h>
+  union signal{
+      int sival_int; /* integer value */
+      void *sigval_ptr; /* Pointer value */
+  };
+
+  struct sigevent{
+      int sigev_notify; /* notification method */
+      int sigev_signo; /* notifaication signal */
+      union sigval sigev_value;
+      /* function used for thread notification(SIGEV_THREAD) */
+      void (*sigev_notify_function)(union sigval);
+      void *sigev_notify_attributes;
+      pid_t sigev_notify_thread_id;
+  }
+  #+END_SRC
+
+*** 5.3 select()
+    #+BEGIN_SRC c
+    #include <sys/select.h>
+    #include <sys/time.h>
+
+    /**
+     ,* @param [in,out] exception
+     ,*                 带外数据异常
+     ,*                 伪终端读取控制状态
+     ,* @param [in] timeout
+     ,*             NULL wait until fd events comin;
+     ,*             {1, 0} 1 sec timeout;
+     ,*             {0, 0} no wait;
+     ,*/
+    int select(int maxfdp1, fd_set *readfds, fd_set *writefds,
+               fd_set *exceptfds, struct timeval *timeout);
+    void FD_CLR(int fd, fd_set *set);
+    int FD_ISSET(int fd, fd_set *set);
+    void FD_SET(int fd, fd_set *set);
+    void FD_ZERO(fd_set *set);
+    #+END_SRC
+** 7. 套接字选项
+*** 7.1 概述
+    - getsockopt()/setsockopt()
+    - fnctl()
+    - ioctl() $17
+*** 7.2 getsockopt(),setsockopt()
+    #+BEGIN_SRC c
+    #include <sys/types.h>          /* See NOTES */
+    #include <sys/socket.h>
+
+    int getsockopt(int sockfd, int level, int optname,
+                   void *optval, socklen_t *optlen);
+    int setsockopt(int sockfd, int level, int optname,
+                   const void *optval, socklen_t optlen);
+
+    #+END_SRC
+    - sockfd
+    - level
+      - SOL_SOCKET
+        b = boolean
+        gs = get/set
+        | optname        | gs | b | type      | description                  |
+        |----------------+----+---+-----------+------------------------------|
+        | SO_BROADCAST   | 11 | 1 | int       | 允许广播                     |
+        | SO_DEBUG       | 11 | 1 | int       | 开启跟踪调试                 |
+        | SO_DONTROUTE   | 11 | 1 | int       | 绕过外出路由表查询           |
+        | SO_ERROR       | 10 |   | int       | 获取待处理错误并清除         |
+        | SO_KEEPALIVE   | 11 | 1 | int       | 周期性测试连接是否存活       |
+        | SO_LINGER      | 11 |   | linger{}  | 若有数据发送则延时关闭       |
+        | SO_OOBINLINE   | 11 |   | int       | 带外数据继续留存             |
+        | SO_RCVBUF      | 11 |   | int       | TCP接收缓冲区                |
+        | SO_SNDBUF      | 11 |   | int       | TCP发送缓冲区                |
+        | SO_RCVLOWAT    | 11 |   | int       | 接收低水位                   |
+        | SO_SNDLOWAT    | 11 |   | int       | 发送低水位                   |
+        | SO_RCVTIMEO    | 11 |   | timeval{} | 接收超时                     |
+        | SO_SNDTIMEO    | 11 |   | timeval{} | 发送超时                     |
+        | SO_REUSEADDR   | 11 | 1 | int       | 重用本地地址                 |
+        | SO_REUSEPORT   | 11 | 1 | int       | 重用本地端口                 |
+        | SO_TYPE        | 10 |   | int       | 取得套接字类型               |
+        | SO_USELOOPBACK | 11 | 1 | int       | 路由套接字取得发送数据的副本 |
+      - IPPROTO_IP
+        | optname                   | gs | b | type             | description      |
+        |---------------------------+----+---+------------------+------------------|
+        | IP_HDRINCL                | 11 | 1 | int              | 随数据包含IP首部 |
+        | IP_OPTIONS                | 11 |   | *                | IP首部选项       |
+        | IP_RECVDSTADDR            | 11 | 1 | int              | 返回目的IP地址   |
+        | IP_RECVIF                 | 11 | 1 | int              | 接收接口索引     |
+        | IP_TOS                    | 11 |   | int              | 服务类型和优先权 |
+        | IP_TTL                    | 11 |   |                  | 存活时间         |
+        |---------------------------+----+---+------------------+------------------|
+        | IP_MTLTICAST_IF           | 11 |   | in_addr{}        | 外出接口         |
+        | IP_MULTICAST_TTL          | 11 |   | u_char           | 外出TTL          |
+        | IP_MULTICAST_LOOP         | 11 |   | u_char           | 是否回环         |
+        | IP_ADDR_MEMBERSHIP        | 01 |   | ip_mreq{}        | 加入多播组       |
+        | IP_DROP_MEMBERSHIP        | 01 |   | ip_mreq{}        | 离开多播组       |
+        | IP_BLOCK_SOURCE           | 01 |   | ip_mreq_source{} | 阻塞多播源       |
+        | IP_UNBLOCK_SOURCE         | 01 |   | ip_mreq_source{} | 开通多波源       |
+        | IP_ADD_SOURCE_MEMBERSHIP  | 01 |   | ip_mreq_source{} | 加入源特定多播组 |
+        | IP_DROP_SOURCE_MEMBERSHIP | 01 |   | ip_mreq_source{} | 离开源特定多播组 |
+        |---------------------------+----+---+------------------+------------------|
+      - IPPROTO_ICMPV6
+        | optname      | gs | b | type           | description                |
+        |--------------+----+---+----------------+----------------------------|
+        | ICMP6_FILTER | 11 |   | icmp6_filter{} | 指定待传递的ICMPv6消息类型 |
+        |              |    |   |                |                            |
+      - IPPROTO_IPV6
+      - IPPROTO_TCP
+      - IPPROTO_SCTP
+    - optval
+      - boolean
+      - int
+      - struct
+    - optlen
+*** 7.3 打印套接字默认值
+   sockopt/checkopts.c
+*** 7.5 通用套接字选项
+**** 7.5.1 SO_BROADCAST
+     手动打开，防止无意的广播数据
+     如未打开，发送了广播地址则 EACCES 错误
+**** 7.5.2 SO_DEBUG
+     仅支持TCP，使用trpt程序进行检查；
+**** 7.5.3 SO_DONTROUTE
+     强制分组从特定的出口送出
+**** 7.5.4 SO_ERROR
+     pending error
+     1. 阻塞在select上
+     2. IO
+**** 7.5.5 SO_KEEPALIVE
+     2小时，TCP自动给对端发送一个保持存活分节；
+     1. ACK -> OK
+     2. RST -> ECONNRESET
+     3. no ACK -> ETIMEOUT
+**** 7.5.6 SO_LINGER
+**** 7.5.7 SO_OOBINLINE
+**** 7.5.8 SO_RCVBUF/SO_SNDBUF
+     - connect 前设置
+     - listen 前设置
+**** 7.5.9 SO_RECVLOWAT/SO_SNDLOWAT
+**** 7.5.10 SO_RECVTIMEO/SO_SNDTIMEO
+**** 7.5.11 SO_REUSEADDR/SO_REUSEPORT
+     - SO_REUSEADDR
+       1. a服务监听9999端口
+       2. b连接到达
+       3. fork() c进程与b通信
+       4. restart a
+       5. a bind(0:9999)失败
+       6. *所有服务器必须在bind前调用setsockopt(SO_REUSEADDR,1)*
+       7. *可以启动同一port不同IP,的多个实例*
+          localhost.ip=198.69.10.2
+          localhost.alias=198.69.10.128 & 198.69.10.129
+          localhost可启动三个HTTP服务器
+          localhost.http2.SO_REUSEADDR.bind(198.69.10.128:80)
+          localhost.http3.SO_REUSEADDR.bind(198.69.10.129:80)
+          localhost.http1.SO_REUSEADDR.bind(INADDR_ANY:80); 有些系统需要最后启动
+       8. *TCP绝不多服务器能捆绑相同IP:port*
+       9. process.sock_udp_1.SO_REUSEADDR.bind(192.168.10.128:80)
+          process.sock_udp_2.SO_REUSEADDR.bind(192.168.10.129:80)
+          process.sock_udp_3.SO_REUSEADDR.bind(INADDR_ANY:80)
+          process.sock.IP_RECVDSTADDR=0的系统上非常有用
+       10. process1.sock_udp1.SO_ERUSEADDR.bind(INADDR_ANY:80)
+           process2.sock_udp2.SO_REUSEADDR.bind(INADDR_ANY:80)
+           广播/多播数据报msg_b，则process1,process2都会收到msg_b
+           单播数据报msg_u,则process1 或 process2 中的一个能收到msg_u
+     - SO_REUSEPORT(4.4BSD)
+       1. 允许完全绑定同一IP:port
+       2. 不是所有系统都支持
+**** 7.5.12 SO_TYPE
+     通常由子进程使用
+**** 7.5.13 SO_USELOOPBACK
+     1. 仅用于AF_ROUTE
+*** 7.6 IPV4.IPPROTO_IP
+**** 7.6.1 IP_HDRINCL
+     - 手动构造IP头部，如traceroute
+     - 例外
+       1. IP总是计算并存储IP首部校验和
+       2. IP标识字段为0，内核将设置该字段
+       3. IPHeader.src=INADDR_ANY,内核将设在将设置外出主IP
+       4. IP_OPTIONS 系统不同而不同
+       5. 不同系统字段的字节序要求不同，不便移植
+
+**** 7.6.2 IP_OPTIONS
+**** 7.6.3 IP_RECVDSTADDR
+     $22.2
+**** 7.6.4 IP_RECVIF
+     $22.2
+**** 7.6.5 IP_TOS
+     服务类型问题，DSCP/ECN
+     IPTOS_LOWDELAY/IPTOS_THROUGHPUT
+**** 7.6.6 IP_TTL
+*** 7.7 ICMPv6
+    原始套接字进程过滤ICMPv6报文
+*** 7.8 IPv6
+*** 7.9 TCP IPPROTO_TCP
+**** 7.9.1 TCP_MAXSEG(MSS)
+     只可减少，不可增加！
+**** TCP_NODELAY
+     禁止Nagel算法
+     4+396
+     1. writev;
+     2. 合并后发送
+     3. set TCP_NODELAY write 4+396 (不可取)
+*** 7.10 SCTP
+** 8. 基本UDP套接字编程
+*** 8.1 概述
+    #+BEGIN_SRC ditaa
+      +--------------+               +-------------+
+      |  UDP client  |               | UDP server  |
+      +------+-------+               +-------+-----+
+             |                               |
+             |                               |  socket()
+             |                               |  bind()  
+             | socket()                      |  recvfrom()
+             | sendto()                      |
+             +------------------------------>|
+             | recvfrom()                    | handle()
+             |                               | sendto()
+             |<------------------------------+
+             |                               |
+             |handle()                       |
+             |close()                        |
+             |                               |
+             |                               |
+    #+END_SRC
+*** 8.2 recvfrom()/sendto()
+    #+BEGIN_SRC c
+    #include <sys/types.h>
+    #include <sys/socket.h>
+
+    ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+
+    ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+                   const struct sockaddr *dest_addr, socklen_t addrlen);
+
+    ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
+
+    ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+
+    ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+                     struct sockaddr *src_addr, socklen_t *addrlen);
+
+    ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);
+
+    #+END_SRC
+*** 8.8 多宿服务器验证接收到的响应
+    1. 查询DNS
+    2. 服务端分别绑定个IP，用select等待数据报
+*** 8.9 服务器未运行
+    #+BEGIN_SRC ditaa
+        +---------+                   +----------+
+        | macosx  |                   | freebsd4 |
+        +---+-----+                   +------+---+
+            |                                |
+            | udpcli01 172.24.39.94          |
+            | sendto()                       |
+            +------------------------------->|
+            | arp who-has freebsd4 tell macosx
+            | arp reply freebsd4 at ...      |
+            | macosx to freebsd4 udp13       |
+            | icmp udp port 9877 unreachable | (asnchronous error)
+            |                                |
+            |                                |
+            |                                |
+    #+END_SRC
+    - connect()
+      解决异步错误
+    - 守护进程监控未连接套接字上的这些错误简便方法
+*** 8.11 UDP connect
+    没有三次握手，内核只是检测是否存在立即可知的错误；
+    - 已连接套接字与未连接套接字区别
+      1. 不能调用sendto,改用write/send; 如一定用sendto，不能指定地址
+      2. 不必使用recvfrom,改用read/recv/recvmsg
+      3. 异步错误将返回给相应进程；
+    - DNS(/etc/resolv.conf)
+**** 8.11.1 多次调用connect
+     - 指定新的IP:port
+     - 断开套接字 sin_family=AF_UNSPEC, 返回NOTSUPPORT，但没关系，实际已断开；
+**** 8.11.2 性能
+     - 未连接数据报(性能低)
+       1. 连接
+       2. 发送
+       3. 断开
+       4. 连接
+       5. 发送
+       6. 断开
+     - 连接套接字(性能高)
+       不需要重复连接
+**** 8.13 缺乏流量控制
+     - 扩大缓冲区
+       setsockopt(sockfd, SOL_SOCKET, SO_RECVBUF, &n, sizeof(n));
+**** 8.14 UDP外出接口确定(getsockname)
+**** 8.15 使用select的TCP+UDP echo server
+** 11 名字地址转换
+*** 11.1
+   - gethostbyname()/gethostbyaddr()
+   - getservbyname()/getservbyport()
+   - getaddrinfo()/getnameinfo()
+*** 11.2 域名系统
+    - DNS(Domain Name System 域名系统)
+    - simple name ; solaris, bsdi
+    - FQDN(Fully Qualified Domain Name)(absolute name) ; solaris.unpbook.com.
+**** 11.2.1 (Resource record)资源记录
+     - types
+       - A  host -> IPv4
+         freebsd IN A    12.106.32.254
+                 IN AAAA 3ffe:b80:1f86:1:a00:20ff:fea7:686b
+                 IN MX   5  freebsd.unpbook.com.
+                 IN MX   10 mailhost.unpbook.com.
+       - AAAA host -> IPv6
+       - PTR(PoinTeR record) ip -> hostname
+         - IPv4 (<ip>.in-addr.arpa)
+           129.168.10.19.in-addr.arpa
+         - IPV6 (<ipv6>.ip6.arpa)
+           b.6.8....3.ip6.arpa
+       - MX(Mail eXchanger) [<优先级> <FQDN>]
+       - CNAME(canonical name 规范名字)
+         ftp IN CNAME linux.unpbook.com.
+         www IN CNAME linux.unpbook.com.
+**** 11.2.2 解析器(resolver)和名字服务器
+     - BIND(Berkeley Internet Name Domain)
+       gethostbyname() <--> BIND
+                         \-> /etc/resolv.con
+**** 11.2.3 DNS 替代方案
+     - /etc/hosts
+     - NIS(Network Information System)
+     - LDAP(Lightweight Directory Access Protocol轻量目录访问协议)
 * (三) 高级套接字编程
+** 12. IPv4/IPv6互操作性
+** 13. 守护进程和inetd
+*** 13.1 概述
+**** 守护进程启动方式
+     1. 初始化脚步启动 /etc/rc
+     2. inetd + Telnet/FTP
+     3. cron 定期执行
+     4. at 指定将来某时刻启动
+     5. 命令行
+**** syslog 是输出的标准方法
+*** 13.2 syslogd
+    1. /etc/syslog.conf
+    2. /var/run/log(/dev/log) + UNIS socket
+    3. UDP socket bind at 514
+    4. /dev/klog
+*** 13.3 syslog()
+*** 13.4 daemon_init()
+    daemon(3)
+*** 13.5 inetd
+**** 启动后台进程模型问题
+     1. daemon_init 相同的启动代码
+     2. 占据进程表，大部分时间处于休眠状态
+**** inetd 简化上述问题
+     1. 不需要daemon_init()
+     2. inetd未多个服务等待外来客户请求，减少总进程数
+     3. /etc/inetd.conf
+
+      
+** 14. 高级IO
+*** 14.1 概述
+    - timeout
+    - read/write 变体
+    - recv/send
+    - readv/writev
+    - recvmsg/sendmsg
+    - 确认缓冲区数据量
+    - 使用C/IO库
+*** 14.2 套接字超时
+    - 超时方法
+      1. alarm
+      2. select()
+      3. SO_RECVTIMEO/SO_SENDTIMEO(并非所有系统支持)
+**** 14.2.1 SIGALARM 给connect设置超时
+**** 14.2.3 select 为recvfrom 设置超时
+**** 14.3 recv/send
+     |---------------+---------+----|
+     | flags         | desc    | rs |
+     |---------------+---------+----|
+     | MSG_DONTROUTE |         | 01 |
+     | MSG_DONTWAIT  |         | 11 |
+     | MSG_OOB       |         | 11 |
+     | MSG_PEEK      | peek    | 10 |
+     | MSG_WAITALL   | recvn() | 10 |
+     |---------------+---------+----|
+**** 14.4 readv/writev
+     writev是原子操作
+**** 14.5 recvmsg/sendmsg
+**** 14.6 辅助数据
+**** 14.7 排队的数据量
+     1. nonblock I/O
+     2. MSG_PEEK, TCP可能2次数据发生变化,调用2次API效率不高！
+     3. ioctl(FIONREAD)
+     4. *个人观点* 分配=缓冲区大小的数据进行读取，避免2此API
+**** 14.8 fopen(fd)
+**** 14.9 高级轮训
+***** 14.9.1 /dev/poll(Solaris)
+***** 14.9.2 kqueue(BSD)
+**** 14.10 T/TCP
+** 15 UNIX域协议
+** 16. 非阻塞IO
+   1. 输入
+   2. 输出
+   3. accept
+   4. connect
+** 16.2 
+*** 16.2.2
+    354.0s 等停版本
+    12.3s   select+blocking
+    6.9s    select+nonblocking
+    8.7s    fork
+    8.5     thread
+*** 16.3 非阻塞connect
+    1. 本机连接可能调用返回时就建立完成
+    2. Berkeley 
+       1. ok 可写
+       2. error 可读写
+*** 16.6 非阻塞accept
+    1. select非阻塞accept
+    2. 忽略EWOULDBLOCK/ECONNABORTED/EPROTO/EINTR
+** 17. ioctl操作
+*** 17.1
+*** 17.2 ioctl()
+    #+BEGIN_SRC c
+    #include <unistd.h>
+    int ioctl(int fd, int request, ...);
+    #+END_SRC
+    | type      | request        | description             | type |
+    |-----------+----------------+-------------------------+------|
+    | socket    | SIOCATMARK     | 是否位于带外标记        | int  |
+    |           | SIOCSPGRP      | 设置套接字进程/组ID     | int  |
+    |           | SIOCGGRP       | 获取...                 | int  |
+    |-----------+----------------+-------------------------+------|
+    | file      | FIONBIO        | 设置/清除非阻塞标记     | int  |
+    |           | FIOASYNC       | 设置/清除信号驱动IO标记 | int  |
+    |           | FIONREAD       | 获取缓冲区字节数        |      |
+    |           | FIOSOWN        |                         |      |
+    |           | FIOGOWN        |                         |      |
+    |-----------+----------------+-------------------------+------|
+    | interface | SIOCGIFCONF    | 获取所有接口的列表      |      |
+    |           | SIOCSIFADDR    |                         |      |
+    |           | SIOCGIFADDR    | 接口地址                |      |
+    |           | SIOCSIFFLAGS   |                         |      |
+    |           | SIOCGIFFLAGS   | 接口标志                |      |
+    |           | SIOCSIFDSTADDR |                         |      |
+    |           | SIOCGIFDSTADDR | 点到点地址              |      |
+    |           | SIOCGIFBRDADDR |                         |      |
+    |           | SIOCSIFBRDADDR | 广播地址                |      |
+    |           | SIOCSIFNETMAST |                         |      |
+    |           | SIOCGIFNETMASK | 子网掩码                |      |
+    |           | SIOCGIFMETRIC  |                         |      |
+    |           | SIOCSIFMETRIC  | 接口指标/度量           |      |
+    |           | SIOCGIFMTU     | MTU                     |      |
+    |           | SIOxxx         |                         |      |
+    |-----------+----------------+-------------------------+------|
+    | ARP       | SIOCSARP       | 创建修改ARP表           |      |
+    |           | SIOCGARP       | get                     |      |
+    |           | SIOCDARP       | drop                    |      |
+    |-----------+----------------+-------------------------+------|
+    | route     | SIOCADDRT      | Add route               |      |
+    |           | SIOCDELRT      | Del route               |      |
+    |-----------+----------------+-------------------------+------|
+    | 流        | I_xxx          |                         |      |
+*** 17.3 socket
+** 19 密钥管理套接字
+** 20 广播
+** 21 多播
+   224.0.0.0 ~239.255.255.255 D
+*** 21.5 源特定多播(source-specific multicast SSM)
+** 22 高级UDP编程
+** 28. 原始套接字
+   1. 对写ICMPv4/ICMPv6/IGMPv4
+   2. 处理IPv4协议字段
+   3. IP_HDRINCL 自行构造IPv4头部
+*** 28.3 原始套接字输出
+    - sendto()/sendmsg()
+
+*** 28.3 原始套接字输入
+    - 不读取 UDP/TCP 数据报，如要读取必须链路层读取(第29章)
+    - ICMP
+    - IGMP
+    - 内核不认识的协议字段(如：自定义字段)
+*** 29 数据链路访问
+  - 作用
+    - 监视接收分组
+    - 如RARP
+  - 方式
+    - BSD BPF
+    - SVR4 DLPI
+    - Linux SOCK_PACKET

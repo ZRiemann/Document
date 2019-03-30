@@ -55,12 +55,14 @@
                        ------ node_id --------
 *node topology layer*           node
                        --- ip:port -- COMn ---
-*communicate layer*    TCP/IP         COM  ...
-
+*communicate layer*
+                         TCP/IP         COM  ...
+                       
 层次结构，通信层 --> 节点拓扑层 --> 应用层
 *应用层程序* 可以不感知拓扑层的结构。应用层可以实现为各类插件。
 *节点拓扑层* 专注节点的拓扑网络以及其上数据的传输。
 *通信层* 基于TCP/IP网络以及串口等各类主流通信技术。
+*Transport* 传输层封装
 ***** 典型拓扑
 - *星形拓扑*
   node1   node2   node3
@@ -161,9 +163,16 @@
 
   + 多进程形式纯IO(state-threads)
     state-threads(适用业务处理时间极短<微妙级>的场景，如中转路由)
-- node toplogiy 节点拓扑层
-  
+- node toplogiy 节点拓扑层  
 - applocation layer 应用层
+**** v0.0.0
+     - 服务端
+       - 单端口TCP服务
+         - 支持百万连接
+         - 任务管理，支持多线程/cpu绑定/任务均衡
+         - 内存管理，内存图谱输出，泄漏检测
+     - 客户端
+       - connect()/send()/recv()
   定义标准应用接口
 ** zmind(思想层)
    +--------------------------------+
@@ -291,4 +300,12 @@
     - <2019-03-22 Fri> rabbitmq
       + rabbitmq 节点状态，topic方案
       + PHP基础
-
+    - <2019-03-29 Fri> unpv13e
+      + epoll
+      + heartbeat
+      + broadcast
+      + multicast
+      + libpcap
+      + libnet
+      + pthread_setaffinity_np()/sched_setaffinity()
+    - <2019-03-30 Sat> epoll/ztransport
