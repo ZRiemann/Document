@@ -308,4 +308,7 @@
       + libpcap
       + libnet
       + pthread_setaffinity_np()/sched_setaffinity()
-    - <2019-03-30 Sat> epoll/ztransport
+    - <2019-03-30 Sat> epoll/ztransport design
+    - <2019-04-03 Wed> epoll/ztransport implement
+      + buffer.h add zbufs_t
+      + ztransport poll thread
