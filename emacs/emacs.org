@@ -126,3 +126,6 @@ UI定制
 (setq c-default-style "linux")
 (setq c-basic-offset 4)
 #+END_SRC
+** 代码则叠
+   M-x hs-minor-mode
+   M-x hs-<cmds>

@@ -24,6 +24,7 @@
       + [ ] list
       + [ ] queue
       + [ ] rbtree
+      + [ ] hash
     - [ ] mem
     - [ ] util
 *** design
@@ -241,6 +242,11 @@
   http://dist.schmorp.de/libev/
   http://state-threads.sourceforge.net/
 * log
+- 2019
+  + Apr
+    - <2019-04-10 Wed>
+      [add] zsa/stl/hash
+      
 - 2018
   + Jan
     <2018-01-20 Sat> plutus
