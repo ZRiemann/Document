@@ -1,0 +1,14 @@
+* memcached
+  #+BEGIN_SRC sh
+  # CentOS
+  yum install memcached
+
+  vim /etc/sysconfig/memcached
+  # OPTION="-l 0.0.0.0"
+  systemctl restart memcached
+
+  firewall-cmd --stat
+  firewall-cmd --zone=public --add-port=11211/tcp --permanent
+  firewall-cmd --reload
+  firewall-cmd --list-ports
+  #+END_SRC
