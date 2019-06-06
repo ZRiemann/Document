@@ -28,7 +28,18 @@
     | year()                  | 获取年份       | year('2018-5-4') => 2018                   |
     | month()                 | 获取月份       | month('2018-5-4') => 5                     |
     | dayofmonth()            |                |                                            |
-
+** 批量插入数据
+*** 1. 一条SQL插入多条数据
+    INSERT INTO table_name (filed1, filed2 ...) VALUES (val1, val2 ...), (val11, val12 ...) ...
+*** 2. 事务插入
+    START TRANSACTION;
+    INSERT INTO ...
+    INSERT INTO ...
+    ...
+    COMMIT;
+*** 3. 主键有序插入
+    有序插入 B+tree 调整小
+*** 4. 预编译 mysql_stmt_prepare()/bind_param()
 * 3 Turorial(教程)
 ** 3.2 Entering Queries(输入查询)
    - \c ;不立即执行
@@ -294,3 +305,80 @@
 ** 4.9 MySQL Program Environment Variables ;编程
 * 27 Connectors and APIs
 ** 27.7 C API
+
+* offical document
+** Data Structures
+   #+BEGIN_SRC c
+   MYSQL_RES *res; //This structure represents the result of a query that returns rows (SELECT, SHOW, DESCRIBE, EXPLAIN).
+   MYSQL_ROW *row; //This is a type-safe representation of one row of data. It is currently implemented as an array of counted byte strings. Rows are obtained by calling mysql_fetch_row().
+   MYSQL_FIELD *fiels; //This structure contains metadata: information about a field, such as the field's name, type, and size.  mysql_fetch_field()
+   MYSQL_FIELD_OFFSET offset; //This is a type-safe representation of an offset into a MySQL field list. (Used by mysql_field_seek().)
+
+   my_ulonglong ull; // The type used for the number of rows and for mysql_affected_rows(), mysql_num_rows(), and mysql_insert_id().
+   printf ("Number of rows: %lu\n", (unsigned long) mysql_num_rows(result));
+
+   my_bool b;
+
+   mysql_real_connect(); // mysql_connect
+   mysql_error()/mysql_errno(); // mysql_eof()
+   mysql_ping() //
+   mysql_query();
+   mysql_real_query();
+
+   #+END_SRC
+*** enum enum_field_types type
+The type of the field. The type value may be one of the MYSQL_TYPE_ symbols shown in the following table.
+
+Type Value	Type Description
+MYSQL_TYPE_TINY	TINYINT field
+MYSQL_TYPE_SHORT	SMALLINT field
+MYSQL_TYPE_LONG	INTEGER field
+MYSQL_TYPE_INT24	MEDIUMINT field
+MYSQL_TYPE_LONGLONG	BIGINT field
+MYSQL_TYPE_DECIMAL	DECIMAL or NUMERIC field
+MYSQL_TYPE_NEWDECIMAL	Precision math DECIMAL or NUMERIC
+MYSQL_TYPE_FLOAT	FLOAT field
+MYSQL_TYPE_DOUBLE	DOUBLE or REAL field
+MYSQL_TYPE_BIT	BIT field
+MYSQL_TYPE_TIMESTAMP	TIMESTAMP field
+MYSQL_TYPE_DATE	DATE field
+MYSQL_TYPE_TIME	TIME field
+MYSQL_TYPE_DATETIME	DATETIME field
+MYSQL_TYPE_YEAR	YEAR field
+MYSQL_TYPE_STRING	CHAR or BINARY field
+MYSQL_TYPE_VAR_STRING	VARCHAR or VARBINARY field
+MYSQL_TYPE_BLOB	BLOB or TEXT field (use max_length to determine the maximum length)
+MYSQL_TYPE_SET	SET field
+MYSQL_TYPE_ENUM	ENUM field
+MYSQL_TYPE_GEOMETRY	Spatial field
+MYSQL_TYPE_NULL	NULL-type field
+#+BEGIN_SRC c
+//You can use the IS_NUM() macro to test whether a field has a numeric type. Pass the type value to IS_NUM() and it evaluates to TRUE if the field is numeric:
+if (IS_NUM(field->type))
+    printf("Field is numeric\n");
+#+END_SRC
+
+For each non-SELECT query (for example, INSERT, UPDATE, DELETE), you can find out how many rows were changed (affected) by calling mysql_affected_rows().
+
+Call mysql_stmt_init() to create a statement handler, then mysql_stmt_prepare() to prepare the statement string, mysql_stmt_bind_param() to supply the parameter data, and mysql_stmt_execute() to execute the statement. You can repeat the mysql_stmt_execute() by changing parameter values in the respective buffers supplied through mysql_stmt_bind_param().
+
+prepare '?' they are permitted in the VALUES() list of an INSERT statement,  in a comparison with a column in a WHERE clause to specify a comparison value;
+The parameter markers must be bound to application variables using mysql_stmt_bind_param() before executing the statement.
+#+BEGIN_SRC c
+//To prepare and execute a statement, an application follows these steps:
+mysql_stmt_init();
+mysql_stmt_prepare();
+
+// if the statement will produce a result set
+mysql_stmt_result_metadata();
+
+mysql_stmt_bind_param();
+mysql_stmt_execute();
+
+mysql_stmt_bind_result();
+mysql_stmt_fetch();
+
+mysql_stmt_errno();
+mysql_stmt_error();
+mysql_stmt_sqlstate();
+#+END_SRC

@@ -12,3 +12,21 @@
   firewall-cmd --reload
   firewall-cmd --list-ports
   #+END_SRC
+* sqlite
+** 编译release版本
+   #+BEGIN_SRC sh
+   wget https://www.sqlite.org/2019/sqlite-autoconf-3280000.tar.gz
+   tar -zxf sqlite-autoconf-3280000.tar.gz
+   cd sqlite-autoconf-3280000
+   ./configure
+   # vim Makefile
+   # replase -g O2 with O2
+   make -j2
+   #+END_SRC
+** 多线程版本
+   SQLite支持三种不同的线程模式：
+   1. 单线程： 在这种模式下所有的互斥锁都被禁用，在多个线程中同时使用SQLite时是不安全的。 -DSQLITE_THREADSAFE=0
+   2. 多线程： 在这种模式下，只要没有单个数据库连接被同时用在多个线程中的情况，SQLite就可以在多线程环境中安全地使用。 -DSQLITE_THREADSAFE=2
+   3. 串行化： 在这种模式中，SQLite可以无限制地在多线程环境中安全地使用。 -DSQLITE_THREADSAFE=1
+** 线程模式选项
+   sqlite3_config()接口进行初始化时可以改变线程模式：SQLITE_CONFIG_SINGLETHREAD谓词把SQLite设置成单线程模式，SQLITE_CONFIG_MULTITHREAD设置多线程模式，SQLITE_CONFIG_SERIALIZED设置串行化模式。

@@ -1,0 +1,34 @@
+* vs2019
+** 替换tab为4个空格
+   工具 -> 选项 -> 文本编辑器 -> C/C++ -> 制表符 -> 插入空格
+* 修改console字符集
+  CHCP是一个计算机指令，能够显示或设置活动代码页编号。
+
+代码页  描述
+65001   UTF-8代码页
+950 繁体中文
+936 简体中文默认的GBK
+437 MS-DOS 美国英语
+
+但是通过CHCP设置编码是治标不治本的
+想永久的更改cmd编码值需要修改注册表
+方法一：
+在运行中通过regedit进入注册表
+找到HKEY_CURRENT_USER\Console\%SystemRoot%_system32_cmd.exe
+
+新建一个 DWORD（32位值）,命名为CodePage，值设为65001 
+已有CodePage的话，修改它，改为十进制，65001
+
+方法二：
+我更喜欢这样：
+新建一个cmd.reg
+内容输入如下：
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Console\%SystemRoot%_system32_cmd.exe]
+"CodePage"=dword:0000fde9
+"FontFamily"=dword:00000036
+"FontWeight"=dword:00000190
+"FaceName"="Consolas"
+"ScreenBufferSize"=dword:232900d2
+"WindowSize"=dword:002b00d2
