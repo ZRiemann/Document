@@ -1251,7 +1251,36 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
     http://libgit2.github.com
    
    
+* gitlab
+** install
+#+BEGIN_SRC sh
+gitlab=gitlab-ce-12.0.2-ce.0.el7.x86_64.rpm
+sudo yum install curl openssh-server openssh-clients postfix cronie
+wget https://mirrors.tuna.tsinghua.edu.cn/gitlab-ce/yum/el7/${gitlab}
+rpm -i ${gitlab}
+sudo gitlab-ctl reconfigure
+#+END_SRC
+** reset root passwd
+#+BEGIN_SRC sh
+sudo gitlab-rails console production
+-------------------------------------------------------------------------------------
+ GitLab:       12.0.2 (1a9fd38a4ca)
+ GitLab Shell: 9.3.0
+ PostgreSQL:   10.7
+-------------------------------------------------------------------------------------
+Loading production environment (Rails 5.1.7)
+irb(main):001:0> user = User.where(id: 1).first
+=> #<User id:1 @root>
+irb(main):003:0> user.password=12345678
+=> 12345678
+irb(main):004:0> user.password_confirmation=12345678
+=> 12345678
+irb(main):005:0> user.save
+Enqueued ActionMailer::DeliveryJob (Job ID: c5dabea9-e6f0-4d52-a2dc-6ccfde9caa8c) to Sidekiq(mailers) with arguments: "DeviseMailer", "password_change", "deliver_now", #<GlobalID:0x00007fcbcef96180 @uri=#<URI::GID gid://gitlab/User/1>>
+=> true
+irb(main):006:0> quit
 
+#+END_SRC
 * tips
 ** emacs
 *** WARNING: terminal is not fully functional

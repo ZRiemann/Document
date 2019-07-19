@@ -17,7 +17,7 @@ firewall-cmd --list-ports
 #            公共域        开启1985/tcp端口    永久有效
 #                          区间1900-2000/tcp
 #firewall-cmd --zone=public --add-port=1985/tcp --permanent
-firewall-cmd --zone=public --add-port=19350/tcp --permanent
+firewall-cmd --zone=public --add-port=80/tcp --permanent
 #firewall-cmd --zone=public --add-port=9935/tcp --permanent
 # 关闭端口
 #firewall-cmd --zone=public --remove-port=1985/tcp --permanent

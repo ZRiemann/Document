@@ -1,0 +1,33 @@
+* www.ansible.com
+** Get Started
+*** Step 1
+**** Overview and setup
+**** Install Guilde
+***** Ubuntu
+#+BEGIN_SRC sh
+sudo apt update
+sudo apt install software-properties-common
+sudo apt-add-repository --yes --update ppa:ansible/ansible
+sudo apt install ansible
+#+END_SRC
+***** github
+#+BEGIN_SRC sh
+git clone https://github.com/ansible/ansible.git
+cd ./ansible
+bash
+source ./hacking/env-setup
+# if not install pip, install it
+# curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+# python get-pip.py --user
+pip install --user -r ./requirements.txt
+# testing ping command
+ansiable all -m ping --ask-pass
+#+END_SRC
+**** Configuring Ansible
+***** The configuration file
+https://docs.ansible.com/ansible/latest/reference_appendices/config.html#ansible-configuration-settings-locations
+
+1. ANSIBLE_CONFIG (environment variable if set)
+2. ansible.cfg (in the current directory)
+3. ~/.ansible.cfg (in the home directory)
+4. /etc/ansible/ansible.cfg
