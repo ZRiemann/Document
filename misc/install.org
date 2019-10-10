@@ -30,3 +30,6 @@
    3. 串行化： 在这种模式中，SQLite可以无限制地在多线程环境中安全地使用。 -DSQLITE_THREADSAFE=1
 ** 线程模式选项
    sqlite3_config()接口进行初始化时可以改变线程模式：SQLITE_CONFIG_SINGLETHREAD谓词把SQLite设置成单线程模式，SQLITE_CONFIG_MULTITHREAD设置多线程模式，SQLITE_CONFIG_SERIALIZED设置串行化模式。
+* chrome
+  repoquery --nvr --whatprovides  libappindicator3.so.1
+  yum install -y libappindicator-gtk3-12.10.0-13.el7

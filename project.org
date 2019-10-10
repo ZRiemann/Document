@@ -241,6 +241,28 @@
   libcurl/state threads/libev
   http://dist.schmorp.de/libev/
   http://state-threads.sourceforge.net/
+* official website
+  - web
+    https://tools.ietf.org/
+    https://developer.mozilla.org/zh-CN/docs/Learn
+    https://nodejs.org/zh-cn/
+    https://vuejs.org/
+    https://zh-hans.reactjs.org/
+    https://spring.io/
+  - app
+    https://developer.android.com/
+  - gnu
+    https://www.gnu.org/software/emacs/manual/
+    https://orgmode.org/manual/
+    https://docs.docker.com/
+    https://gcc.gnu.org/onlinedocs/
+    https://www.dpdk.org/
+  - blogs
+    http://www.yinwang.org
+    https://yinwang0.wordpress.com/
+    http://theschemer.org/
+    http://linux.vbird.org/
+    https://www.linuxidc.com/
 * log
 - 2019
   + Apr
