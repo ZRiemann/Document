@@ -55,7 +55,7 @@
            - tag: <a> ;anchor
            - attrs
              - href="<url>" ; hypertext reference
-             - title="The Moilla homepage" ; 鼠标悬停提示
+             - title="The Moilla homepage" ; 鼠标悬停提示f
              - target="_blank" ; 打开方式，新标签叶连接
            - example
              #+BEGIN_SRC html
@@ -2993,7 +2993,7 @@
               - general
                 - class(类)
               - anchor <a>
-                - href: 声明超链接的web地址
+                - href: 声明超链接的web地址(hypertext reference)
                 - title: 超链接声明额外的信息,当鼠标悬浮时，将出现一个工具提示。
                 - target: 指定将用于显示链接的浏览上下文
                   - "_blank": 将在新标签页中显示链接
@@ -3136,24 +3136,25 @@
                 <script sec="my-js-file.js"></script>
                 #+END_SRC
         - <body>
-      #+BEGIN_SRC html
-      <!-- 声明文档类型 -->
-      <!DOCTYPE html>
-      <!-- 唯一根元素 -->
-      <html>
-      <!-- 容器，不展示给用户 -->
-      <head>
-      <!-- 制定文档使用UTF-8 字符集 -->
-      <meta charset="utf-8">
-      <!-- 页面标题
-      1. 出现在浏览器标签上
-      2. 标记/收藏页面时用来描述页面
-      -->
-      <title>DocTitle</title>
-      </head>
-      <!-- 页面内容 -->
-      <body></body>
-      </html>
-      #+END_SRC
+      - <table>
+        - <caption> ; table caption
+        - <th> ; table head
+          - <td>&nbsp</td> ; 空白单元格
+          - <th scope="col">col-name</th>
+          - <th scope="row">row-name</th>
+          - <th colspan="2">name</th> ; 跨越2列
+          - <th rowspan="2">neme</th> ; 跨越2行
+        - <tr> ; table row
+          - <td> ; table data
+        - <colgroup> ; 列样式
+        - <thead>
+        - <tfoot>
+        - <tbody>
+        - attributes
+          - <th scope="col|row">
   - CSS  内容的表现与展示效果(静)
   - JavaScript 功能与行为(动)
+    - 实用工具
+      - 浏览器API(动态创建HTML,CSS)
+      - 第三方API(Twitter, Facebook)
+      - 第三方框架和库(快速构建网站和应用)

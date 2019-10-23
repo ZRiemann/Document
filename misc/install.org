@@ -33,3 +33,9 @@
 * chrome
   repoquery --nvr --whatprovides  libappindicator3.so.1
   yum install -y libappindicator-gtk3-12.10.0-13.el7
+* ss5
+  #+BEGIN_SRC sh
+  wget https://nchc.dl.sourceforge.net/projects/ss5/ss5/3.8.9-8/ss5-3.8.9-8.tar.gz
+
+  yum -y install gcc gcc-c++ automake pam-devel openssl-devel openldap-devel cyrus-sasl-devel
+  #+END_SRC
