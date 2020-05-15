@@ -3152,9 +3152,641 @@
         - <tbody>
         - attributes
           - <th scope="col|row">
+    - Web API
+      + WebGL
+        - 概念
+          - canvas HTML WebGL
+          - canvas.getContext("webgl") 获取WebGL上下文
+          - 作色器
+            - 分类
+              - 顶点顶点作色器
+                原始坐标转换为缩放空间坐标
+                变量(varyings)/属性(attributes)
+                gl_Position/aVertexPosition/uProjectionMatrix/uModelMatrix
+              - 片段作色器
+                顶点作色器处理完后，被要绘制得每个图形的每个像素点调用一次。
+                确定像素的颜色，获取纹理元素的颜色，将适当的关照应用于颜色，保持到gl_FragColor中
+                
+        - 教程
+          - Getting started with WebGL
+            WebGL代码: 1) JavaScript控制代码; 2) GLSL(Shading Language)作色代码
+            + 准备3D渲染
+              #+BEGIN_SRC html
+              <body onload="main()">
+                <canvas id="glcanvas" width="640" height="480">
+                  Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.
+                </canvas>
+              </body>
+              #+END_SRC
+              #+BEGIN_SRC javascript
+              function main() {
+                const canvas = document.querySelector("#glcanvas");
+                // Initialize the GL context
+                const gl = canvas.getContext("webgl");
+
+                // Only continue if WebGL is available and working
+                if (!gl) {
+                  alert("Unable to initialize WebGL. Your browser or machine may not support it.");
+                  return;
+                }
+
+                // Set clear color to black, fully opaque
+                gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                // Clear the color buffer with specified clear color
+                gl.clear(gl.COLOR_BUFFER_BIT);
+              }
+              #+END_SRC
+          - Adding 2D content to a WebGL context
+            + 作色器
+              #+BEGIN_SRC javascript
+              // Vertex shader program
+              const vsSource = `
+                  attribute vec4 aVertexPosition;
+
+                  uniform mat4 uModelViewMatrix;
+                  uniform mat4 uProjectionMatrix;
+
+                  void main() {
+                    gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+                  }
+              `;
+              // Frag shader program
+              const fsSource = `
+                  void main(){
+                      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+              }
+              `;
+              #+END_SRC
+            + 初始化作色器
+              将定义的两个作色器传递给WebGL，编译并连接。
+              #+BEGIN_SRC js
+              // 初始化作色器程序，让WebGL知道如何绘制我们的数据
+              function initShaderProgram(gl, vsSource, fsSource){
+                  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+                  const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+                  // 创建作色器程序
+                  const shaderProgram = gl.createProgram();
+                  gl.attachShader(shaderProgram, vertexShader);
+                  gl.attachShader(shaderProgram, fragmentShader);
+                  gl.linkProgram(shaderProgram);
+                  if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)){
+                      alert('Unable to initialize the shader program:' + gl.getProgramInfoLog(shaderProgram));
+                      return null;
+                  }
+                  return shaderProgram;
+              }
+              // 创建指定类型的作色器，上传source源码并编译
+              function loadShader(gl, type, source){
+                  const shader = gl.createShader(type);
+                  // Send the source to the shader object
+                  gl.shaderSource(shader, source);
+                  // Compile the shader program
+                  gl.compileShader(shader);
+                  // See if it compiled successfully
+                  if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){
+                      alert('An error occurred compiling the shaders:' + gl.getShaderInfoLog(shader));
+                      gl.deleteShader(shader);
+                      return null;
+                  }
+                  return shader;
+              }
+
+              const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+              const programInfo = {
+                  program: shaderProgram,
+                  attribLocations: {
+                      vertexPosition: gl.getAttribLocatioin(shaderProgram, 'aVertexPosition'),
+                  },
+                  uniformLocations: {
+                      projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                      modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+                  }
+              };
+              #+END_SRC
+            + 创建对象
+              1. 创建缓冲器存储顶点；initBuffers()
+              #+BEGIN_SRC js
+              function initBuffer(gl){
+                  const positionBuffer = gl.createBuffer();
+                  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+                  var vertices = [
+                      1.0, 1.0, 0.0,
+                      -1.0, 1.0, 0.0,
+                      1.0, -1.0, 0.0,
+                      -1.0, -1.0, 0.0
+                  ];
+
+                  gl.bufferData(gl.ARRAY_BUFFER,
+                                new Float32Array(vertices),
+                                gl.STATIC_DRAW);
+                  return {
+                      position: positionBuffer,
+                  }
+              }
+              #+END_SRC
+            + 绘制场景
+              创建作色器和对象后，开始渲染场景
+              #+BEGIN_SRC js
+              function drawScene(gl, programInfo, buffers){
+                  gl.clearColor(0.0, 0.0, 0,0, 1.0); // Clear to black, full opaque
+                  gl.clearDepth(1.0); // Clear everything
+                  gl.enable(gl.GEPTH_TEST); // Enable depth testing
+                  gl.depthFunc(gl.LEQUAL); // Near things obscure far things
+
+                  // Clear the canvas before we start drawing on it.
+                  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                  /*
+                   ,* Create a perspective matrix, a special matrix that is
+                   ,* used to simulate the distortion of perspective in a camera.
+                   ,* Our field of view is 45 degrees, with a width/height
+                   ,* ratio that matches the display sizeof the canvas
+                   ,* and we only want to see objexts between 0.1 units
+                   ,* and 100 units away from the camera.
+                   ,*/
+    
+              }
+              #+END_SRC
   - CSS  内容的表现与展示效果(静)
   - JavaScript 功能与行为(动)
-    - 实用工具
-      - 浏览器API(动态创建HTML,CSS)
-      - 第三方API(Twitter, Facebook)
-      - 第三方框架和库(快速构建网站和应用)
+    - 概述
+      - First-Class function(头等行数) 函数作为变量，参数，返回值；
+        #+BEGIN_SRC js
+        // 函数作为变量
+        const foo = function(){
+            console.log("foobar");
+        }
+        // 调用变量
+        foo();
+        //--------------------------------------------------------------------------------
+        function sayHello(){
+            return "Hello, ";
+        }
+
+        function greeting(helloMessage, name){
+            console.log(helloMessage, name);
+        }
+        // 函数作为参数
+        greeting(sayHello, "JavaScript");
+        #+END_SRC
+      - Higher-Order Function(高阶函数) 返回函数的函数；
+        #+BEGIN_SRC js
+        function higherOrderSayHello(){
+            return function(){
+                console.log("Hello!");
+            }
+        }
+        // caller 1
+        higherOrderSayHello()();
+        // caller 2
+        const sayHello = higherOrderSayHello();
+        sayHello();
+        #+END_SRC
+      - 基于原型编程
+        - 基于类和基于原型的区别
+          基于类分为'类定义'以及'实例'两部分
+          基于原型没有'类定义'
+        - 删除属性(运行特有)
+        - Employee
+          - Employ tree
+            #+BEGIN_SRC js
+            function Employee(){
+                this.name = "";
+                this.dept = "general";
+            };
+            #+END_SRC
+            #+BEGIN_SRC java
+            public class Employee{
+                public String name = "";
+                public String dept = "general";
+            };
+            #+END_SRC
+            - Manager
+              #+BEGIN_SRC js
+              function Manager(){
+                  Employee.call(this);
+                  this.reports = [];
+              }
+              Manager.prototype = Object.create(Employee.prototype);
+              Manager.prototype.constructor = Manager;
+
+              function WorkerBee(){
+                  Employee.call(this);
+                  this.projects = [];
+              }
+              WorkerBee.prototype = Object.create(Employee.prototype);
+              WorkerBee.prototype = WorkerBee;
+
+              function SalesPerson(){
+                  WorkerBee.call(this);
+                  this.dept = 'dales';
+                  this.quota = 100;
+              }
+              SalesPerson.prototype = Object.cretae(WorkerBee.prototype);
+              SalesPerson.prototype.constructor = SalesPerson;
+
+              function Engineer(){
+                  WorkerBee.call(this);
+                  this.dept = 'engineering';
+                  this.machine = '';
+              }
+              Engineer.prototype = Object.create(WorkerBee.prototype);
+              Engineer.prototype.constructor = Engineer;
+
+              /* obj = new ObjName; 操作符创建对象细节
+               ,* 1. 创建一个普通对象; obj = {}；
+               ,* 2. 将对象的 prototype 指向对象的 prototype; obj.prototype = ObjName.prototype;
+               ,* 3. 调用构造器； obj = obj.prototype.constructor(this);
+               ,*/
+              var mark = new WorkerBee;
+              /* 访问继承属性
+               ,* 1. 检查对象自身是否存在
+               ,* 2. 检查原型链 __proto__
+               ,* 3. 返回 undefined
+               ,*/
+              console.log(mark.name);
+              console.log(mark.dept);
+              console.log(mark.projects);
+              // 动态添加属性, 静态类不具备
+              mark.bonus = 3000;
+              // 添加全局属性
+              Employee.prototype.specialty = "none"; // 所有employee实例同时具备specialy属性
+
+              // 判断实例关系
+              var e = new Employee();
+              var isTrue = (e instanceof Employee);
+              var chris = new Engineer();
+              chris.__proto__ == Engineer.prototype;
+              chris.__proto__.__proto__ == WorkerBee.prototype;
+              chris.__proto__.__proto__.__proto__ == Employee.prototype;
+              chris.__proto__.__proto__.__proto__.__proto__ == Object.prototype;
+              chris.__proto__.__proto__.__proto__.__proto__.__proto__ == null;
+              // instanceof 实现
+              function instanceOf(object, constructor){
+                  while(object != null){
+                      if(object == constructor.prototype){
+                          return true;
+                      }
+                      if(typeof object == 'xml'){
+                          return constructor.prototype == XML.prototype;
+                      }
+                      object = object.__proto__;
+                  }
+                  return false;
+              }
+
+              /*
+               ,* 构造器中的全局信息
+               ,*/
+              var idCounter = 1;
+
+              function Employee1(name, dept){
+                  this.name = name || "";
+                  this.dept = dept || "general";
+                  this.id = idCounter++; // 继承时可能存在问题， 使用Object.create(Parent.prototype)解决
+              }
+              #+END_SRC
+            - WorkerBee
+              - SalesPerson
+              - Engineer
+      - 面向对象
+        #+BEGIN_SRC js
+        // 命名空间
+        var MYAPP = MYAPP || {}; // 首先检查是否已定义APP，如果未定义则定义MYAPP为{}
+        // 子命名空间
+        MYAPP.event = {
+            addListener: function(el, type, fn){
+                //...
+            },
+            removeListener: function(el, type, fn){
+                //...
+            },
+            getEvent: function(e){
+                //...
+            }
+        };
+
+        MYAPP.event.addListener("yourel", "type", function(){});
+
+        MYAPP.commonMethod = {
+            regExForName: "",
+            regExForPhone: "",
+            validateName: function(name){
+                //...
+            },
+            validatePhoneNo: function(phoneNo){
+                //...
+            }
+        };
+        #+END_SRC
+        #+BEGIN_SRC js
+        // 自定义对象
+        // 类定义，同时也是构造器
+        function Person(firstName){
+            this.firstName = firstName; // this作为当前对象的引用
+            alert('Persion instantiated');
+        }
+        // 类方法(全局)
+        Person.prototype.sayHello = function(){
+            alert("Hello, I'm " + this.firstName);
+        };
+        // 实例
+        let person1 = new Person('Alice');
+        let person2 = new Person('Bob');
+        // 访问实例属性
+        alert('person1 is ' + person1.firstName); // > person1 is Alice
+        // 访问方法
+        person1.sayHello();
+        person2.sayHello();
+        // 类方法如何被外部调用？
+        var helloFunction = person1.sayHello;
+        helloFunction(); // Hello, I'm undefined, 因为this为null
+        helloFunction.call(person1); // Hello, I'm Alice, call/apply函数可以指定this对象
+        //--------------------------------------------------------------------------------
+        // 继承
+        // 1. 利用Parent.call(this, ...) 调用父类构造器
+        // 2. 必须调用Object.create(Parent.prototype)
+        // 3. 必须手动设置 Child.prototype.constructor = Child
+
+        // 1. 定义子类
+        function Student(firstName, subject){
+            Person.call(this, firstName); // 利用call()来复用父类构造器
+            this.subject = subject;
+        };
+        // 2. 调用Object.create()
+        Student.prototype = Object.create(Person.prototype);
+
+        // 3. 手动设置constructor
+        Student.prototype.constructor = Student;
+
+        // 重载 sayHello
+        Student.prototype.sayHello = function(){
+            console.log("Hello, I'm ", this.firstName + ". I'm studying " + this.subject);
+        }
+        // 添加新方法
+        Student.prototype.sayGoodBye = function(){
+            console.log("Goodbye!");
+        }
+        // test
+        var student1 = new Student("Janet", "Applied Physics");
+        student1.sayHello();
+        console.log(student1 instanceof Person); // true
+        console.log(student1 instanceof Student); // true
+        #+END_SRC
+      - 命令式、声明式
+    - 变量
+      - 命名规则
+        - 区分大小写
+        - Unicode
+        - 单行分号结尾(建议)
+      - 声明
+        - var 全局
+        - let 局部
+          #+BEGIN_SRC js
+          if(true){
+              var x = 5;
+          }
+          console.log(x); // 5
+
+          if(true){
+              let y = 5;
+          }
+          console.log(y); // ReferenceError: y
+          #+END_SRC
+        - const 只读
+      - undefined
+        如果变量未赋值其值为 undefined, 访问时抛出引用错误；
+        undefined 可被转换为 false/NaN/null
+        #+BEGIN_SRC js
+        var input;
+        if(input === undefined){
+            // ...
+        }else{
+            // ...
+        }
+        #+END_SRC
+      - 变量提升
+        #+BEGIN_SRC js
+        /*
+         ,* example 1
+         ,*/
+        console.log(x === undefined); // true
+        var x = 3;
+
+        /*
+         ,* example 2
+         ,*/
+        var myvar = "my value";
+
+        (function(){
+            console.log(myvar); // undefined
+            var myval = "local value";
+        })();
+
+        #+END_SRC
+    - 注释
+      - // 单行注释
+      - /* ... */ 多行注释
+    - 函数
+      - 闭包
+        - 可以自己拥有独立环境与变量的表达式
+        - 内部行数只可以在外部行数中访问
+        - 内部行数形成的闭包中，可以访问外部函数的参数和变量，但外部函数不能访问嵌套函数的变量和参数
+          #+BEGIN_SRC js
+          function outside(x){
+              function inside(y){
+                  return x + y; /* x 是外部函数参数 */
+              }
+              return inside; /* 返回内部函数 */
+          }
+
+          result = outside(3)(5); // 8 = 3(闭包参数) + 5(内部参数)
+
+          /*
+           ,* 域链
+           ,*/
+          function A(x){
+              function B(y){
+                  function C(z){
+                      console.log(x + y + z);
+                  }
+                  C(3);
+              }
+              B(2);
+          }
+          A(1); // logs 6 (1 + 2 + 3);
+          #+END_SRC
+    - Using Promise
+      - 代表一个异步操纵的结束(成功或失败)；
+      - 本质是一个函数返回的对象，可以在它上面绑定回调函数；
+      - 约定
+        + 在本轮事件循环运行完成前，回调函数不会被调用
+        + 即使异步操作已经完成，在这之后通过then()添加的回调函数也会被调用；
+        + 通过多次调用then()可以添加多个回调函数；(chaining)
+      - 链式调用(chaining)
+        #+BEGIN_SRC js
+        const promise = doSomething();
+        const promise2 = promise.then(successCb, failureCb);
+
+        // 没有promise的回调地狱
+        doSomething(function(result){
+            doSomethingElse(result, function(newResult){
+                doThirdThing(newResult, function(finalResult){
+                    console.log('Got the final result: ' + finalResult);
+                }, failureCb);
+            }, failureCb);
+        }, failureCb);
+
+        // 绑定Promise的形式
+        doSomething().then(function(result){
+            return doSomethingElse(result);
+        }).then(function(newResult){
+            return doThirdThing(newResult);
+        }).then(function(finalResult){
+            console.log('Got the final result: ' + finalResult);
+        }).catch(failureCb); // then(null, failureCb) 的缩略形式
+
+        // 改为箭头函数
+        doSomething()
+            .then(result => doSomethingElse(result))
+            .then(newResult => doThirdThing(newResult))
+            .then(finalResult => {
+                console.log(`Got the fianl result: ${fianlResult}`);
+            }).catch(failureCb);
+
+
+        // Catch 后继续执行其他操作
+        // 遇到异常promise链的下一个onRejected为止
+        new Promise((resolve, reject) => {
+            console.log('1. init');
+            resolve();
+        }).then(() => {
+            /* resolve 函数 */
+            throw new Error('2. something error');
+            console.log('2.1 never do');
+        }).catch(() => {
+            /* reject2 */
+            console.log('3. on error');
+        }).then(() => {
+            console.log('3.1 never do');
+        });
+
+        // async/await 形式
+        async function foo(){
+            try{
+                const result = await doSomething();
+                const newResult = await doSomething(result);
+                const finalResult = await doThirdThing(newResult);
+                console.log(`Got the final result: ${finalResult}`);
+            }catch(error){
+                failureCb(error);
+            }
+        }
+        #+END_SRC
+      - 拒绝事件
+        1. 事件派发到window/Worker
+        2. rejectionhandled/unhandledrejection
+           - PromiseRejectionEvent.promise 驳回的promise,便于提供补偿处理，方便调试
+           - PromiseRejectionEvent.reason; 驳回原因
+           - example
+             #+BEGIN_SRC js
+             // Node.js
+             window.addEventListener("unhandledrejection", event => {
+                 console.log(` ${event.promise} ${event.reason}`);
+                 event.preventDefault(); //不要执行默认操作
+             }, false);
+             #+END_SRC
+      - 改造timer,创建Promise
+        包裹旧的API
+        #+BEGIN_SRC js
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        wait(10000).then(() => saySomething('10 seconds')).catch(failCallback);
+        #+END_SRC
+      - 组合
+        - Promise.resolve()
+        - Promise.reject()
+        - Promise.all() 发起并行操作
+          #+BEGIN_SRC js
+          Promise.all([func1(), func2(), func3()])
+              .then(([result1, result2, result3]) => {
+                  console.log(`[${result1} ${result2} ${result3}]`);
+              });
+
+          [func1, func2, func3].reduce((p, f) => p.then(f), Promise.resolve()).then(result3 => {/*use result3*/});
+
+          const applyAsync = (acc,val) => acc.then(val);
+          const composeAsync = (...funcs) => x => funcs.reduce(applyAsync, Promise.resolve(x));
+          const transformData = composeAsync(func1, func2, func3);
+          const result3 = transformData(data);
+
+          let result;
+          for (const f of [func1, func2, func3]) {
+            result = await f(result);
+          }
+          /* use last result (i.e. result3) */
+          #+END_SRC
+        - Promise.race()
+      - 时序
+        #+BEGIN_SRC js
+        Promise.resolve().then(() => console.log(2));
+        console.log(1); // 1, 2
+
+        //--------------------------------------------------------------------------------
+        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        wait().then(() => console.log(4));
+        Promise.resolve().then(() => console.log(2)).then(() => console.log(3));
+        console.log(1); // 1, 2, 3, 4
+        #+END_SRC
+      - 嵌套
+      - 方法
+        - Promise.all(iterable)
+        - Promise.race(iterable)
+        - Promose.reject(reason)
+        - Promose.resolve(value)
+      - 原型
+        - Promise.prototype.constructor
+        - Promise.prototype.catch(onRejected)
+        - Promise.prototype.then(onFulfilled, onRejected)
+        - Promise.prototype.finally(onFinally)
+      - 创建Promise
+        #+BEGIN_SRC js
+        const myFirstPromise = new Promise((resolve, reject) => {
+            let result = 1;
+            // do something...
+            if(result){
+                resolve(someValue);
+            }else{
+                reject('failure reason');
+            }
+        });
+        // 实用示例
+        function myAsyncFunction(url){
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("GET", url);
+                xhr.onload = () => resolve(xhr.responseText);
+                xhr.onerror = () => reject(xhr.statusText);
+                xhr.send();
+            });
+        };
+
+        /*
+         ,* 高级示例
+         ,*/
+        #+END_SRC
+      - example
+        普通回调模式
+        #+BEGIN_SRC js
+        function successCallback(result){
+            console.log("soccess: " + result);
+        }
+        function failureCallback(error){
+            console.log("fail: " + error);
+        }
+        // 普通回调模式
+        createAudioFileAsync(audioSettings, successCallback, failureCallback);
+        // promise模式
+        const promise = createAudioFileAsyncPromise(audioSettings);
+        promise.then(successCallback, failureCallback);
+        #+END_SRC
