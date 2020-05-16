@@ -1,0 +1,27 @@
+* deploy
+** mydata-deploy
+   #+BEGIN_SRC sh
+   cd ~/Mount/Code/git/mydata-deploy/
+   cd mysql_single
+   sudo docker-compose up -d
+   mysql -h 127.0.0.1 -P 8806 -u root -p
+   #+END_SRC
+** prometheus
+*** prom/prometheus
+    #+BEGIN_SRC sh
+    sudo docker run --name prometheus -d -p 127.0.0.1:9090:9090 prom/prometheus
+    # sudo docker run -p 127.0.0.1:9090:9090 prom/prometheus
+    # browser visit http://localhost:9090
+    #+END_SRC
+    #+BEGIN_SRC sh
+    prometheus --config.file=documentation/examples/prometheus.yml --storage.tsdb.retention.size=50GB --storage.tsdb.retention.time=15d --storage.tsdb.path=/home/zwp/Mount/Backup/prometheus-data
+    #+END_SRC
+*** mysqld_exproter
+    #+BEGIN_SRC sql
+    CREATE USER 'exporter'@'localhost' IDENTIFIED BY '123456' WITH MAX_USER_CONNECTIONS 3;
+    GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'localhost';
+    #+END_SRC
+    #+BEGIN_SRC sh
+    #export DATA_SOURCE_NAME='root:123456@(127.0.0.1:8806)/' error, NO \'
+    export DATA_SOURCE_NAME=root:123456@(127.0.0.1:8806)/
+    #+END_SRC
