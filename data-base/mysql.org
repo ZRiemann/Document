@@ -1,4 +1,38 @@
 * mysql
+** build
+*** steps
+    #+BEGIN_SRC sh
+    wget https://mirrors.tuna.tsinghua.edu.cn/mysql/downloads/MySQL-8.0/mysql-boost-8.0.20.tar.gz
+    tar -zxf mysql-boost-8.0.20.tar.gz
+
+    cd mysql-8.0.20
+
+    mkdir build
+    cd build
+    #error not find boost
+    cmake -DDWONLOAD_BOOST=1 -DWITH_BOOST=../boost/boost_1_70_0 ..
+    #err could not find rpc/rpc.h
+    sudo yum install -y libtirpc-devel
+    #error not find googletest
+    cd ~/git
+    git clone https://github.com/google/googletest.git
+    mkdir build
+    cd build
+    cmake ..
+    make -j8
+    sudo make install
+    sudo ldconfig
+
+    #error: Could not find rpcgen
+    cd ~/git
+    git clone https://github.com/thkukuk/rpcsvc-proto
+    git checkout -b v1.4.1
+    ./autogen.sh
+    ./configure
+    make -j8
+    sudo make install
+    sudo ldconfig
+    #+END_SRC
 * Tips
   - 修改默认密码 ;sh_util/install/mysql.sh
   - 执行脚本 ;mysql -h localhost -u root -p123456 < /path/data.sql
@@ -395,3 +429,201 @@ mysql_stmt_sqlstate();
 | .09加.21双客户端插入速度 | 400,000/47=8,510    |
 | 四客户端同时插入速度     | 800,000/58=13,793   |
 |--------------------------+---------------------|
+* Percona XtraBackup
+** PartI Introduction
+*** C2 HOW PERCONA XTRABACKUP WORKS
+    - InnoDB's crash-recovery functionality
+      1. copys InnoDB data files that is internally inconsistent
+      2. performs crash recovery on the files to make them a consistent
+    - LSN(Log Sequence Number)
+    - redo log(transaction log)
+      contains a record of every change to InnoDB data.
+** PartIII Prerequisites
+*** C4 Connection and Privileges Needed
+    - Privileges(特权) 数据库用户操作数据库服务权限集
+      - DataBase user tables/databases
+      - RELOAD, LOCK TABLES(unless --no-lock)
+      - BACKUP_ADMIN performance_schema.log_status
+      - REPLICATION CLIENT obtain the binary log position
+      - CREATETABLESPACE import tables
+      - PROCESS
+      - SUPER
+      - CREATE create PERCONA_SCHEMA.xtrabackup_history database and table
+      - INSERT
+      - SELECT
+      - SQL example
+        #+BEGIN_SRC sql
+        CREATE USER 'bkpuser'@'localhost' IDENTIFIED BY 's3cr%T';
+        GRANT BACKUP_ADMIN, PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO 'bkpuser'@'localhost';
+        GRANT SELECT ON performance_schema.log_status TO 'bkpuser'@'localhost';
+        FLUSH PRIVILEGES;
+
+        #+END_SRC
+    - Permissions(权限) 系统用户权限，文件读写执行权限，服务启动停止权限
+      - System user : datadir READ,EXECUTE
+    - Connecting to the server 连接数据库
+      #+BEGIN_SRC sh
+      xtrabackup --user=root --password=passwd --backup --target-dir=/data/bkps/
+      #+END_SRC
+      - --port
+      - --socket
+      - --host
+*** C5 CONFIGURING XTRABACKUP
+    - command-line
+    - /etc/my.cnf
+      - [mysqld]
+        - datadir
+        - InnoDB options
+      - [xtrabackup]
+        - 不接受mysqld --set-variable=<var>=<val>, 改为--variable=value
+        - datadir
+        - InnnoDB options ; read later, it will take precedence
+        - target_dir=/data/backups/mysql
+          - NFS卷fsync()可能没有真正的sync数据，使用sync挂载选项避免。
+** PartIV Backup Scenarios
+*** C6 THE BACKUP CYCLE - FULL BACKUPS(完全备份)
+**** Creating a backup
+     *可随时打断，不同于prepare*
+     #+BEGIN_SRC sh
+     xtrabackup --backup --target-dir=/data/backups/
+     xtrabackup: Transaction log of lsn (26970807) to (137343534) was copied.
+
+     ls -lh /data/backups
+     total 182M
+     drwx------ 7 root root 4.0K Sep 6 10:19 .
+     drwxrwxrwt 11 root root 4.0K Sep 6 11:05 ..
+     -rw-r----- 1 root root 387 Sep 6 10:19 backup-my.cnf
+     -rw-r----- 1 root root 76M Sep 6 10:19 ibdata1
+     drwx------ 2 root root 4.0K Sep 6 10:19 mysql
+     drwx------ 2 root root 4.0K Sep 6 10:19 performance_schema
+     drwx------ 2 root root 4.0K Sep 6 10:19 sbtest
+     drwx------ 2 root root 4.0K Sep 6 10:19 test
+     drwx------ 2 root root 4.0K Sep 6 10:19 world2
+     -rw-r----- 1 root root 116 Sep 6 10:19 xtrabackup_checkpoints
+     -rw-r----- 1 root root 433 Sep 6 10:19 xtrabackup_info
+     -rw-r----- 1 root root 106M Sep 6 10:19 xtrabackup_logfile
+     #+END_SRC
+     xtrabackup: Transaction log of lsn (26970807) to (137343534) was copied.
+     Note:日志拷贝线程每秒检查事务日志，可能会无法跟上而发生错误；
+**** Preparing a backup
+     - *--prepare* 使文件在某时段完全一致，可以启动InnoDB。否则报错
+       *不可被打断，否则数据不可用*
+       #+BEGIN_SRC sh
+       xtrabackup --prepare --target-dir=/data/backups/
+
+       InnoDB: Shutdown completed; log sequence number 137345046
+       160906 11:21:01 completed OK!
+
+       xtrabackup: This target seems to be already prepared.
+       xtrabackup: notice: xtrabackup_logfile was already used to '--prepare'
+       #+END_SRC
+     - 在prepare期间，xtrabackup启动一个嵌入式的InnoDB以关闭InnoDB的标准安全检查
+       使用嵌入InnoDB进行拷贝数据恢复。
+     - *--apply-log-only* 后续做增量备份使必须使用该选项
+**** Restoring a Backup
+     - --copy-back(--move-back)
+       #+BEGIN_SRC sh
+       xtrabackup --copy-back --target-dir=/data/backups
+       #+END_SRC
+       *Note:* datadir must be empty. MySQL server needs to be shut down.
+     - rsync
+       #+BEGIN_SRC sh
+       chown -R mysql:mysql /var/lib/mysql
+       rsync -avrP /data/backup /var/lib/mysql
+       #+END_SRC
+*** C7 INCREMENTAL BACKUP
+**** Introduction
+     - 增量备份，只拷贝上次全量备份后改变的数据。
+     - 可以在多个全量备份上进行增量备份。如每周全量备份，每天增量备份。
+     - 增量备份工作原理：LSN每页保存了相应的数据变更。
+     - --incremental-force-scan 强制读取所有页面
+     - --incremental-lsn 
+**** Creating an Incremental Backup
+     #+BEGIN_SRC sh
+     cat /data/backups/base/xtrabackup_checkpoints
+
+     backup_type = full-backuped
+     from_lsn = 0
+     to_lsn = 1626007
+     last_lsn = 1626007
+     compact = 0
+     recover_binlog_info = 1
+
+     xtrabackup --backup --target-dir=/data/backups/inc1 --incremental-basedir=/data/backups/base
+
+     cat /data/backups/inc1/xtrabackup_checkpoints
+
+     backup_type = incremental
+     from_lsn = 1626007
+     to_lsn = 4124244
+     last_lsn = 4124244
+     compact = 0
+     recover_binlog_info = 1
+
+     # xtrabackup --backup --target-dir=/data/backups/inc1 --incremental-basedir=/data/backups/inc2
+     #+END_SRC
+**** Preparing the Incremental Backups
+     - --prepare 不同于全量备份的prepare.
+       - 保存提交的事务
+       - 回滚未提交的事务
+         但是增量不能回滚未提交事务，因为用户可能在后续提交事务。
+         使用--apply-log-only防止回滚,如果回复启动MySQL后台会继续完成回滚
+     #+BEGIN_SRC sh
+     xtrabackup --prepare --apply-log-only --target-dir=/data/backups/base
+
+     InnoDB: Shutdown completed; log sequence number 1626007
+     161011 12:41:04 completed OK!
+
+     xtrabackup --prepare --apply-log-only --target-dir=/data/backups/base \
+                --incremental-dir=/data/backups/inc1
+
+     incremental backup from 1626007 is enabled.
+     xtrabackup: cd to /data/backups/base
+     xtrabackup: This target seems to be already prepared with --apply-log-only.
+     xtrabackup: xtrabackup_logfile detected: size=2097152, start_lsn=(4124244)
+     ...
+     xtrabackup: page size for /tmp/backups/inc1/ibdata1.delta is 16384 bytes
+     Applying /tmp/backups/inc1/ibdata1.delta to ./ibdata1...
+     ...
+     161011 12:45:56 completed OK!
+
+      xtrabackup --prepare --target-dir=/data/backups/base \
+     --incremental-dir=/data/backups/inc2
+     #+END_SRC
+*** C8 COMPRESSED BACKUP
+    压缩备份, xbstream流备份
+**** Creating Compressed Backups
+     #+BEGIN_SRC sh
+     # 单线程压缩
+     xtrabackup --backup --compress --target-dir=/data/compressed/
+     # 4线程压缩
+     xtrabackup --backup --compress --compress-threads=4 --target-dir=/data/compressed/
+
+     ...
+     170223 13:00:38 [01] Compressing ./test/sbtest1.frm to /tmp/compressed/test/sbtest1.
+     ˓→frm.qp
+     170223 13:00:38 [01] ...done
+     170223 13:00:38 [01] Compressing ./test/sbtest2.frm to /tmp/compressed/test/sbtest2.
+     ˓→frm.qp
+     170223 13:00:38 [01] ...done
+     ...
+     170223 13:00:39 [00] Compressing xtrabackup_info
+     170223 13:00:39 [00] ...done
+     xtrabackup: Transaction log of lsn (9291934) to (9291934) was copied.
+     170223 13:00:39 completed OK!
+     #+END_SRC
+**** Preparing the backup
+     #+BEGIN_SRC sh
+     xtrabackup --decompress --target-dir=/data/compressed/
+     # --parallel=4
+     # --remove-original
+     xtrabackup --prepare --target-dir=/data/compressed/
+     #+END_SRC
+**** Restoring the backup
+     #+BEGIN_SRC sh
+      xtrabackup --copy-back --target-dir=/data/backups/
+     chown -R mysql:mysql /var/lib/mysql
+     #+END_SRC
+** PartV User's Manual
+*** C9 PERCONA XTRABACKUP USER MANNUAL
+**** The xtrabackup Binary

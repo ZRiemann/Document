@@ -1,0 +1,34 @@
+* go
+** install
+   #+BEGIN_SRC sh
+   #git clone https://go.googlesource.com/go
+   git clone https://github.com/golang/go
+   cd go
+   git checkout go1.14.2
+   cd src
+   ./all.bash
+
+   # CentOS8 gcc (GCC) 8.3.1 20190507 (Red Hat 8.3.1-4)
+   # fltfmt.c:437:5: error: this statement may fall through [-Werror=implicit-fallthrough=]
+   # fix: build.c:471 -Wno-implicit-fallthrough
+   # [-Werror=stringop-truncation]
+   # fix: build.c:472  "-Wno-stringop-truncation",
+   # [-Werror=shift-negative-value]
+   # ERROR: unknown relocation type 42; compiled without -fpic?
+   # export  CGO_ENABLED=0
+
+   # format_test.go:202: ParseInLocation(Feb 01 2013 AST, Baghdad) = 2013-02-01 00:00:00 +0000 AST, want 2013-02-01 00:00:00 +0300 +03
+   #time_test.go:929: Now().In(loc).Zone() = "-01", -3600, want "GMT+1", -3600
+   # fix: ignore this test
+
+   git clone https://github.com/golang/tools
+   #+END_SRC
+** GC 垃圾回收
+*** 基本思路（标记-清除法）
+    从每个包级的变量和每个当前运行函数的每一个局部变量开始，
+    通过指针或引用的访问路径遍历，是否可以找到该变量。
+    如果不存在这样的访问路径，那么说明该变量是不可达的，
+    也就是说它是否存在并不会影响程序后续的计算结果。
+    *new和局部变量 不能控制变量的生命周期，变量生命周期由使用方式决定*
+*** 与智能指针的优点
+    智能指针再对象间循环应用关系复杂时，会出现 *死锁* 现象。
