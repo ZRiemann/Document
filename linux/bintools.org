@@ -16,6 +16,8 @@
     #+BEGIN_SRC sh
     prometheus --config.file=documentation/examples/prometheus.yml --storage.tsdb.retention.size=50GB --storage.tsdb.retention.time=15d --storage.tsdb.path=/home/zwp/Mount/Backup/prometheus-data
     #+END_SRC
+    file_sd_config 基于文件的服务发现
+    
 *** mysqld_exproter
     #+BEGIN_SRC sql
     CREATE USER 'exporter'@'localhost' IDENTIFIED BY '123456' WITH MAX_USER_CONNECTIONS 3;
@@ -25,3 +27,317 @@
     #export DATA_SOURCE_NAME='root:123456@(127.0.0.1:8806)/' error, NO \'
     export DATA_SOURCE_NAME=root:123456@(127.0.0.1:8806)/
     #+END_SRC
+** Grafana
+   #+BEGIN_SRC sh
+   docker run -d -p 3000:3000 grafana/grafana
+   # docker run -d -p 3000:3000 --name grafana grafana/grafana:6.5.0
+
+   # docker run -d \
+   # -p 3000:3000 \
+   # --name=grafana \
+   # -e "GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource" \
+   # grafana/grafana
+   #+END_SRC
+   - Config file locations
+     - 不要修改 default.ini
+     - 修改cumtom.ini, grafana.ini
+     - $WORKING_DIR/conf/custom.ini
+     - --config 指定配置文件路经
+     - 拼接 http://192.168.1.112:3000/d/HLXYYZ3Wz/redis_dashboard?orgId=1&refresh=30s&kiosk&var-host=192.168.1.112:9104
+       http://localhost:3000/d/yOQlGZ3Wk/mysql_dashboard?orgId=1&refresh=30s&from=1590095558213&to=1590117158213&var-host=
+       http://localhost:3000/d/yOQlGZ3Wk/mysql_dashboard?orgId=1&from=now-1h&to=now&var-host=192.168.1.112:9104&refresh=30s&kiosk
+       http://192.168.1.38:9999/d/yOQlGZ3Wk/mysql_dashboard?orgId=1&refresh=30s&kiosk&var-host=192.168.1.38:10000
+** protobuf
+   #+BEGIN_SRC sh
+   go get github.com/gogo/protobuf/protoc-gen-gofast
+   go get github.com/gogo/protobuf/proto
+   #+END_SRC
+** java
+   #+BEGIN_SRC ditaa
+
+
+      +---------------------+            +------------------+                  +------------------+
+      |   MonitorController |            |                  |                  |    Agent         |
+      +----------+----------+            +---------+--------+                  +---------+--------+
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+                 |                                 |                                     |
+
+
+   #+END_SRC
+*** 监控工作流
+ 1. 用户配置更改监控配置
+ 2. 
+** go
+   - 查看模块版本列表
+     https://goproxy.cn/github.com/prometheus/mysqld_exporter/@v/list
+     https://goproxy.cn/github.com/docker/docker/@v/list
+** mysql
+   #+BEGIN_SRC sql
+   // 主从状态
+   show slave status;
+   // 查看死锁
+   show engine innodb status;
+   #+END_SRC
+    |------------+------------+----------------------------------|
+    | 指标分类   | 指标名称   | 指标说明                         |
+    | 性能类指标 | QPS        | 数据库每秒处理的请求数量         |
+    |            | TPS        | 数据库每秒处理的事务数量         |
+    |            | 并发数     | 数据库实例当前并行处理的会话数量 |
+    |            | 连接数     | 连接到数据库会话的数量           |
+    |            | 缓存命中率 | 查询命中缓存的比例               |
+    |------------+------------+----------------------------------|
+    | 高可用指标 | 可用性     | 数据库是否可以正常对外服务       |
+    |            | 阻塞       | 当前阻塞的会话数                 |
+    |            | 慢查询     | 慢查询情况                       |
+    |            | 主从延迟   | 主从延迟时间                     |
+    |            | 主从状态   | 主从链路是否正常                 |
+    |            | 死锁       | 查看死锁信息                     |
+    |------------+------------+----------------------------------|
+
+*** master-slave
+    #+BEGIN_SRC sql
+    show master status\G;
+    show slave status\G;
+    show processlist\G;
+    #+END_SRC
+*** MGR
+    #+BEGIN_SRC python
+    def http_metric(sql_dict):
+        global flus_time
+        #while True
+        datas = getResult(sql_dict)
+
+        mysql_mgr_cert.labels
+        mysql_mgr_node_status
+        mysql_mgr_node_health
+        mysql_mgr_role
+        mysql_mgr_apply_queue
+        mysql_big_trx
+    #+END_SRC
+    #+BEGIN_SRC sql
+    SELECT * FROM performance_schema.replication_group_members;
+    #+END_SRC
+*** mysql monitor
+    - 安装
+      1. 安装目录 /home/zwp/mysql/enterprise/monitor
+      2. tomcat 服务端口:18080 ssl:18443
+      3. 使用MEM绑定的MySQL数据库
+      4. 存储库配置
+         名称： service_manager
+         密码： service_manager
+         端口： 13306
+         数据库名称: mem
+      5. https://localhost:18443/Setup.action
+         - Create user with 'manager' role
+           user: manager
+           pwd: 123456
+         - Create user with 'agent' role
+           user: agent
+           pwd: 123456
+      6. mem build-in agent instance
+         root 12345678
+         mem-normal 123456
+         mem-limited 123456
+      7. 安装Monitor Agent
+         主机名称: 192.168.1.112
+         用户名: agent
+         密码: 123456
+         - 监事对象数据库信息
+           mysql ip: 192.168.1.19
+           mysql port: 8856
+         - /home/zwp/mysql/enterprise/agent/etc/init.d/mysql-monitor-agent start
+*** 45讲
+1. SQL查询如何执行
+   #+BEGIN_SRC sql
+   select * from T while ID=10;
+   #+END_SRC
+   #+BEGIN_SRC ditaa
+             +--------------+
+             |  客户端      |
+             +--------------+
+                   |
+                   |
+                                   -mysql -h localhost -P 3306 -u root -p    
+             +--  --    ----+                                             
+             | 连接器       |      管理连接，权限验证  show processlist 查看连接状态 
+             +--------------+                         - wait_timeout 控制连接保持时长，默认8小时(Lost connection to MySQL server during query)
+                   /     \                                           长连接会积累内存可能导致内存占用过大，异常重启(解决方案:1. 定期断开。2. mysql_reset_connection)
+                 -/       \-                                                                                      
+               -/           \-                                                            
+             -/               \                        
+   +--------/--+         +------------+                   
+   | 查询缓存  |         | 分析器     |        词法分析   select * from T where ID=10;
+   +-----------+         +------------+                  selexx // ERROR 1064 (42000): You have an error in your SQL syntax
+    静态表使用                \                                                       
+    query_cache_type:DEMAND    \                                                             
+    禁用缓存            +------+-------+                                              
+   select SQL_CACHE...  |  优化器      |      执行计划生成，索引选择；(join)决定连接顺序
+   启用缓存             +--------/-----+
+   8.0废弃缓存                 /-
+                        +-----/--------+                           
+                        | 执行器       |      操作引擎，放回结果;1. 判断执行权限( SELECT command denied to user 'b'@'localhost' for table 'T'
+                        +--------/-----+                        2. 调用对应的引擎接口(无索引: 1-2-3... 逐行对比                              
+                               /-                               3. 慢查询日志 rows_examined 每次调用引擎取数时累加
+                           -- /                                                      
+                        --/ /-                                                       
+                      -/   /                                                         
+                   --/
+       +----------/                                                                                              
+       |存储引擎  |    InnoDB, MyISAM, Memory...
+       +----------+     
+   #+END_SRC
+
+2. SQL更新如何执行
+   如何实现恢复半个月内任意一秒的状态？
+   #+BEGIN_SRC sql
+   create table T(ID int primary key, c int);
+   update T set c=c+1 where ID=2;
+   #+END_SRC
+   - WAL Write-Ahead Logging
+   - redo log(重做日志 InnoDB引擎)
+     - InnoDB crash-safe; 插件形式引入
+       innodb_flush_log_at_trx_commit = 1; 每次事务的redo log都直接持久化到磁盘，保证数据不会丢失
+       sync_binlog = 1; 保证异常重启后binglog不丢失；
+     - 物理日志：记录数据在页面上做了什么
+     - 循环写
+                                   <idle>         /- checkpoint <data>        /- write pos 环形缓冲区
+       一组4个文件，每个文件1GB [ib_logfile_0]-[ip_logfile_1]-[ib-logfile_2]-[ib_logfile_3]
+   - binlog(归档日志 server层)
+     - MyISAM not crash-safe; server层自带
+     - 逻辑日志：记录语句的原始逻辑
+     - 追加写
+     - mode: statement, row; 建议row 不会有歧义；
+   - 执行流程 update T set c=c+1 where ID=2;
+     1. 执行器：找到ID=2对应行
+        1.1 同页，直接返回
+        1.2 不同页，先从磁盘读取到内存再返回
+     2. 执行器：对数据+1,调用引擎接口写入这行新数据
+     3. 引擎：将数据更新到内存，
+             同时记录到redo log里，此时 redo log处于prepare状态
+             通知执行器，随时可以提交事务
+     4. 执行器：生成binlog,并把binlog写入磁盘
+     5. 执行器：调用引擎的提交事物接口，把redo log 改为commit状态
+   - 为什么2阶段提交(redo prepare -> commit status)与恢复半个月的数据
+     - binlog 保存半个月的数据
+     - 定期作整库备份
+     - 恢复操作
+       1. 找到最近的一次全量备份
+       2. 从备份时间点开始，将binlog依次取出，重放错误操作前一操作
+     - 为什么分2此，因为有2个日志
+3. 事务隔离(transaction isolation)
+   - transaction
+     - atomicity
+     - consistency
+     - isolation
+       - read uncommitted
+       - read committed
+       - repeatable read
+         MVCC(多版本并发控制)
+                             1     2     3     4
+         rollback flagment: 2:1   3:2   4:3    4
+                            read-viewA         read-viewC
+         建议不要使用长事物，回滚段大，占用锁资源
+         跟数据字典一起放在ibdata文件，即使回滚段提交也不会改变文件大小，(避免:20GB数据，200GB回滚段，需要库重建清理回滚段)
+       - serializable
+       - sql> show variables like 'transaction_isolantion'
+     - durability
+     - 事务启动
+       1. begin;(start transaction) ... commit;(or rollback;)
+       2. set autocommit=0 ... commit;(or rollback; or close)
+          建议set autocommit=1; 避免长事务
+          commit work and chain 避免begin
+          查询持续时间超过60秒的事务
+          sql> select * form infomation_schema.innodb_trx where TIME_TO_SEC(...)
+
+4. 索引上
+   - 目标：提高数据库查询效率
+   - 数据结构
+     - hash(key-value)
+       - 区间查询慢(key1~keyn)-(values)
+     - ordered array
+       - 等值查询和数值查询都快
+       - 插入成本高，适合静态存储
+     - search treey
+       - 二叉树
+         - 磁盘检索慢
+       - 多叉数
+         - 减少磁盘检索
+         - InnoDB ~1200叉 (1200(mem))*1200(disk)*1200(disk)*1200(disk) ~= 1.7B
+     - 跳表
+     - LSM
+   - InnoDB
+     - 索引组织表 主健 B+树模型
+     - sample
+       #+BEGIN_SRC sql
+       create table T(
+              id int primary key,
+              k int not null,
+              name varchar(16) not null default '',
+              index(k)
+       )engine=InnoDB;
+       #+END_SRC
+     - 主键索引(clustered index)：存整行数据
+       id=500 B+
+     - 非主键索引(secondary index)：存储内容(主健)
+       k=5 ->id=500 -> id=500 -> B+ 回表
+       整形做主键(比字符串主键)占用空间小
+     - 维护
+       - 页面满
+         申请新页；(页分裂)
+         数据删除 -> 页合并
+       - 页面不满
+     - AUTO_INCREMENT
+       不触发叶节点分裂
+       非AUTO_INCREMENT作主键场景：单索引，唯一索引(KeyValue)
+5. 索引下(区域查询)
+   #+BEGIN_SRC sql
+   select * from T Where k between 3 and 5;
+   -- (覆盖索引)不需要回表
+   select ID from T where k between 3 and 5;
+   insert into T values(100, 1, 'aa'),(200,2,'bb'),(300,3,'cc'),(500,5'ee'),(600,6,'ff'),(700,7,'gg');
+   #+END_SRC
+   执行几次搜索，扫描多少行？ 3，2
+   - 执行流程
+     1. k=3 => id=300;
+     2. ID=300 => R3;
+     3. k=5 => id=500;
+     4. id=500 => R4;
+     5. k=6 不满足，end
+   - 联合索引
+     是否有必要建立身份证号-名字联合索引？ 如果有高频请求：根据身份证号查询名字，就有必要(利用覆盖索引减少回表)
+     #+BEGIN_SRC sql
+     create table 'tuser'(
+            'id' int(11) NOT NULL,
+            'id_card' varchar(32) DEFAULT NULL,
+            'name' varchar(32) DEFAULT NULL,
+            'ismail' tinyint(1) DEFAULT NULL,
+            PRIMARY KEY('id'),
+            KEY 'id_card' ('id_card'),
+            -- 满足高频查询
+            KEY 'name_age' ('name', 'age')
+     )ENGINE=InnoDB
+     #+END_SRC
+   - 最左前缀原则（B+树特性，根据表定义顺序排列联合索引）
+     不高频查询优化思路，根据身份证号查询家庭地址
+     结论: 有(a,b) 联合索引后，就不需要(a)这个单独的索引
+   - 非最左前缀情况
+     #+BEGIN_SRC sql
+     select * from tuser where name like '张%' and age=10 and isma
+     #+END_SRC
