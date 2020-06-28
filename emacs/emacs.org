@@ -101,7 +101,6 @@ UI定制
   allow a command to accept various types of prefix arguments, such as a number, 
   a string, symbol, buffer names… You can C-h f and type interactive to find out more.
 
-
 * Emacs IDE
   http://tuhdo.github.io/c-ide.html
   https://github.com/emacs-helm/helm
@@ -112,6 +111,34 @@ UI定制
   (require 'setup-helm)
 
   M-x load-file RET init.el
+** http://blog.binchen.org/posts/emacs-as-c-ide-easy-way.html
+
+#+BEGIN_SRC sh
+# dump index files to directory ~/obj if 3rd party library directory is read only
+cd /usr/include && MAKEOBJDIRPREFIX=~/obj gtags --objdir
+cd /usr/linux/include && MAKEOBJDIRPREFIX=~/obj gtags --objdir
+# # above two command lines are same as below two command lines
+# mkdir -p ~/obj/usr/include && cd /usr/include && gtags --objdir=~/obj/usr/include
+# mkdir -p ~/obj/usr/linux/include && cd /usr/linux/include && gtags --objdir=~/obj/usr/linux/include
+#... 
+# index files are placed inside the projects
+cd ~/proj1 && gtags 
+cd ~/proj2 && gtags
+#...
+#+END_SRC
+
+#+BEGIN_SRC lisp
+;; `file-truename' MUST be used!
+(setenv "GTAGSLIBPATH" (concat "/usr/include"
+                               ":"
+                               "/usr/src/linux/include"
+                               ":"
+                               (file-truename "~/proj2")
+                               ":"
+                               (file-truename "~/proj1")))
+(setenv "MAKEOBJDIRPREFIX" (file-truename "~/obj/"))
+(setq company-backends '((company-dabbrev-code company-gtags)))
+#+END_SRC
 * Copy
   A package in a league of its own:Helm
   Helm is a incremental completion and selection narrowing framework for Emacs.
