@@ -128,6 +128,7 @@ cd ~/proj2 && gtags
 #+END_SRC
 
 #+BEGIN_SRC lisp
+;; ~/.custom.el
 ;; `file-truename' MUST be used!
 (setenv "GTAGSLIBPATH" (concat "/usr/include"
                                ":"
@@ -138,6 +139,26 @@ cd ~/proj2 && gtags
                                (file-truename "~/proj1")))
 (setenv "MAKEOBJDIRPREFIX" (file-truename "~/obj/"))
 (setq company-backends '((company-dabbrev-code company-gtags)))
+#+END_SRC
+** 手动安装 ggtags mode
+- git clone https://github.com/leoliu/ggtags.git
+- M-x package-install-file RET ~/git/ggtags/ggtags.el
+- set up ggtags mode to c/c++
+#+BEGIN_SRC lisp
+;; ggtags mode for c/c++
+(require 'ggtags)
+(add-hook 'c-mode-common-hook
+          (lambda ()
+            (when (derived-mode-p 'c-mode 'c++-mode 'java-mode)
+              (ggtags-mode 1))))
+(provide 'init-ggtags)
+#+END_SRC
+** 加载主题
+#+BEGIN_SRC lisp
+;; load-theme zenburn
+(load-theme 'zenburn t)
+;; start a shell
+(shell)
 #+END_SRC
 * Copy
   A package in a league of its own:Helm
