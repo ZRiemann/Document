@@ -160,6 +160,14 @@ cd ~/proj2 && gtags
 ;; start a shell
 (shell)
 #+END_SRC
+** 中英文对齐
+- git clone https://github.com/tumashu/cnfonts.git
+- M-x package-install-file RET cnfonts-ui.el
+  M-x package-install-file RET cnfonts.el
+- ~/.custom.el
+  #+BEGIN_SRC lisp
+  (require 'cnfonts)
+  #+END_SRC
 * Copy
   A package in a league of its own:Helm
   Helm is a incremental completion and selection narrowing framework for Emacs.
