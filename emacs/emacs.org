@@ -1,3 +1,4 @@
+
 * 基础
 $1. emacs
 https://github.com/redguardtoo/emacs.d.git
@@ -168,6 +169,14 @@ cd ~/proj2 && gtags
   #+BEGIN_SRC lisp
   (require 'cnfonts)
   #+END_SRC
+** 自定义加载路径
+   当用户不具有sudo权限时,需要自行编译软件指定路径;
+   emacs 不支持PATH 设置,如ggtags-create-gtags 提示找不到路径
+   #+BEGIN_SRC lisp
+   ;; ~/.custom.el
+   ;; /var/work/weipzhu/slink/bin/gtags
+   (add-to-list 'exec-path "/var/work/weipzhu/slink/bin")
+   #+END_SRC
 * Copy
   A package in a league of its own:Helm
   Helm is a incremental completion and selection narrowing framework for Emacs.
