@@ -1,0 +1,65 @@
+* document
+  https://docs.python.org/zh-cn/3/tutorial/controlflow.html
+** [[file:samples/c4_controlflow.py][控制流程]]
+** 6. [[file:samples/c6_modules.py][模块]]
+   #+BEGIN_SRC python
+   # 包引入
+   import fibo # 引入整个模块,不建议
+   import fibo as fib # 包别名,可用于缩短包名
+   from fibo import fib as fibonacci # 指定输出,建议方案
+   from fibo import * # 不要这么写, 会覆盖以定义的对象
+   fibo.reload() # 测试时重新加载被修改的模块
+
+   # 以脚本方式执行模块
+   # 在文件尾部添加如下代码
+   if __name__ == "__main__":
+       import sys
+       fib(int(sys.arg[1]))
+   #+END_SRC
+*** 6.1.2 模块搜索路径
+    1. 内置模块
+    2. sys.path
+       1. 当前目录
+       2. PYTHONPATH
+       3. 安装默认设置
+*** 6.4 包
+#+BEGIN_SRC python
+import sound.effects.echo       # 包引入
+from sound.efects import echo   # 缩短包前缀
+from sound.effects.echo import echofilter # 直接引入函数
+
+# __all__
+from sound.effects import *
+# sound/effects/__init_.py
+__all__ = ["echo", "surround", "reverse"]
+
+# 子包参考
+from . import echo
+from .. import formats
+from ..filters import equalizer
+
+#+END_SRC
+目录结构:
+sound/                          Top-level package
+      __init__.py               Initialize the sound package; 指明sound作为python包,可以空
+      formats/                  Subpackage for file format conversions
+              __init__.py
+              wavread.py
+              wavwrite.py
+              aiffread.py
+              aiffwrite.py
+              auread.py
+              auwrite.py
+              ...
+      effects/                  Subpackage for sound effects
+              __init__.py
+              echo.py
+              surround.py
+              reverse.py
+              ...
+      filters/                  Subpackage for filters
+              __init__.py
+              equalizer.py
+              vocoder.py
+              karaoke.py
+              ...

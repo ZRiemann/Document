@@ -66,3 +66,6 @@ builds/
 *.exe
 *.out
 *.app
+
+# zriemann
+python/samples/__pycache__
