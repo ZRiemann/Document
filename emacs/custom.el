@@ -1,16 +1,16 @@
 ;; file-truename MUST be used!
-(add-to-list 'exec-path "/var/work/weipzhu/slink/bin")
-(setenv "PATH" "$PATH:/var/work/weipzhu/slink/bin" t)
+;;(add-to-list 'exec-path "/var/work/weipzhu/slink/bin")
+;;(setenv "PATH" "$PATH:/var/work/weipzhu/slink/bin" t)
 
-(setenv "GTAGSLIBPATH" (concat "/usr/include"
-                               ":"
-                               "/var/work/weipzhu/slink/gtags-obj/usr/lib/gcc/x86_64-redhat-linux/4.8.2/include"
-                               ":"
-                               "/var/work/weipzhu/slink/gtags-obj/usr/local/include"
-                               ":"
-                               (file-truename "/var/work/weipzhu/workspaces/5g-layer-1")))
-(setenv "MAKEOBJDIRPREFIX" (file-truename "/var/work/weipzhu/slink/gtags-obj"))
-(setq company-backends '((company-dabbrev-code company-gtags)))
+;;(setenv "GTAGSLIBPATH" (concat "/usr/include"
+;;                               ":"
+;;                               "/var/work/weipzhu/slink/gtags-obj/usr/lib/gcc/x86_64-redhat-linux/4.8.2/include"
+;;                               ":"
+;;                               "/var/work/weipzhu/slink/gtags-obj/usr/local/include"
+;;                               ":"
+;;                               (file-truename "/var/work/weipzhu/workspaces/5g-layer-1")))
+;;(setenv "MAKEOBJDIRPREFIX" (file-truename "/var/work/weipzhu/slink/gtags-obj"))
+;;(setq company-backends '((company-dabbrev-code company-gtags)))
 
 
 ;; ggtags mode for c/c++
