@@ -157,6 +157,7 @@ cd ~/proj2 && gtags
 ** 加载主题
 #+BEGIN_SRC lisp
 ;; load-theme zenburn
+;; load-theme tango-dark - 这个颜色比较丰富
 (load-theme 'zenburn t)
 ;; start a shell
 (shell)

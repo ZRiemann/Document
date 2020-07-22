@@ -172,6 +172,8 @@ C-c C-c 改变checkbox状态
 #+XSLT:        the XSLT stylesheet used by DocBook exporter to generate FO file
 #+CAPTION: This is the catption for the next table or link
 #+INCLUDE:"filename" src c++ ;包含其他文件
+#+STARTUP: indent 默认带缩进, or M-x org-indent-mode / or (setq org-startup-indented t)
+
 -------------------------------------------------------------------------------
 #+OPTIONS
 H:         set the number of headline levels for export
