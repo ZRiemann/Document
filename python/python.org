@@ -1,6 +1,7 @@
 * document
   https://docs.python.org/zh-cn/3/tutorial/controlflow.html
 ** [[file:samples/c4_controlflow.py][控制流程]]
+** 5. [[file:samples/c5_datastrucures.py][数据结构]]
 ** 6. [[file:samples/c6_modules.py][模块]]
    #+BEGIN_SRC python
    # 包引入
