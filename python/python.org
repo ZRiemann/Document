@@ -64,4 +64,6 @@ sound/                          Top-level package
               vocoder.py
               karaoke.py
               ...
-** 7. 输入输出
+** 7. [[file:samples/c5_inputoutput.py][输入输出]]
+** 8. [[file:samples/c8_errors.py][异常处理]]
+** 9. [[file:samples/c9_classes.py][类]]
