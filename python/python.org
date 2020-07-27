@@ -67,3 +67,4 @@ sound/                          Top-level package
 ** 7. [[file:samples/c5_inputoutput.py][输入输出]]
 ** 8. [[file:samples/c8_errors.py][异常处理]]
 ** 9. [[file:samples/c9_classes.py][类]]
+** 10. [[file:samples/c10_stdlib.py][标准库简介]]
