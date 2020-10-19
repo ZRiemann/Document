@@ -114,11 +114,26 @@ class TransitionError(Error):
 # 8.6. 定义清理操作¶
 # finally
 try:
-    #raise KeyboardInterrupt
+    # raise KeyboardInterrupt
     print('raise KeyboardInterrupt')
 finally:
     print('Goodbye, world!')
 
+def divide(x, y):
+    try:
+        result = x / y
+    except ZeroDivisionError:
+        print("division by zero!")
+    else:
+        print("result is", result)
+    finally:
+        print("executing finally clause")
+
+divide(2, 1)
+divide(2, 0)
 
 # 8.7. 预定义的清理操作¶
 # with 语句允许像文件这样的对象能够以一种确保它们得到及时和正确的清理的方式
+with open("c8_errors.py") as f:
+    for line in f:
+        print(line, end="")
