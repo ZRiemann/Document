@@ -1,3 +1,4 @@
+#+STARTUP: indent
 git 用户手册
 
 https://git-scm.com/book/zh/v2
@@ -1284,4 +1285,6 @@ irb(main):006:0> quit
 * tips
 ** emacs
 *** WARNING: terminal is not fully functional
-    $ git config --global core.pager ""
+    $ git config --global core.pager "" ; not effect
+    
+

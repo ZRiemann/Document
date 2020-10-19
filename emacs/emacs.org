@@ -1,4 +1,4 @@
-
+#+STARTUP: indent
 * 基础
 $1. emacs
 https://github.com/redguardtoo/emacs.d.git
