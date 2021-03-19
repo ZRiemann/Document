@@ -1,3 +1,4 @@
+#+STARTUP: indent
 * document
   https://docs.python.org/zh-cn/3/tutorial/controlflow.html
 ** [[file:samples/c4_controlflow.py][控制流程]]

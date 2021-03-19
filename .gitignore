@@ -69,3 +69,8 @@ builds/
 
 # zriemann
 python/samples/__pycache__
+*.gz
+*.cover
+*.pth
+**/torch/data/
+

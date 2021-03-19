@@ -1,3 +1,4 @@
+#+STARTUP: indent
 * robot
 ** 测试数据
 ** 测试套件

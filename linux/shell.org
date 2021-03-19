@@ -1,4 +1,4 @@
-
+#+STARTUP: indent
 * shell 入门 
   http://blog.csdn.net/Z_YTTT/article/details/53020830
 ** 第一行&执行
@@ -617,6 +617,115 @@ echo done!
    # \033[?25h 显示光标
    #+END_SRC
 
+** getopt
+getopt ab:cd -ad value1 -b best1 value2 value3
+getopt optstring=[ab:cd] parameters=[-ad value1 -b best1 value2 value3]
+result: -a -d -b best1 -- value1 value2 value3
+
+若是添加了双破折线，那么无轮后面是什么，都会做为参数而不是选项来处理
+getopt ab:cd -ad value1 -- -b best1 value2 value3
+ -a -d -- value1 -b best1 value2 value3
+
+参数包含空格的问题
+
+*支持长格式*
+getopt -o ab:cd --long arga,argb:,argc,argd -- -ad -b best --argb value1 value2
+ -a -d -b 'best' --argb 'value1' -- 'value2'
+
+getopt <shortopt>-o <optstr>ab:cd <longopt>--long <longoptstr>arga,argb:,argc,argd -- <param>-ad -b best --argb value1 value2
+
+*-q* 能够禁止错误报告，解析错误的选项和参数将被丢弃
+*可选参数 ::*
+
+*set 在脚本中使用getopt问题*
+set -- $(getopt ab:cd "$@")
+set -- $(getopt -- a:b:s:u "$@")
+*eval 解决脚本不能执行问题和空格问题*
+eval set -- $(getopt -- a:b:s:u "$@")
+
+*处理参数解析错误问题, 最终版*
+getopt_cmd=$(getopt -n $(basename $0) -- a:b:s:u "$@")
+[ $? -ne 0 ] && exit 1
+eval set -- "$getopt_cmd"
+#+BEGIN_SRC sh
+#!/bin/bash
+mark=""      # 链接符号
+prefix=""    # 前缀
+base="test"  # 默认字符串
+suffix=""    # 后缀
+upper=off    # 是否大写
+# 显示声明一下这是个数组变量，其实没有必要
+declare -a names  # 须要格式化输出的全部原始字符串
+# 打印的帮助信息
+help_str="
+参数说明：
+  -h, --help:           打印帮助信息
+  -m, --mark [链接符]:  使用链接符，默认是下划线（_），能够指定
+  -a, --after string:   添加后缀
+  -b, --befor string:   添加前缀
+  -s, --string string:  指定中间的字符串，默认是“test”
+  -u, --upper:          全大写输出
+"
+# 解析命令行参数
+getopt_cmd=$(getopt -o m::ha:b:s:u --long mark::,help,after:,befor:,string:,upper -n $(basename $0) -- "$@")
+[ $? -ne 0 ] && exit 1
+eval set -- "$getopt_cmd"
+# 解析选项
+while [ -n "$1" ]
+do
+    case "$1" in
+        -m|--mark)
+            case "$2" in
+                "")
+                    mark="_"
+                    shift ;;
+                ,*)
+                    mark="$2"
+                    shift ;;
+            esac
+            ;;
+        -h|--help)
+            echo -e "$help_str"
+            exit ;;
+        -a|--after)
+            suffix="$2"
+            shift ;;
+        -b|--befor)
+            prefix="$2"
+            shift ;;
+        -s|--string)
+            base="$2"
+            shift ;;
+        -u|--upper)
+            upper=on ;;
+        --) shift
+            break ;;
+         ,*) echo "$1 is not an option"
+            exit 1 ;;  # 发现未知参数，直接退出
+    esac
+    shift
+done
+# 解析参数
+while [ -n "$1" ]
+do
+    names=("${names[@]}" "$1")
+    shift
+done
+names[0]=${names[0]:-$base}
+for name in "${names[@]}"
+do
+    # 添加前缀和后缀
+    output="${prefix:+${prefix}${mark}}${name}${suffix:+${mark}${suffix}}"
+    # 判断是否要全大写输出
+    if [ $upper = on ]
+    then
+        output=${output^^}
+    fi
+    # 输出结果
+    echo "$output"
+done
+#+END_SRC
+
 * shell 编程
 ** 什么是shell
    - 用户与linux系统间接口程序
@@ -1038,7 +1147,6 @@ echo done!
    | sh -u <script> | set -o nounset   | 如果使用了未定义变量就出错 |
    |                | set -u           |                            |
    |----------------+------------------+----------------------------|
-
 
 * sed
 主要用于脚本修改配置文件
