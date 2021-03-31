@@ -1,0 +1,137 @@
+#+STARTUP: indent
+
+* Documentation
+** 1 A Brief Introduction of Octave
+*** 1.1 Running Octave
+*** 1.2 Simple Examples
+**** 1.2.1 Element Calculations
+exp(i*pi)
+=> ans = -1.0000e+00 + 1.2246e-16i
+** 11 Funcations and scripts
+*** 11.1 Introduction to Function and Script Files
+There are seven different things covered in this section.
+1. Typing in a function at the command prompt.
+2. Storing a group of commands in a file - called a script file.
+3. Storing a function in a file -  called a function file.
+4. Subfunctions in function files.
+5. Multiple functions in one script file.
+6. Private functions
+7. Nested functions.
+
+Both function file and script file end with extension of .m,
+for MATLAB compatibility. If you want more than one independent
+functions in a file, it must be a script file. and to use
+these functions you must execute the script file before
+you can use the functions that are in the script file.
+*** 11.2 Defining Functions
+#+BEGIN_SRC octave
+function name
+body
+endfunction
+#end
+
+function wakeup
+  printf("\a");
+endfunction
+#+END_SRC
+Functions share the same pool of names as variables.
+The function body consists of Octave statements. It is the most
+important part of the definition, because it says what the function
+should actually do.
+Onece this function is defined, you can ask Octave to evaluate it by
+typing the name of the function. Normally, you wil want to pass some
+information to the functions you define. The syntax for passing parameters
+to a function in Octave is
+
+function name (arg-list)
+  body
+endfunction
+
+where arg-list is a comma-separated list of the function's arguments.
+When the function is called, the arugment names are used to hold the
+argument values given in the call. Thie list of arguments may be empty,
+in which case this form is equivalent to the othe shown above.
+
+function wakeup (message)
+  printf("\a%s\n", message);
+endfunction
+
+wakeup("Rise and shine!");
+
+In most cases, you will also want to get some information back from the
+functions you define. Here is the syntax for writing a function that
+returns a single value
+
+function ret-val = name (arg-list)
+...
+
+function retval = avg (v)
+  retval = sum (v) / length (v);
+endfunction
+
+function retval = avg (v)
+  retval = 0;
+  if (nargin != 1)
+    usage ("avg (vector)");
+  endif
+
+  if (isvector(v))
+    retval = sum (v) / length (v);
+  else
+    error("avg: expecting vector argument");
+  endif
+endfunction
+
+nargin()
+nargin(fcn) # return the declared number of arguments that the function
+can accept.
+
+function [y, ia, ib] = union (a, b, varargin)
+end
+nargin ("union")
+=> -3
+- val = silent_functions()
+  old_val = silent_functions(new_val)
+  silent_functions(new_val, "local")
+*** 11.3 Returning from a Function
+The body of a user-defined funtion can caontin a return statement. 
+This statement returns control to the rest of the Octave program.
+It looks like this:
+return
+Unlike the return statement in C, Octave's return statement can not
+be used to return a value from a function. instead,you must assign
+values to the list of the return variables that are part of the
+function statement. the return statement simply makes it easier to
+exit a function from a deeply nested loop or conditional statement.
+Here is an example of a function that checks to see if any elements of 
+a vector are nonzero.
+
+function retval = any_nunzero (v)
+  retval = 0;
+  for i = 1:leng (v)
+    if (v (i) != 0)
+      retval = 1;
+      return;
+    endif
+  endfor
+endfunction
+*** 11.4 Multiple Return Values
+Unlike many other computer languages, Octave allows you to define
+functions that return mote than one value. The syntax for defining
+fucctions that return multiple values is
+
+function [ret-list] = neme (arg-list)
+...
+
+function [max, idx] = vmax (v)
+  idx = 1;
+  max = v (idx);
+  for i = 2:length(v)
+    if (v(i)>max)
+      max = v(i);
+      idx = i;
+    endif
+  endfor
+endfunction
+*** 11.5 Variable-length Return Lists
+TODO: 11.5
