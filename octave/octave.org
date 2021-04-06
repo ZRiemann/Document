@@ -135,3 +135,5 @@ function [max, idx] = vmax (v)
 endfunction
 *** 11.5 Variable-length Return Lists
 TODO: 11.5
+* Resources
+https://ww2.mathworks.cn/help/index.html?s_tid=CRUX_lftnav
