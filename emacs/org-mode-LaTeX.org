@@ -38,3 +38,14 @@ x=\sqrt{b}
 
 If $a^2=b$ and \( b=2 \), then the solution must be
 either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
+
+* Greek Letter
+$$ \alpha \beta \gamma \delta \epsilon \varepsilon \zeta \eta \vartheta \iota
+\kappa \lambda \mu \nu \xi o \pi \varpi \rho \varrho \sigma \varsigma \tau \upsilon
+\phi \varphi \chi \psi \omega$$
+$$ A B E Z H I K M N O P T X \Gamma \Lambda \Delta \Theta \Xi \Pi \Sigma \Upsilon \Phi \Psi \Omega$$
+* Math
+$\varnothing$ $\emptyset$
+* www
+https://blog.csdn.net/ShadyPi/article/details/83049219?utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control&dist_request_id=&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control
+https://blog.csdn.net/anscor/article/details/80878285?utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control&dist_request_id=&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control
