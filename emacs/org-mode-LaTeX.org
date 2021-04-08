@@ -1,5 +1,4 @@
 #+STARTUP: indent
-#+STARTUP: latexpreview
 #+TITLE: Org to \LaTex
 
 * Introduction
