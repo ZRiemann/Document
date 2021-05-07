@@ -78,8 +78,6 @@ isstruct(s)
 # numfields(s) ;octave 3.8.1 not support
 fieldnames(s)
 length(fieldnames(s))
-#}
-echo on
 
 ## 6.1.5 Processing Data in Structures
 clear all
@@ -94,4 +92,52 @@ s.height = 185
 s.age = 32;
 #c = namedargs2cell(s)
 c = {"name", "Peter", "height", 185, "Age", 42}
+
+## 6.2 containers.Map
+## Create an object of the map class that stores a list of key-value
+## pairs.
+
+## 6.3 Cell Arrays
+## 6.3.1 Basic Usage of Cell Arrays
+c = {"a string", rand(2,2)}
+c{1:2}
+c{3} = 3
+celldisp(c, "name_b")
+iscell(c)
+
+## 6.3.2 Creating Cell Arrays
+c = cell(2, 2)
+c = cell(3, 4, 5)
+celldisp(c)
+
+A = [1,2; 3,4]
+c = num2cell(A)
+
+x = 1:12
+y = [3, 4]
+A = reshape(1:12, [3, 4])
+A = reshape(1:12, [3, 4])'
+c = mat2cell(A, [2,2], [1,1,1])
+
+## 6.3.4 Cell Arrays of Strings
+clear all
+a = [ "hello"; "world"];
+c = mat2cell(a, 2)
+iscellstr(c)
+c = cellstr(a)
+iscellstr(c)
+#}
+echo on
+
+## 6.4 Comma Separated Lists
+max(3, 4)
+
+a = {1, [2, 3], 4, 5, 6}
+b = [a{1:4}]
+
+c = {"GNU", "Octave", "is", "Free", "Software"};
+printf("%s ", c{:})
+
+randn(10,1)
+x = ceil(randn(10,1))
 echo off
