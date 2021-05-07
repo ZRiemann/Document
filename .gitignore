@@ -73,5 +73,7 @@ python/samples/__pycache__
 *.cover
 *.pth
 **/torch/data/
+**/ltximg
 **/octave-workspace
+
 
