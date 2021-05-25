@@ -69,3 +69,49 @@ sound/                          Top-level package
 ** 8. [[file:samples/c8_errors.py][异常处理]]
 ** 9. [[file:samples/c9_classes.py][类]]
 ** 10. [[file:samples/c10_stdlib.py][标准库简介]]
+** extending(扩展)
+*** extend(python调用C/C++)
+*** embedding(C/C++嵌入python)
+#+BEGIN_SRC C
+Py_Initialize();
+
+PyRun_SimpleString();
+/*
+2. PyRun_SimpleFile();
+3. call the lower-level operations described in the previous chapters 
+to construct and use Python objects.
+*/
+#+END_SRC
+
+#+BEGIN_SRC C
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
+int
+main(int argc, char *argv[])
+{
+    wchar_t *program = Py_DecodeLocale(argv[0], NULL);
+    if (program == NULL) {
+        fprintf(stderr, "Fatal error: cannot decode argv[0]\n");
+        exit(1);
+    }
+    Py_SetProgramName(program);  /* optional but recommended */
+    Py_Initialize();
+    PyRun_SimpleString("from time import time,ctime\n"
+                       "print('Today is', ctime(time()))\n");
+    if (Py_FinalizeEx() < 0) {
+        exit(120);
+    }
+    PyMem_RawFree(program);
+    return 0;
+}
+#+END_SRC
+
+python3-config --cflags
+-I/usr/include/python3.6m -I/usr/include/python3.6m  
+-Wno-unused-result -Wsign-compare 
+-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -D_GNU_SOURCE -fPIC -fwrapv -DNDEBUG 
+-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches   -m64 -mtune=generic -D_GNU_SOURCE -fPIC -fwrapv
+
+python3-config --ldflags
+-L/usr/lib64 -lpython3.6m -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic
