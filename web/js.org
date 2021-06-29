@@ -1,3 +1,4 @@
+#+STARTUP: indent
 * js全栈
   https://www.liaoxuefeng.com/wiki/001434446689867b27157e896e74d51a89c25cc8b43bdb3000
   https://developer.mozilla.org/en-US/docs/Web/JavaScript
@@ -730,7 +731,7 @@
    nvm install 10.15.0
    nvm use 10.15.0
 ** npm
-   node.js 包管理
+*** node.js 包管理
    - 快速下载
      npm install --global smart-npm --registry=https://registry.npm.taobao.org/
      - npm install <package-name> --save ; 保存到package.json
@@ -761,9 +762,75 @@
        #+END_SRC
        $ DEBUG=<epxress-project>:* npm run devstart
      - 
-       
+*** ZeroMQ 客户端自动重连       
+#+BEGIN_SRC js
+const zmq = require("zeromq")
+const detailProcess= require("./detailProcess")
+
+async function run() {
+  let sock;
+  while(true){
+    /* MUST config heartbeat and reconnect.
+     ,*/
+    sock = new zmq.Pull({heartbeatInterval: 1000, heartbeatTimeToLive: 2000, heartbeatTimeout: 3000, reconnectInterval: 3000})
+    sock.connect("tcp://127.0.0.1:3000")
+    console.log("Worker connected to port 3000")
+
+    try{
+      for await (const [msg] of sock) {
+        console.log("work: %s", msg.toString())
+      }
+    }catch(e){
+      console.log(e)
+      sock.close()
+    }
+  }
+
+  console.log("done")
+}
+
+run()
+
+/* server side
+ ,*/
+
+const zmq = require("zeromq")
+
+async function run() {
+  const sock = new zmq.Push
+
+  await sock.bind("tcp://127.0.0.1:3000")
+  console.log("Producer bound to port 3000")
+  while (true) {
+    await sock.send("message")
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    }
+}
+
+run()
+#+END_SRC
 ** node
-   node.js 程序
+** javascript
+*** promise
+*** WebSocket
+[[file:test-js/ws_client.js][client]] [[file:test-js/ws_server.js][server]]
+ws://example.com:80/some/path
+#+BEGIN_SRC text
+GET / HTTP/1.1
+Connection: Upgrade
+Upgrade: websocket
+Host: example.com
+Origin: null
+Sec-WebSocket-Key: sN9cRrP/n9NdMgdcy2VJFQ==
+Sec-WebSocket-Version: 13
+
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Upgrade: websocket
+Sec-WebSocket-Accept: fFBooB7FAkLlXgRSz0BT3v4hq5s=
+Sec-WebSocket-Origin: null
+Sec-WebSocket-Location: ws://example.com/
+#+END_SRC
 ** deployment
  - 设置 NODE_ENV 为 'production'
  - Log appropriately
