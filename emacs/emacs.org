@@ -170,6 +170,15 @@ cd ~/proj2 && gtags
   #+BEGIN_SRC lisp
   (require 'cnfonts)
   #+END_SRC
+- test 中英文对齐
+  |--------------+--------------------+------------|
+  | englilsh     | 中文               | ok!!!      |
+  | hello        | 你好               |            |
+  | it's ok ?    | 是否对齐           |            |
+  | it's aligned | 已经对齐了还是没有 | not ok ya! |
+  |              | it is ok           |            |
+  |--------------+--------------------+------------|
+    
 ** 自定义加载路径
    当用户不具有sudo权限时,需要自行编译软件指定路径;
    emacs 不支持PATH 设置,如ggtags-create-gtags 提示找不到路径
