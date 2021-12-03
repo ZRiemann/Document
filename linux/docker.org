@@ -1,3 +1,5 @@
+#+STARTUP: indent
+
 * docker official
   https://docs.docker.com/get-started/
 ** Get Started

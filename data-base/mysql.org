@@ -629,6 +629,50 @@ mysql_stmt_sqlstate();
 *** C9 PERCONA XTRABACKUP USER MANNUAL
 **** The xtrabackup Binary
 * tips
+** 初始安装修改root密码及访问权限
+#+BEGIN_SRC sh
+# install server and client develop lib
+sudo apt install mysql-server libmysqlclient-dev
+
+# show initial user and password
+sudo cat /etc/mysql/debian.cnf
+[sudo] password for betty: 
+# Automatically generated for Debian scripts. DO NOT TOUCH!
+[client]
+host     = localhost
+user     = debian-sys-maint
+password = 61tAx8tghU6xn9Ax
+socket   = /var/run/mysqld/mysqld.sock
+[mysql_upgrade]
+host     = localhost
+user     = debian-sys-maint
+password = 61tAx8tghU6xn9Ax
+socket   = /var/run/mysqld/mysqld.sock
+
+# login mysql
+mysql -u debian-sys-maint -p
+#pwd 61tAx8tghU6xn9Ax
+show database;
+use mysql;
+
+# for version <= 5.7
+#update user set password=password('123456') where user='root';
+#GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'root' WITH GRANT OPTION;
+
+# for version 8.0
+update user set authentication_string='' where user='root';
+alter user 'root'@'localhost' identified with mysql_native_password by '123456';
+# /etc/mysql/mysql.conf.d/mysqld.cnf
+# #bind-address=127.0.0.1
+update user set host='%' where user='root';
+flush privileges;
+
+#+END_SRC
+** 绕过密码登陆
+/etc/mysql/mysql.conf.d/mysqld.cnf
+[mysqld]
+skip-grant-tables
+
 ** 安日期分区
 https://blog.csdn.net/zhang168/article/details/46911305
 #+BEGIN_SRC sql
