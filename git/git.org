@@ -875,7 +875,7 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
 
    #===============================================================================
    # 一次性拉取所有子项目
-   git clone --recursive https://github.com/chaconics/MainProject
+   git clone --recurse-submodules https://github.com/chaconics/MainProject
    # Cloning into 'MainProject'...
    # remote: Counting objects: 14, done.
    # remote: Compressing objects: 100% (13/13), done.
@@ -892,6 +892,9 @@ $ git config --global alias.visual '!gitk'　; 运行外部命令(协作工具)
    # Checking connectivity... done.
    # Submodule path 'DbConnector': checked out
    # 'c3f01dc8862123d317dd46284b05b6892c7b29bc'
+   #==================================
+   # 忘记 --recurse-submodules, 补充下载更新子项目
+   git submodule update --init
    #+END_SRC
 - 在包含子模块的项目上工作
   #+BEGIN_SRC sh

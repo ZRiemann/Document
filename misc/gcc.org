@@ -1,0 +1,562 @@
+#+STARTUP: indent
+
+* Build
+https://gcc.gnu.org/install/
+#+BEGIN_SRC sh
+sudo apt install libmpc-dev
+sudo apt install flex
+./configure --disable-multilib
+make BUILD_CONFIG=bootstrap-O3
+
+sudo make install
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/x86_64-linux-gnu-gcc-9 90
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/local/bin/x86_64-pc-linux-gnu-gcc 100
+
+#~/.bashrc
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib64
+#+END_SRC
+* Usage
+-fuse-ld=mold
+* Features
+https://owent.net/2019/1911.html // 性能测试
+** Coroutine
+https://zhuanlan.zhihu.com/p/59178345
+协程通过Promise和Awaitable接口的15个以上的函数来提供给程序员定制协程的流程和功能，
+实现最简单的协程需要用到其中的8个（5个Promise的函数和3个Awaitable的函数），
+其中Promise的函数可以先不管它，先来看Awaitable的3个函数。
+#+BEGIN_SRC c++
+#include <coroutine>
+
+async_call(input1, input2, ..., call_back);
+co_await coro_call(input1, input2, ...);
+#+END_SRC
+*** Awaitables
+如果要实现形如co_await blabla;的协程调用格式, 
+blabla就必须实现Awaitable。co_await是一个新的运算符。
+Awaitable主要有3个函数
+#+BEGIN_SRC c++
+// 在例子中其实这个Task除了作为函数返回值以外没其它作用。
+struct Task{
+    struct promise_type{
+        auto get_return_object(){return Task{};}
+        auto initial_suspend() {return std::experimental::suspend_never{};}
+        auto final_suspend(){return std::experimental::suspend_never{};}
+        void unhandled_exception(){std::terminate();}
+        void return_void(){}
+    }
+};
+
+// example async call back
+using call_back = std::function<void(int)>;
+void Add100ByCallback(int init, call_back f){
+    std::thread t(
+        [init, f](){
+            std::this_thread::sleep_for(std::crono::seconds(5)); // sleep 5 seconds
+            f(init + 100);
+        });
+    t.detach();
+}
+
+Add100ByCallback(5, [](int value){
+                        std::cout<< "get result:" << value << "\n";
+                    });
+
+// example coroutine
+struct Add110AWaitable{
+    int init_;
+    int result_;
+
+    Add110AWaitable(int init):init_(init){}
+    bool await_ready() const {return false;}
+    int await_resume() {return result_;}
+    void await_suspend(std::experimental::coroutine_handle<> handle){
+        auto f = [handle, this](int value) mutable{
+                     result_ = value;
+                     handle.resume();
+                 };
+        Add100ByCallback(init_, f);
+    }
+}
+Task Add110ByCallback(int init, call_back f){
+    int ret = co_await Add110AWaitable(init); // co_await return value
+    ret = co_await Add110AWaitable(ret); // co_await return value
+    ret = co_await Add110AWaitable(ret); // co_await return value
+    ret = co_await Add110AWaitable(ret); // co_await return value
+    f(ret);
+}
+#+END_SRC
+**** await_ready
+返回Awaitable实例是否已经ready。
+协程开始会调用此函数，如果返回true，表示你想得到的结果已经得到了，协程不需要执行了。
+所以大部分情况这个函数的实现是要return false。
+**** await_suspend
+挂起awaitable。该函数会传入一个coroutine_handle类型的参数。
+这是一个由编译器生成的变量。
+在此函数中调用handle.resume()，就可以恢复协程。
+**** await_resume
+当协程重新运行时，会调用该函数。
+这个函数的返回值就是co_await运算符的返回值。
+** Coroutine Cpp Reference
+https://en.cppreference.com/w/cpp/language/coroutines
+https://timsong-cpp.github.io/cppwp/n4861/dcl.fct.def.coroutine
+*** A Function as a coroutine
+1. Uses the *co_wait* operator to suspend execution until resumed
+   #+BEGIN_SRC c++
+   task<> tcp_echo_server(){
+       char data[1024];
+       while(true){
+           size_t n = co_await socket.async_read_some(buffer(data));
+           co_await async_write(socket, buffer(data, n));
+       }
+   }
+   #+END_SRC
+2. Use the keyword *co_yield* to suspend execution returning a value
+   #+BEGIN_SRC c++
+   generator<int> iota(int n = 0){
+       while(true){
+           co_yield n++;
+       }
+   }
+   #+END_SRC
+3. Use the keyword *co_return* to complete execution returing a value
+   #+BEGIN_SRC c++
+   lazy<int> f(){
+       co_return 7;
+   }
+   #+END_SRC
+*** Restrictions
+1. Cannot use variadic arguments, plain return statements, placeholder return types.
+2. Cannot use Constexpr functions, constructors, destructors
+3. Main function cannot be coroutines.
+*** Execution
+**** Each coroutine is associate with:
+***** Promise object
+Manipulated from inside the coroutine.
+The coroutine submits its result or exception through this object.
+***** Coroutine handle
+Manipulated from outside the coroutine.
+This is a non-owning handle used to resume execution of the coroutine or destroy the coroutine frame.
+***** Coroutine state
+Which is an internal, heap-allocated object that contains
+- the promise object
+- the parameters(all copied by value)
+- some representation of the current suspension point, so that resume knows where to continue and
+  destroy knows what local variables where in scope.
+- local variables and temporaries whose lifetime spans the current suspension point.
+**** When a coroutine begins execution, it performs the following:
+1. Allocates the *coroutine state object* using operator new(see below)
+2. Copies all function parameters to the *coroutine state*: by-value parameters are move or copied,
+   by-reference parameters remain reference(and so may become dangling if the coroutine is resumed
+   after the lifetime of referred object ends)
+3. calls the constructor of the *promise object*. if the promise type has a constructor that takes
+   all coroutine parameters, that constructor is called, with post-copy coroutine arguments.
+   Otherwise the default constructor is called.
+4. Calls *promise.get_return_object()* and keeps the result in a local variable. The result of
+   that call will be returned to the caller when coroutine first suspends.
+   Any exceptions thrown up to and including propagate back to the caller, not placed in this promise.
+5. Calls *promise.initial_suspend()* and *co_wait(s)* its result. Typical Promise types either return 
+   /suspend_always/ for lazily-started coroutines or 
+   /suspend_never/ for eagerly-started coroutines.
+6. When *co_await promise.initia_suspend()* resumes, start executine the body of the coroutine.
+#+BEGIN_SRC c++
+#include <coroutine>
+#include <iostream>
+
+struct promise;
+struct coroutine : std::coroutine_handle<promise>{
+    using promise_type = struct promise;
+};
+
+struct promise{
+    coroutine get_return_object(){
+        return {coroutine::from_promise(*this)};
+    }
+    std::suspend_always initial_syspend() noexcept{
+        return {};
+    }
+    std::suspend_never final_suspend() noexcept{
+        return {};
+    }
+    void return_void(){}
+    void unhandled_exception(){}
+};
+
+struct S{
+    int i;
+    coroutine f(){
+        std::cout << i;
+        co_return;
+    }
+};
+
+void bad1(){
+    coroutine h = S{0}.f();
+    // S{0} destroyed
+    // resumed coroutine executes std::cout << i, uses S::i after free
+    h.resume();
+    h.destroy();
+}
+
+coroutine bad2(){
+    S s{0};
+    // returned coroutine can't be resumed without committing use after free
+    return s.f();
+}
+
+coroutine bad3(){
+    coroutine h =
+        [i = 0]() -> coroutine {
+            // a lambda that's also a coroutine
+            std::cout << i;
+            co_return;
+        }(); // immediately invoked
+    // lambda destroyed
+    h.resume(); // use(anonymousl ambda type)::i after free
+    h.destroy();
+}
+
+void good(){
+    coroutine h =
+        [](int i) -> coroutine {
+            // make i a coroutine parameter
+            std::cout << i;
+            co_return;
+        }(0);
+    // lambda destroyed
+    // no problem, i has been copied to the coroutine frame as a by-value parameter
+    h.resume();
+    h.destroy();
+}
+#+END_SRC
+**** When a coroutine reachs a suspension point
+7. the return object obtained earlier is returned to the caller/resumer, after implicit conversion
+   to the return type of the coroutine, if necessary.
+**** When a coroutine reaches the /co_return/ statement, it performs the following
+1. Calls promise.return_void() for
+   - co_return;
+   - co_return expr; where expr has type void
+   - falling off the end of a void-returning coroutine. The behavior is undefined if the Promise type
+     has no Promise::return_void() member function in this case.
+2. or calls promise.return_value(expr) for co_return expr where expr has non-void type
+3. destroys all variables with automatic storage duration in reverse order they were created.
+4. calls promise.final_suspend() and /co_await/ s the result.
+**** If the coroutine ends with an uncaught exception, it performs the following:
+1. catches the exception and calls promise.unhandled_exception() from within the catch-block
+2. calls /promise.final_suspend()/ and /co_await/ s the result(e.g. to resume a continuation 
+   or publish a result). It's undefened behavior to resume a coroutine from this object.
+**** When the /coroutine state/ is destroyed either bacause it terminated via co_return
+or uncaught exception, or because it was destroyed via its handle, it does the following:
+1. calls the destructor of the promise object.
+2. calls the destructors or the function parameter copies
+3. calls operator delete to free the memory used by the coroutine state
+4. transfers execution back to the caller/resumer.
+*** Heap allocation
+Coroutine state is allocated on the heap via non-array operator new.
+- If the *Promise* type defines a class-level replacement, it will be used, otherwise global 
+  operator new will be used.
+- If the *Promise* type defines a placement from of operator new that takes additional parameters,
+  and they match an argument list where the first argument is the size requested(of type std::size_t)
+  and the rest are the coroutine function arguments, those arguments will be passed to operator new
+  (this makes it possible to use leading-allocator-convention for coroutines)
+The call to the operator new can be optimized out(even if custom allocator is used) if
+- The lifetime of the coroutine state is strictly nested within the lifetime of the caller, and
+- the size of coroutine frame is known at the call site
+In that case, coroutine state is embedded in the caller's stack frame(if the caller is an ordinary
+function) or corouine state(if the caller is a coroutine)
+If allocation fails, the coroutine throws std::bac_allock, unless the Promise type defines the
+member function /Promise::get_return_object_on_allocation_failure()/.
+If that meber function is defined, allocation uses the nothrow form of operator_new and no allocation
+failure, the coroutine immediately returns the object obtained from
+/Promise::get_return_object_on_allocation_failure()/ to the caller.
+*** Promise
+The Promise type is determined by the compiler from the return type of the coroutine using
+std::coroutine_traits. Formally, let R and Args... denote the return type and parameter type
+list of a coroutine respectively, ClassT and /*cv-qual*/ (if any) denote the class type to
+which the coroutine belones and its cv-qualification respectively if it is defined as a non-static
+member function, its Promise type is determined by:
+- std::coroutine_traits<R, Args...>::promise_type, if the coroutine is not defined as a non-static
+  member function,
+- std::coroutine_traits<R, ClassT /*cv-qual*/&, Args...>::promise_type, if the coroutine is define as
+  a non-static member function that is not rvalue-reference-qualified
+- std::coroutine_traits<R, ClassT /*cv-qual*/&&, Args...>::promise_type, if the coroutine is define as
+  a non-static member function that is rvalue-reference-qualified
+For example
+- if the coroutine is defined as task<float> foo(std::string x, bool flag);, then its Promise type is
+  std::coroutine_traits<task<float>, std::string, bool>::promise_type.
+- if the coroutine is defined as task<void> my_class::method(int x) const;, its Promise type is
+  std::coroutine_traits<task<void>, const my_class&, int>::promise_type.
+- if the coroutine is defined as task<void> my_class::methodism(int x) &&;, its Promise type is
+  std::coroutine_traits<stsk<void, my_calss&&, int>::promise_type.
+*** co_await
+the unary operator /co_await/ suspends a coroutine and returns control to the caller.
+Its operand is an expression whose type mast either define operator co_await, or be convertible 
+to such type by means of the current coroutine's Promise::await_transform
+/co_await expr/
+First, expr is converted to an awaitable as follows:
+- if expr is prodeced by an initial suspend point, a final suspend point, or a yield expression,
+  the awaitable is expr, as-is.
+- otherwise, if the current coroutine's Promse type has the member function /await_transform/, then 
+  the awaitable is promise.awiat_transfrom(expr)
+- otherwise, the awaitable is expr, as-is.
+Then, the awaiter object is obtain, as follows:
+- if overload resolution for operator  /co_await/ gives a single best overload. the awaiter is the
+  result of the call awaitable.operator co_await() for member overload,
+  operator co_await(static_cast<Awaitable&&>(awaitable)) for the non-member overload)
+- otherwise, if overload resolution finds no operator co_await, the awaiter is avaitable, as-is
+- otherwise, if overload resolution is ambiguous, the program is ill-formed
+
+If the expression above is prvalue, the awaiter object is temporary materialized from it. Otherwise,
+if the expression above is an glvalue, the awaiter object is the object to which it refers.
+
+Then, awaiter.await_ready() is called(this is a short-cut to avoid the cost of suspension if it's known
+that the result is ready or can be completed synchronously). if its result, contextually-converted to
+bool is false then 
+The coroutine is suspended(its coroutine state is populated with local variables and current suspension point).
+awaiter.await_suspend(handle) is called, when handle is the coroutine handle representing the current coroutine.
+Inside that function, the suspend coroutine state is observable via that handle, and it's his function's
+responsibility to schedule it to the resume on some executor, or to be destroyed(returing false counts as scheduling)
+- if await_suspend resturns void, control is immediately returned to the caller/resumer of the current coroutine
+  (this coroutine remains suspended),otherwise
+- if await_suspend returns bool,
+  + the value *true* returns control to the caller/resumer of the current coroutine
+  + the value *false* resumes the current coroutine.
+- if await_suspend returns a coroutine handle for some other coroutine, that handle is resumed(by a call to
+  handle.resume())(note this may chain to eventually cause the current coroutine is resume)
+- if await_suspend throws an exception, the exception is caught, the coroutine is resumed, and the exception
+  is immediately re-thrown
+
+Finally, await.await_resume() is called(wheter the coroutine was suspended or not), and its result is the result
+of the whole co_await expr expression.
+If the coroutine was suspend in the co_await expression, and is later resumed, the resume point is immediately
+before the call to awaiter.await_resume().
+
+Note that because the coroutine is fully suspended fbefore entering awaiter.await_suspend(), that function is free 
+to transfer the coroutine handle across threads,with no additional synchronization. For example, it can put it
+inside a callback, scheduled to run on a threadpool when async I/O operation completes. In that case, since the
+current coroutine may have been resumed and thus executed and awaiter object's destructor, all concurrently as
+await_suspend() continues its execution on the current thread, await_suspend() should treat *this as destroyed and 
+not access it after the handle was published to other threads.
+#+BEGIN_SRC c++
+#include <coroutine>
+#include <iostream>
+#include <stdexcept>
+#include <thread>
+
+auto switch_to_new_thread(std::jthread& out){
+    struct awaitable{
+        std::jthread *p_out;
+        bool await_ready(){return false;}
+        void await_suspend(std::coroutine_handle<> h){
+            std::jthread& out = *p_out;
+            if(out.joinable()){
+                throw std::runtime_error("Output jthread parameter not empty");
+            }
+            out = std::jthread([h]{h.resume();});
+            // Potential undefined behavior: accessing potentially destroyed *this
+            std::cout << "New thread ID: " << out.get_id() << '\n'; // this is OK
+        }
+        void await_resume(){}
+    };
+    return awaitable{&out};
+}
+
+struct task{
+    struct promise_type{
+        task get_return_object(){return {};}
+        std::suspend_never initial_suspend(){return {};}
+        std::suspend_never final_suspend() noexcept {return {};}
+        void return_void(){}
+        void unhandle_exception(){}
+    };
+};
+
+task resuming_on_new_thread(std::jthread& out){
+    std::cout << "Coroutine started on thread: " << std::this_thread::get_id() << '\n';
+    co_await switch_to_new_thread(out);
+    // awaiter destroyed here
+    std::cout << "Coroutine resumed on thread: " << std::this_thread::get_id() << '\n';
+}
+
+int main(){
+    std::jthread out;
+    resuming_on_new_thread(out);
+}
+#+END_SRC
+*** co_yield
+Yield-expression returns a value to the caller and suspend the current coroutine:
+it is the common building block of resumable generator functions
+/co_yield expr/
+/co_yield braced-init-list/
+/co_await promise.yield_value(expr)/
+A typical generator's yield_value would store its argument into the generator object and
+return std::suspend_always, transferring control to the caller/resumer
+#+BEGIN_SRC c++
+#include <coroutine>
+#include <exception>
+#include <iostream>
+
+template<typename T>
+struct Generator{
+    /* The class name 'Generator' is our choice and
+     ,* it is not required for coroutine magic.
+     ,* Compiler reconizes coroutine by the precence of 'co_yield' keyword.
+     ,* You can use name 'MyGenerator' (or and other name) instead
+     ,* as long as you include nested struct promise_type
+     ,* with 'MyGenerator get_return_object()' method.
+     ,* (Note: You need to adjust class constructor/destructor names to when choosing to rename class)
+     ,*/
+    struct promise_type;
+    using handle_type = std::coroutine_handle<promise_type>;
+
+    struct promise_type{
+        // required
+        T value_;
+        std::exception_ptr exception_;
+
+        Generator get_return_object(){
+            return Generator(handle_type::from_promise(*this));
+        }
+        std::suspend_always initial_suspend(){reutrn {};}
+        std::suspend_always final_suspend() noexcept{reutrn {};}
+        void unhandled_exception(){exception_ = std::current_exception();} // save exception
+        template<std::convrtible_to<T> From> // C++20 concept
+        std::suspend_always yield_value(From &&from){
+            value_ = std::forward<From>(from); // caching the result in promise
+            return {};
+        }
+        void return_void(){}
+    };
+
+    handle_type h_;
+    Generator(handle_type h):h_(h){}
+    ~Generator(){h_.destroy();}
+    explicit operator bool(){
+        /* The only way to reliably find out whether or not we finished coroutine,
+         ,* whether or not there is going to be a next value generated(co_yield) in coroutine
+         ,* via C++ getter (operator() below)
+         ,* is to execute/resume coroutine until the next co_yield point(or let it fall off end).
+         ,* Then we store/cache result in promise to allow getter(operator() bleow to grab ti
+         ,* without executing coroutine)
+         ,*/
+        fill();
+        return !h.done();
+    }
+
+    T operator()(){
+        fill();
+        //we are going to move out previously cached result to make promise empty again
+        full_ = false;
+        return std::move(h_.promise().value_);
+    }
+
+private:
+    bool full_ = false;
+    void fill(){
+        if(!full_){
+            h_();
+            if(h_.promise().exception_){
+                std::rethrow_exception(h_.promise().exception_);
+                // propagate coroutine exception in called context
+            }
+            full_ = true;
+        }
+    }
+};
+
+Generator<uint64_t>
+fibonacci_sequence(unsigned n){
+    if(n == 0){
+        co_return;
+    }
+    if(n > 94){
+        throw std::runtime_error("Too big Fibonacci sequence. Elements would overflow.");
+    }
+    co_yield 0;
+
+    if(n == 1){
+        co_return;
+    }
+    co_yield 1;
+
+    if(n == 2)
+        co_return;
+
+    uint64_t a = 0;
+    uint64_t b = 1;
+    for(unsigned i = 2; i < n; ++i){
+        uint64_t s = a + b;
+        co_yield s;
+        a = b;
+        b = s;
+    }
+}
+
+int main(){
+    try{
+        auto gen = fibnacci_sequence(10); // max 94 before uint64_t overflows
+
+        for(int j = 0; gen; j++){
+            std::cout << "fib("<<j<<")="<<gen()<<'\n';
+        }
+    }catch(const std::exception &ex){
+        std::cerr << "Exception: " << ex.what() << std::endl;
+    }catch(...){
+        std::cerr << "Unknown exception.\n";
+    }
+}
+#+END_SRC
+** Coroutine Tutorial
+https://www.scs.stanford.edu/~dm/blog/c++-coroutines.html
+Roughly speeking, coroutines are functions that can invoke each other but do not share a stack,
+so can flexibly suspend their execution at any point to enter a different coroutine.
+- co_await a;
+  1. Ensures all local variables in the current function - which must be a coroutine - are saved
+     to a heap-allocated object.
+  2. Creates a callable object that, when invoked, will resume execution of the coroutine at the point
+     immediately following evaluation of the co_await expression.
+  3. Calls(or more accurately jumps to) a method of co_await's target object a, passing that method
+     the callable object from step2.
+*** Coroutine handles
+/std::coroutine_handle<>/ is valid for the entire execution of a coroutine, even as control flows in
+and out of the coroutine many times.
+[[file:../../zsi/test_zpp/test_coroutine_counter.cpp][example co_await code]]
+*** The coroutine return object (Future)
+  In the previous example, we ignored the return type of counter. However, the language restricts the allowable return types of coroutines. Specifically, the return type of a coroutinecall it Rmust be an object type with a nested type R::promise_type.2
+  Note that in many discussions of coroutines, the return type R is referred to as a /future/, but for clarity I’ll just call it the /return object type/.
+
+template<class Promise = void> struct coroutine_handle;
+std::coroutine_handle<T>;
+std::coroutine_handle<promose_ype>::from_promise(*this);
+
+*** The promise object
+The example even though we can pass control back and forth between a main function and a coroutine,
+But we have not pass any data.(A bit unsatisfactory)
+
+*** The co_yield operator
+
+*** The co_return operator
+co_return e; // promise_type::return_valuse(e){}
+co_return;   // promise_type::return_void(){}
+
+h.done(); // find out if a coroutine is complete
+
+*** Generic generator example
+
+*** Editorial
+
+*** Roast
+coroutines are implemented as a nice little nugget buried underneath heaps of garbage that 
+you have to wade through to access the nice part.
+*** Tips
+** Coroutine Asymmetric Transfer
+https://lewissbaker.github.io/
+* Tips
+** no configure file
+#+BEGIN_SRC sh
+sudo apt install autoconf
+autoreconf -i -v -f
+
+sudo apt install libtool
+sudo apt install libssl-dev
+
+#+END_SRC

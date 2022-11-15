@@ -1,8 +1,9 @@
 #+STARTUP: indent
+#+STARTUP: latexpreview
+
 #+TITLE: Org to \LaTex
 
 * Introduction
-
 ** preview
 C-c C-x C-l (org-latex-preview)
 \#+STARTUP: latexpreview

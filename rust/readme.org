@@ -1,0 +1,15 @@
+#+STARTUP: indent
+
+* opensource
+** Redox (operatting systom)
+https://www.redox-os.org/zh/
+** Actix-web
+** Mio
+** Gloo
+https://github.com/rustwasm/gloo
+** Serde 
+https://serde.rs/
+a framework for serializing and des, like json parser
+* crates.io
+** clap
+A simple to use, efficient, and full-featured Command Line Argument Parser

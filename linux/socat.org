@@ -1,0 +1,356 @@
+#+STARTUP: indent
+
+* socat
+http://www.dest-unreach.org/socat/doc/socat.html
+** NAME
+Multipurpose relay (SOcket CAT)
+** SYNOPSIS
+socat [options] <address> <address>
+socat -V
+socat -h[h[h]] | -?[?[?]]
+filan
+procan
+** DESCRIPTION 
+- Socat is a command line based utility that establishes two bidirectional byte streams and transfers data between them.
+  Because the streams can be constructed from a large set of different types of data sinks and sources (see address types), and 
+  because lots of address options may be applied to the streams, socat can be used for many different purposes.
+  
+  life cycle of socat instance typically consists of four phases:
+  1. init phase, the command line options are parsed and logging is initialized.
+  2. open phase, socat opens the first address and afterwards the second address.
+  3. transfer phase, socat watches both streams' read and write file descriptors via select() , and, 
+     when data is available on one side and can be written to the other side, socat reads it, performs newline character conversions if required, and 
+     writes the data to the write file descriptor of the other stream, then continues waiting for more data in both directions.
+  4. When one of the streams effectively reaches EOF, the closing phase begins. 
+     Socat transfers the EOF condition to the other stream, i.e. tries to shutdown only its write stream, giving it a chance to terminate gracefully. 
+     For a defined time socat continues to transfer data in the other direction, but then closes all remaining channels and terminates.
+- Filan is a utility that prints information about its active file descriptors to stdout.
+  It has been written for debugging socat, but might be useful for other purposes too.
+- Procan is a utility that prints information about process parameters to stdout.
+  It has been written to better understand some UNIX process properties and for debugging socat, but might be useful for other purposes too.
+** OPTIONS
+Socat provides some command line options that modify the behaviour of the program. 
+They have nothing to do with so called address options that are used as parts of address specifications.
+- -V Print version and available feature information to stdout, and exit.
+- -h | -? / -hh | -?? / -hhh | -???
+- -d[ -d [ -d [-d]]] Without this option, only fatal and error messages are generated; 
+  applying this option also prints warning messages. See DIAGNOSTICS for more information.
+  fatal, error, warning, notice, info, and debug messages.
+- -D Logs information about file descriptors before starting the transfer phase.
+- -ly[<facility>] Writes messages to syslog instead of stderr; severity as defined with -d option. With optional <facility>, the syslog type can be selected, default is "daemon". Third party libraries might not obey this option.
+- -lf <logfile> Writes messages to <logfile> [filename] instead of stderr. Some third party libraries, in particular libwrap, might not obey this option.
+- Writes messages to stderr (this is the default).
+- -lp<progname>
+  Overrides the program name printed in error messages and used for constructing environment variable names.
+- -lu Extends the timestamp of error messages to microsecond resolution. Does not work when logging to syslog.
+- -lm[<facility>] Mixed log mode.
+- -lh Adds hostname to log messages. Uses the value from environment variable HOSTNAME or the value retrieved with uname() if HOSTNAME is not set.
+- -v Writes the transferred data not only to their target streams, but also to stderr. The output format is text with some conversions for readability, and prefixed with "> " or "< " indicating flow directions.
+- -x Writes the transferred data not only to their target streams, but also to stderr. The output format is hexadecimal, prefixed with "> " or "< " indicating flow directions. Can be combined with -v .
+- -r <file> Dumps the raw (binary) data flowing from left to right address to the given file.
+- -R <file> Dumps the raw (binary) data flowing from right to left address to the given file.
+- -b<size> Sets the data transfer block <size> [size_t]. At most <size> bytes are transferred per step. Default is 8192 bytes.
+- -s By default, socat terminates when an error occurred to prevent the process from running when some option could not be applied. With this option, socat is sloppy with errors and tries to continue. Even with this option, socat will exit on fatals, and will abort connection attempts when security checks failed.
+- -t<timeout> When one channel has reached EOF, the write part of the other channel is shut down. Then, socat waits <timeout> [timeval] seconds before terminating. Default is 0.5 seconds. This timeout only applies to addresses where write and read part can be closed independently. When during the timeout interval the read part gives EOF, socat terminates without awaiting the timeout.
+- -T<timeout> Total inactivity timeout: when socat is already in the transfer loop and nothing has happened for <timeout> [timeval] seconds (no data arrived, no interrupt occurred...) then it terminates. Useful with protocols like UDP that cannot transfer EOF.
+- -u Uses unidirectional mode. The first address is only used for reading, and the second address is only used for writing (example).
+- -U Uses unidirectional mode in reverse direction. The first address is only used for writing, and the second address is only used for reading.
+- -g During address option parsing, don't check if the option is considered useful in the given address environment. Use it if you want to force, e.g., appliance of a socket option to a serial device.
+- -L<lockfile> If lockfile exists, exits with error. If lockfile does not exist, creates it and continues, unlinks lockfile on exit.
+- -W<lockfile> If lockfile exists, waits until it disappears. When lockfile does not exist, creates it and continues, unlinks lockfile on exit.
+- -4/-6 Use IP version 4/6 in case that the addresses do not implicitly or explicitly specify a version; this IPv4 is the default.
+** ADDRESS SPECIFICATIONS
+With the address command line arguments, the user gives socat instructions and the necessary information for establishing the byte streams.
+An address specification usually consists of an *address type keyword*, 
+zero or more *required address* parameters separated by ':' from the keyword and from each other, and 
+zero or more *address options* separated by ','.
+- The keyword specifies the address type (e.g., TCP4, OPEN, EXEC).
+  Keywords are case insensitive. 
+  Address specifications starting with a number are assumed to be FD (raw file descriptor) addresses;
+   if a '/' is found before the first ':' or ',', GOPEN (generic file open) is assumed.
+- The required number and type of address parameters depend on the address type. E.g., TCP4 requires a server specification (name or address), and a port specification (number or service name).
+- Zero or more address options may be given with each address. 
+  They influence the address in some ways.
+  Options consist of an option keyword or an option keyword and a value, separated by '='.
+
+Two single addresses can be combined with "!!" to form a dual type address for one channel
+With socat version 1.5.0 and higher, the lexical analysis tries to handle quotes and parenthesis meaningfully and allows escaping of special characters. If one of the characters ( { [ ' is found, the corresponding closing character - ) } ] ' - is looked for; they may also be nested. Within these constructs, socats special characters and strings : , !! are not handled specially. All those characters and strings can be escaped with \ or within ""
+** ADDRESS TYPES
+This section describes the available address types with their keywords, parameters, and semantics.
+*** CREATE:<filename>
+Opens <filename> with creat() and uses the file descriptor for writing.
+This address type requires write-only context, because a file opened with creat cannot be read from.
+Flags like O_LARGEFILE cannot be applied.  If you need them use OPEN with options create,create.
+<filename> must be a valid existing or not existing path. If <filename> is a named pipe, creat() might block; if <filename> refers to a socket, this is an error.
+Option groups: FD,REG,NAMED
+Useful options: mode, user, group, unlink-early, unlink-late, append
+See also: OPEN, GOPEN
+*** EXEC:<command-line>
+Forks a sub process that establishes communication with its parent process and invokes the specified program with execvp() . <command-line> is a simple command with arguments separated by single spaces. If the program name contains a '/', the part after the last '/' is taken as ARGV[0]. If the program name is a relative path, the execvp() semantics for finding the program via $PATH apply. After successful program start, socat writes data to stdin of the process and reads from its stdout using a UNIX domain socket generated by socketpair() per default. (example)
+Option groups: FD,SOCKET,EXEC,FORK,TERMIOS
+Useful options: path, fdin, fdout, chroot, su, su-d, nofork, pty, stderr, ctty, setsid, pipes, login, sigint, sigquit
+See also: SYSTEM
+*** FD:<fdnum>
+Uses the file descriptor <fdnum>. It must already exist as valid UN*X file descriptor.
+Option groups: FD (TERMIOS,REG,SOCKET)
+See also: STDIO, STDIN, STDOUT, STDERR
+*** GOPEN:<filename>
+(Generic open) This address type tries to handle any file system entry except directories usefully. <filename> may be a relative or absolute path. If it already exists, its type is checked. In case of a UNIX domain socket, socat connects; if connecting fails, socat assumes a datagram socket and uses sendto() calls. If the entry is not a socket, socat opens it applying the O_APPEND flag. If it does not exist, it is opened with flag O_CREAT as a regular file (example).
+Option groups: FD,REG,SOCKET,NAMED,OPEN
+See also: OPEN, CREATE, UNIX-CONNECT
+*** IP-SENDTO:<host>:<protocol>
+Opens a raw IP socket. Depending on host specification or option pf, IP protocol version 4 or 6 is used. It uses <protocol> to send packets to <host> [IP address] and receives packets from host, ignores packets from other hosts. Protocol 255 uses the raw socket with the IP header being part of the data.
+Option groups: FD,SOCKET,IP4,IP6
+Useful options: pf, ttl
+See also: IP4-SENDTO, IP6-SENDTO, IP-RECVFROM, IP-RECV, UDP-SENDTO, UNIX-SENDTO
+**** IP4-SENDTO:<host>:<protocol>
+Like IP-SENDTO, but always uses IPv4.
+Option groups: FD,SOCKET,IP4
+**** IP6-SENDTO:<host>:<protocol>
+Like IP-SENDTO, but always uses IPv6.
+Option groups: FD,SOCKET,IP6
+*** INTERFACE:<interface>
+Communicates with a network connected on an interface using raw packets including link level data. <interface> is the name of the network interface. Currently only available on Linux. Option groups: FD,SOCKET
+Useful options: pf, type
+See also: ip-recv
+*** IP-DATAGRAM:<address>:<protocol>
+Sends outgoing data to the specified address which may in particular be a broadcast or multicast address. Packets arriving on the local socket are checked if their source addresses match RANGE or TCPWRAP options. This address type can for example be used for implementing symmetric or asymmetric broadcast or multicast communications.
+Option groups: FD, SOCKET, IP4, IP6, RANGE
+Useful options: bind, range, tcpwrap, broadcast, ip-multicast-loop, ip-multicast-ttl, ip-multicast-if, ip-add-membership, ip-add-source-membership, ttl, tos, pf
+See also: IP4-DATAGRAM, IP6-DATAGRAM, IP-SENDTO, IP-RECVFROM, IP-RECV, UDP-DATAGRAM
+**** IP4-DATAGRAM:<host>:<protocol>
+Like IP-DATAGRAM, but always uses IPv4. (example)
+Option groups: FD,SOCKET,IP4,RANGE
+**** IP6-DATAGRAM:<host>:<protocol>
+Like IP-DATAGRAM, but always uses IPv6. Please note that IPv6 does not know broadcasts.
+Option groups: FD,SOCKET,IP6,RANGE
+*** IP-RECVFROM:<protocol>
+Opens a raw IP socket of <protocol>. Depending on option pf, IP protocol version 4 or 6 is used. It receives one packet from an unspecified peer and may send one or more answer packets to that peer. This mode is particularly useful with fork option where each arriving packet - from arbitrary peers - is handled by its own sub process. This allows a behaviour similar to typical UDP based servers like ntpd or named.
+Please note that the reply packets might be fetched as incoming traffic when sender and receiver IP address are identical because there is no port number to distinguish the sockets.
+This address works well with IP-SENDTO address peers (see above). Protocol 255 uses the raw socket with the IP header being part of the data.
+See the note about RECVFROM addresses.
+Option groups: FD,SOCKET,IP4,IP6,CHILD,RANGE
+Useful options: pf, fork, range, ttl, broadcast
+See also: IP4-RECVFROM, IP6-RECVFROM, IP-SENDTO, IP-RECV, UDP-RECVFROM, UNIX-RECVFROM
+**** IP4-RECVFROM:<protocol>
+Like IP-RECVFROM, but always uses IPv4.
+Option groups: FD,SOCKET,IP4,CHILD,RANGE
+**** IP6-RECVFROM:<protocol>
+Like IP-RECVFROM, but always uses IPv6.
+Option groups: FD,SOCKET,IP6,CHILD,RANGE
+*** IP-RECV:<protocol>
+Opens a raw IP socket of <protocol>. Depending on option pf, IP protocol version 4 or 6 is used. It receives packets from multiple unspecified peers and merges the data. No replies are possible. It can be, e.g., addressed by socat IP-SENDTO address peers. Protocol 255 uses the raw socket with the IP header being part of the data.
+Option groups: FD,SOCKET,IP4,IP6,RANGE
+Useful options: pf, range
+See also: IP4-RECV, IP6-RECV, IP-SENDTO, IP-RECVFROM, UDP-RECV, UNIX-RECV
+**** IP4-RECV:<protocol>
+Like IP-RECV, but always uses IPv4.
+Option groups: FD,SOCKET,IP4,RANGE
+**** IP6-RECV:<protocol>
+Like IP-RECV, but always uses IPv6.
+Option groups: FD,SOCKET,IP6,RANGE
+*** OPEN:<filename>
+Opens <filename> using the open() system call (example). This operation fails on UNIX domain sockets.
+Note: This address type is rarely useful in bidirectional mode.
+Option groups: FD,REG,NAMED,OPEN
+Useful options: creat, excl, noatime, nofollow, append, rdonly, wronly, lock, readbytes, ignoreeof
+See also: CREATE, GOPEN, UNIX-CONNECT
+*** OPENSSL
+**** OPENSSL:<host>:<port>
+Tries to establish a SSL connection to <port> [TCP service] on <host> [IP address] using TCP/IP version 4 or 6 depending on address specification, name resolution, or option pf.
+NOTE: Up to version 1.7.2.4 the server certificate was only checked for validity against the system certificate store or cafile or capath, but not for match with the server's name or its IP address. Since version 1.7.3.0 socat checks the peer certificate for match with the <host> parameter or the value of the openssl-commonname option. Socat tries to match it against the certificates subject commonName, and the certificates extension subjectAltName DNS names. Wildcards in the certificate are supported.
+Option groups: FD,SOCKET,IP4,IP6,TCP,OPENSSL,RETRY
+Useful options: min-proto-version, cipher, verify, commonname, cafile, capath, certificate, key, compress, bind, pf, connect-timeout, sourceport, retry
+See also: OPENSSL-LISTEN, TCP
+**** OPENSSL-LISTEN:<port>
+Listens on tcp <port> [TCP service]. The IP version is 4 or the one specified with pf. When a connection is accepted, this address behaves as SSL server.
+Note: You probably want to use the certificate option with this address.
+NOTE: The client certificate is only checked for validity against cafile or capath, but not for match with the client's name or its IP address!
+Option groups: FD,SOCKET,IP4,IP6,TCP,LISTEN,OPENSSL,CHILD,RANGE,RETRY
+Useful options: pf, min-proto-version, cipher, verify, commonname, cafile, capath, certificate, key, compress, fork, bind, range, tcpwrap, su, reuseaddr, retry
+See also: OPENSSL, TCP-LISTEN
+**** OPENSSL-DTLS-CLIENT:<host>:<port>
+Tries to establish a DTLS connection to <port> [UDP service] on <host> [IP address] using UDP/IP version 4 or 6 depending on address specification, name resolution, or option pf.
+Socat checks the peer certificates subjectAltName or commonName against the addresses option openssl-commonname or the host name. Wildcards in the certificate are supported.
+Use socat option -b to make datagrams small enough to fit with overhead on the network. Use option -T to prevent indefinite hanging when peer went down quietly.
+Option groups: FD,SOCKET,IP4,IP6,OPENSSL,RETRY
+Useful options: min-proto-version, cipher, verify, commonname, cafile, capath, certificate, key, compress, bind, pf, sourceport, retry
+See also: OPENSSL-DTLS-SERVER, OPENSSL-CONNECT, UDP-CONNECT
+**** OPENSSL-DTLS-SERVER:<port>
+Listens on UDP <port> [UDP service]. The IP version is 4 or the one specified with pf. When a connection is accepted, this address behaves as DTLS server.
+Note: You probably want to use the certificate option with this address.
+NOTE: The client certificate is only checked for validity against cafile or capath, but not for match with the client's name or its IP address! Use socat option -b to make datagrams small enough to fit with overhead on the network. Use option -T to prevent indefinite hanging when peer went down quietly.
+Option groups: FD,SOCKET,IP4,IP6,LISTEN,OPENSSL,CHILD,RANGE,RETRY
+Useful options: pf, min-proto-version, cipher, verify, commonname, cafile, capath, certificate, key, compress, fork, bind, range, tcpwrap, su, reuseaddr, retry
+See also: OPENSSL-DTLS-CLIENT, OPENSSL-LISTEN, UDP-LISTEN
+*** PIPE
+**** PIPE:<filename>
+If <filename> already exists, it is opened. If it does not exist, a named pipe is created and opened. Beginning with socat version 1.4.3, the named pipe is removed when the address is closed (but see option unlink-close
+Note: When a pipe is used for both reading and writing, it works as echo service.
+Note: When a pipe is used for both reading and writing, and socat tries to write more bytes than the pipe can buffer (Linux 2.4: 2048 bytes), socat might block. Consider using socat option, e.g., -b 2048
+Option groups: FD,NAMED,OPEN
+Useful options: rdonly, nonblock, group, user, mode, unlink-early
+See also: unnamed pipe
+**** PIPE
+Creates an unnamed pipe and uses it for reading and writing. It works as an echo, because everything written to it appeares immediately as read data.
+Note: When socat tries to write more bytes than the pipe can queue (Linux 2.4: 2048 bytes), socat might block. Consider, e.g., using option -b 2048
+Option groups: FD
+See also: named pipe
+*** PROXY:<proxy>:<hostname>:<port>
+Connects to an HTTP proxy server on port 8080 using TCP/IP version 4 or 6 depending on address specification, name resolution, or option pf, and sends a CONNECT request for hostname:port. If the proxy grants access and succeeds to connect to the target, data transfer between socat and the target can start. Note that the traffic need not be HTTP but can be an arbitrary protocol.
+Option groups: FD,SOCKET,IP4,IP6,TCP,HTTP,RETRY
+Useful options: proxyport, ignorecr, proxyauth, resolve, crnl, bind, connect-timeout, mss, sourceport, retry
+See also: SOCKS, TCP
+*** PTY
+Generates a pseudo terminal (pty) and uses its master side. Another process may open the pty's slave side using it like a serial line or terminal. (example). If both the ptmx and the openpty mechanisms are available, ptmx is used (POSIX).
+Option groups: FD,NAMED,PTY,TERMIOS
+Useful options: link, openpty, wait-slave, mode, user, group
+See also: UNIX-LISTEN, PIPE, EXEC, SYSTEM
+*** READLINE
+Uses GNU readline and history on stdio to allow editing and reusing input lines (example). This requires the GNU readline and history libraries. Note that stdio should be a (pseudo) terminal device, otherwise readline does not seem to work.
+Option groups: FD,READLINE,TERMIOS
+Useful options: history, noecho
+See also: STDIO
+*** SCTP
+**** SCTP-CONNECT:<host>:<port>
+Establishes an SCTP stream connection to the specified <host> [IP address] and <port> [TCP service] using IP version 4 or 6 depending on address specification, name resolution, or option pf.
+Option groups: FD,SOCKET,IP4,IP6,SCTP,CHILD,RETRY
+Useful options: bind, pf, connect-timeout, tos, mtudiscover, sctp-maxseg, sctp-nodelay, nonblock, sourceport, retry, readbytes
+See also: SCTP4-CONNECT, SCTP6-CONNECT, SCTP-LISTEN, TCP-CONNECT
+**** SCTP4-CONNECT:<host>:<port>
+Like SCTP-CONNECT, but only supports IPv4 protocol.
+Option groups: FD,SOCKET,IP4,SCTP,CHILD,RETRY
+**** SCTP6-CONNECT:<host>:<port>
+Like SCTP-CONNECT, but only supports IPv6 protocol.
+Option groups: FD,SOCKET,IP6,SCTP,CHILD,RETRY
+**** SCTP-LISTEN:<port>
+Listens on <port> [TCP service] and accepts an SCTP connection. The IP version is 4 or the one specified with address option pf, socat option (-4, -6), or environment variable SOCAT_DEFAULT_LISTEN_IP. Note that opening this address usually blocks until a client connects.
+Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP4,IP6,SCTP,RETRY
+Useful options: crnl, fork, bind, range, tcpwrap, pf, max-children, backlog, accept-timeout, sctp-maxseg, sctp-nodelay, su, reuseaddr, retry, cool-write
+See also: SCTP4-LISTEN, SCTP6-LISTEN, TCP-LISTEN, SCTP-CONNECT
+**** SCTP4-LISTEN:<port>
+Like SCTP-LISTEN, but only supports IPv4 protocol.
+Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP4,SCTP,RETRY
+**** SCTP6-LISTEN:<port>
+Like SCTP-LISTEN, but only supports IPv6 protocol.
+Option groups: FD,SOCKET,LISTEN,CHILD,RANGE,IP6,SCTP,RETRY
+*** SOCKET
+**** SOCKET-CONNECT:<domain>:<protocol>:<remote-address>
+Creates a stream socket using the first and second given socket parameters and SOCK_STREAM (see man socket(2)) and connects to the remote-address. The two socket parameters have to be specified by int numbers. Consult your OS documentation and include files to find the appropriate values. The remote-address must be the data representation of a sockaddr structure without sa_family and (BSD) sa_len components.
+Please note that you can - beyond the options of the specified groups - also use options of higher level protocols when you apply socat option -g.
+Option groups: FD,SOCKET,CHILD,RETRY
+Useful options: bind, setsockopt,
+See also: TCP, UDP-CONNECT, UNIX-CONNECT, SOCKET-LISTEN, SOCKET-SENDTO
+**** SOCKET-DATAGRAM:<domain>:<type>:<protocol>:<remote-address>
+Creates a datagram socket using the first three given socket parameters (see man socket(2)) and sends outgoing data to the remote-address. The three socket parameters have to be specified by int numbers. Consult your OS documentation and include files to find the appropriate values. The remote-address must be the data representation of a sockaddr structure without sa_family and (BSD) sa_len components.
+Please note that you can - beyond the options of the specified groups - also use options of higher level protocols when you apply socat option -g.
+Option groups: FD,SOCKET,RANGE
+Useful options: bind, range, setsockopt,
+See also: UDP-DATAGRAM, IP-DATAGRAM, SOCKET-SENDTO, SOCKET-RECV, SOCKET-RECVFROM
+**** SOCKET-LISTEN:<domain>:<protocol>:<local-address>
+Creates a stream socket using the first and second given socket parameters and SOCK_STREAM (see man socket(2)) and waits for incoming connections on local-address. The two socket parameters have to be specified by int numbers. Consult your OS documentation and include files to find the appropriate values. The local-address must be the data representation of a sockaddr structure without sa_family and (BSD) sa_len components.
+Please note that you can - beyond the options of the specified groups - also use options of higher level protocols when you apply socat option -g.
+Option groups: FD,SOCKET,LISTEN,RANGE,CHILD,RETRY
+Useful options: setsockopt, setsockopt-listen,
+See also: TCP, UDP-CONNECT, UNIX-CONNECT, SOCKET-LISTEN, SOCKET-SENDTO, SOCKET-SENDTO
+**** SOCKET-RECV:<domain>:<type>:<protocol>:<local-address>
+Creates a socket using the three given socket parameters (see man socket(2)) and binds it to <local-address>. Receives arriving data. The three parameters have to be specified by int numbers. Consult your OS documentation and include files to find the appropriate values. The local-address must be the data representation of a sockaddr structure without sa_family and (BSD) sa_len components.
+Option groups: FD,SOCKET,RANGE
+Useful options: range, setsockopt, setsockopt-listen
+See also: UDP-RECV, IP-RECV, UNIX-RECV, SOCKET-DATAGRAM, SOCKET-SENDTO, SOCKET-RECVFROM
+**** SOCKET-RECVFROM:<domain>:<type>:<protocol>:<local-address>
+Creates a socket using the three given socket parameters (see man socket(2)) and binds it to <local-address>. Receives arriving data and sends replies back to the sender. The first three parameters have to be specified as int numbers. Consult your OS documentation and include files to find the appropriate values. The local-address must be the data representation of a sockaddr structure without sa_family and (BSD) sa_len components.
+See the note about RECVFROM addresses.
+Option groups: FD,SOCKET,CHILD,RANGE
+Useful options: fork, range, setsockopt, setsockopt-listen
+See also: UDP-RECVFROM, IP-RECVFROM, UNIX-RECVFROM, SOCKET-DATAGRAM, SOCKET-SENDTO, SOCKET-RECV
+**** SOCKET-SENDTO:<domain>:<type>:<protocol>:<remote-address>
+Creates a socket using the three given socket parameters (see man socket(2)). Sends outgoing data to the given address and receives replies. The three parameters have to be specified as int numbers. Consult your OS documentation and include files to find the appropriate values. The remote-address must be the data representation of a sockaddr structure without sa_family and (BSD) sa_len components.
+Option groups: FD,SOCKET
+Useful options: bind, setsockopt, setsockopt-listen
+See also: UDP-SENDTO, IP-SENDTO, UNIX-SENDTO, SOCKET-DATAGRAM, SOCKET-RECV SOCKET-RECVFROM
+*** TUN[:<if-addr>/<bits>]
+Creates a Linux TUN/TAP device and optionally assignes it the address and netmask given by the parameters. The resulting network interface is almost ready for use by other processes; socat serves its "wire side". This address requires read and write access to the tunnel cloning device, usually /dev/net/tun , as well as permission to set some ioctl()s. Option iff-up is required to immediately activate the interface!
+Note: If you intend to transfer packets between two Socat "wire sides" you need a protocol that keeps packet boundaries, e.g.UDP; TCP might work with option nodelay.
+Option groups: FD,NAMED,OPEN,TUN
+Useful options: iff-up, tun-device, tun-name, tun-type, iff-no-pi
+See also: ip-recv
+** ADDRESS OPTIONS
+** DATA VALUES
+** EXAMPLES
+*** socat - TCP4:www.domain.org:80
+transfers data between STDIO (-) and a TCP4 connection to port 80 of host www.domain.org. This example results in an interactive connection similar to telnet or netcat. The stdin terminal parameters are not changed, so you may close the relay with ^D or abort it with ^C.
+#+BEGIN_SRC sh
+# server side ${REMOTE_HOST}
+socat TCP4-LISTEN:37219 STDIO
+# client side
+socat STDIO TCP4:${REMOTE_HOST}:37219
+#+END_SRC
+*** socat -d -d READLINE,history=$HOME/.http_history TCP4:www.domain.org:www,crnl
+this is similar to the previous example, but you can edit the current line in a bash like manner (READLINE) and use the history file .http_history; socat prints messages about progress (-d -d). The port is specified by service name (www), and correct network line termination characters (crnl) instead of NL are used.
+#+BEGIN_SRC sh
+# server side ${REMOTE_HOST}
+socat TCP4-LISTEN:37219 STDIO
+# client side
+socat -d -d READLINE,history=$HOME/so-history.txt TCP4:${REMOTE_HOST}:37219,crnl
+# This requires the GNU readline and history libraries
+# unknown device/address "READLINE"
+#+END_SRC
+*** socat TCP4-LISTEN:www TCP4:www.domain.org:www
+installs a simple TCP port forwarder. With TCP4-LISTEN it listens on local port "www" until a connection comes in, accepts it, then connects to the remote host (TCP4) and starts data transfer. It will not accept a second connection.
+*** socat -d -d -lmlocal2 \
+TCP4-LISTEN:80,bind=myaddr1,su=nobody,fork,range=10.0.0.0/8,reuseaddr \
+TCP4:www.domain.org:80,bind=myaddr2
+TCP port forwarder, each side bound to another local IP address (bind). This example handles an almost arbitrary number of parallel or consecutive connections by fork'ing a new process after each accept() . It provides a little security by su'ing to user nobody after forking; it only permits connections from the private 10 network (range); due to reuseaddr, it allows immediate restart after master process's termination, even if some child sockets are not completely shut down. With -lmlocal2, socat logs to stderr until successfully reaching the accept loop. Further logging is directed to syslog with facility local2.
+*** TUN
+**** Options
+TUN option group
+
+Options that control Linux TUN/TAP interface device addresses.
+***** tun-device=<device-file>
+Instructs socat to take another path for the TUN clone device. Default is /dev/net/tun.
+***** tun-name=<if-name>
+Gives the resulting network interface a specific name instead of the system generated (tun0, tun1, etc.)
+***** tun-type=[tun|tap]
+Sets the type of the TUN device; use this option to generate a TAP device. See the Linux docu for the difference between these types. When you try to establish a tunnel between two TUN devices, their types should be the same.
+***** iff-no-pi
+Sets the IFF_NO_PI flag which controls if the device includes additional packet information in the tunnel. When you try to establish a tunnel between two TUN devices, these flags should have the same values.
+***** iff-up
+Sets the TUN network interface status UP. Strongly recommended.
+***** iff-broadcast
+Sets the BROADCAST flag of the TUN network interface.
+***** iff-debug
+Sets the DEBUG flag of the TUN network interface.
+***** iff-loopback
+Sets the LOOPBACK flag of the TUN network interface.
+***** iff-pointopoint
+Sets the POINTOPOINT flag of the TUN device.
+***** iff-notrailers
+Sets the NOTRAILERS flag of the TUN device.
+***** iff-running
+Sets the RUNNING flag of the TUN device.
+***** iff-noarp
+Sets the NOARP flag of the TUN device.
+***** iff-promisc
+Sets the PROMISC flag of the TUN device.
+***** iff-allmulti
+Sets the ALLMULTI flag of the TUN device.
+***** iff-master
+Sets the MASTER flag of the TUN device.
+***** iff-slave
+Sets the SLAVE flag of the TUN device.
+***** iff-multicast
+Sets the MULTICAST flag of the TUN device.
+***** iff-portsel
+Sets the PORTSEL flag of the TUN device.
+***** iff-automedia
+Sets the AUTOMEDIA flag of the TUN device.
+***** iff-dynamic
+Sets the DYNAMIC flag of the TUN device.
+**** Introduction
+This document shows how a simple virtual network can be created between two hosts that may be far (many network hops) apart.
+On both hosts a socat instance is started that connects to the other host using UDP and creates a TUN device.
+*Note*:UDP is preferred because TCP might not keep packet boundaries, or try TCP with option nodelay.
+*Note*:You may replace UDP by DTLS to add transfer security
+
+

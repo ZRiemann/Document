@@ -1,0 +1,315 @@
+#+STARTUP: indent
+
+* 入门
+https://www.bilibili.com/video/BV1xb411e7Pp?p=4
+HDLbits
+** verilog 1
+* FPGA原理与结构
+** Xilinx
+*** ARTIX-7 xc7a35tftg256
+- foot A-T * 1-16 print
+- 5200 slice
+  + 3600 slice-L
+    只能实现基本逻辑函数LUT
+    - 4 * (6I2O) LUT * 20800
+  + 1600 slice-M
+    能实现补码运算/移位寄存器/存储器
+    可配置为同步随机存储器RAM(分布式RAM元件)
+- 400Kb RAM
+- 200Kb 移位寄存器
+- 41600 触发器
+
+*** Structure
+**** LCA(Logic Cell Array)
+***** CLB (Configurable Logic Block)
+****** Slice[2]
+******* LUT[4](Loop-up Table) 组合逻辑
+******* Register[8]
+******* 进位链
+***** IOB (Input Output Block)
+****** IO BANK[4](IO分组 IOB[50])
+- BANK[14]
+- BANK[15]
+- BANK[35]
+  + D4 CLK GlobalClock IO/MRCC IN
+- BANK[34]
+****** Mode
+******* 单端模式
+按键输入\LED
+设置为LVCMOS/LVTTL/HSTL/PCI/SSTL电平标准
+BANK最好2管脚是仅单端模式
+******* 差分模式
+2IO差分输入输出
+LVD/Mini_LVDS/RSDS/PPDS/BLVDS/差分HSTL/差分SSTL
+****** 管脚类型
+******* HP(High-Performance)
+执行效率高,快
+- T 控制输入述出三态
+- 0
+- DCITERM-DISABLE 设置DCI功能无效
+- DIFFI_IN 设置是否使用差分模式
+- IBUF-DISABLE
+******* HR(High-Range)
+电平兼容性号
+***** Interconnection
+*** Program
+**** Verilog
+***** 基本结构
+1. 编写HDL(Hardware Description Language)
+  对硬件电路进行描述\寄存器传输描述\结构化描述
+2. 综合生成逻辑网表
+3. 下载目标文件
+   - JTAG 调试/下电后消失
+   - 下载到FLASH
+#+BEGIN_SRC verilog
+module AND4(a,b,out);
+   output [3:0] out;
+   input [3:0]  a,b;
+   assign out = a & b;   
+endmodule; // AND4
+
+module AND4(
+            input [3:0] a,
+            input [3:0] b,
+            output [3:0] out
+);
+   assign out = a & b;
+endmodule; // AND4
+
+//frequency division
+module  FreDiv(input clk_in, output clk_out);
+   reg c_out = 0; // DFF
+
+   assign clk_out = c_out;
+
+   always @(posedge clk_in)begin
+      c_out = ~c_out;
+   end
+
+endmodule; // FreDiv
+#+END_SRC
+***** 变量,常量
+- 常量
+  - parameter
+    parameter width = 3;
+    #+BEGIN_SRC verilog
+    module adder(sum, a, b);
+       parameter time_delay = 5, time_count = 10;
+       //...
+    endmodule; // adder
+
+    module top;
+       wire [2:0] a1, b1;
+       wire [3:0] a2, b2, sum1;
+       wire [4:0] sum1;
+
+       adder #(4, 8) AD1(sum1, a1, b1); //time_delay = 4, time_count = 8;
+       adder #(12) AD2(sum2, a2, b2); //time_delay = 12, time_count = 10;
+    endmodule; // top
+
+    #+END_SRC
+- 变量
+  - Net(线网)
+    wire 可直接理解为连线
+  - reg
+    - 存储器(寄存器数组)
+      #+BEGIN_SRC verilog
+      // reg [msg:lsb] memory[upper:lower]
+
+      reg [3:0] memory[63:0];
+      reg dog [1:5];
+
+      dog[1:5] = 0;
+      dog[4] = 1;
+      #+END_SRC
+- 逻辑值
+  - 0/1
+  - X 未知
+  - Z 高阻
+- 数的表达
+  + <位宽>'<进制><数字>
+    8'h2x == 8'b0010xxxx // x不确定
+  + <进制><数字> ;至少32位,缺省位宽
+  + <数字> ;10进制,默认32位
+***** 运算符
+#+BEGIN_SRC verilog
+// +,-,*,/,%
+
+// 取模符号与第一操作数符号一致
+-10%3; // = -1
+11%-3; // = 2
+// 如果操作数是X,操作结果也为X
+
+// &&,||,!
+// ~,&,|,^,^~,~^
+// <,<=,>,>=
+// ==, !=, ===, !==(case 比较x,z完全相等)
+// 缩减运算符 &,~&,|,~|,^,^~,~^
+c = &b;
+// >>, << 移位运算符,补0
+// <expr> ? <expr1> : <expr2>; 条件运算符,always块中使用
+// 拼接运算符
+{a, b[3:0], w, 3'b101};
+{4{w}} == {w, w, w, w};
+
+reg [7:0] r1;
+r1 = {a[3:0], b[3:0]};
+reg [7:0] a, b;
+a = 8'b00010001;
+b = 8'b10001010;
+// r1 == 8'b00011010;
+// 交换高低位
+r1={r1[3:0], r1[7:4]}
+#+END_SRC
+***** 语句
+赋值语句
+#+BEGIN_SRC verilog
+
+module test_module();
+   
+// assign 连续赋值语句,用于wire变量
+assign c = a & b;
+
+// =, <= 过程赋值,用于reg
+
+
+// always @(敏感信号表达式) 结构说明语句
+always @(clk);
+// 只要上升/下降沿都触发
+always @(posedge clk);
+// 只要上升沿都触发
+   always @(negedge clk1 or posedge clk2);
+   always @(*); // 所有变量都触发
+
+   // initial 对寄存器赋初值
+   reg b,c;
+   initial
+     begin
+        // 前面的阻塞赋值没有完成,后面的语句不能执行
+        b = 0;
+        c = 0;
+     end;
+   always @(posedge clk)
+     begin
+        b <= i_a;
+        c <= b; // 非阻塞赋值,同时执行,c是b的旧值
+        
+     end;
+   always @(negedge clk)
+     begin
+        b = i_a;
+        c = b; // 塞赋值, c == b == i_a        
+     end;
+endmodule; // test_module
+#+END_SRC
+条件语句
+#+BEGIN_SRC verilog
+
+// initial
+
+// always
+
+// if-else
+// if () <expr>;
+// if () ... else if ()...; else ...;
+
+// case, casex, casez
+module mux4to1(out, a, b, c, d, select);
+   output out;
+   input  a, b, c, d;
+   input [3:0] select;
+   reg         out; // 定义寄存器out, 同时输出到out端口
+
+   always @(select[3:0] or a or b or c or d) // 组合逻辑,不是时序逻辑
+     begin
+        casex (select)
+          4'b???1: out = a;
+          4'b??1?: out = b;
+          4'b?1??: out = c;
+          4'b1???: out = d;
+        endcase; // casex (select)
+     end;
+endmodule; // mux4to1
+#+END_SRC
+循环语句(非综合语句,多用于仿真
+#+BEGIN_SRC verilog
+`timescale 1ns/1ps
+// forever
+module tb_forever();
+   forever begin
+      #10 clk = 1;
+      #10 clk = 0;
+   end;
+   // 等价
+   always #10 clk = ~clk;
+
+   repeat(10) begin
+      #10 clk = 0;
+      #10 clk = 1;
+   end;
+endmodule; // tb_forever
+
+module tb_while(in, clkk, cnt);
+   output [3:0] cnt;
+   input [7:0]  in;
+   input        clk;
+
+   reg [3:0]    cnt;
+   reg [7:0]    temp;
+
+   // 统计1的个数,不能综合,循环不能确定
+   always @(posedge clk) begin
+      cnt = 0;
+      temp = in;
+      while(temp > 0) begin
+         if(temp[0]) cnt = cnt + 1;
+         temp = temp >> 1;
+         
+      end
+   end
+endmodule; // tb_while
+
+module tb_for(in, clk, cnt);
+   input clk;
+   input [7:0] in;
+   output [3:0] cnt;
+
+   reg [3:0]    i;
+   reg [3:0]    cnt;
+   // 统计1的个数,可综合
+   always @(posedge clk) begin
+      cnt = 0;
+
+      for(i = 0; i <= 7; i = i+1) begin
+         if(in[i]) cnt = cnt + 1;
+      end
+   end
+   
+endmodule // tb_for
+#+END_SRC
+**** VIVADO
+***** majority voter
+****** Create project
+select xc7a35...
+****** Settings
+******* Project Settings
+******** General
+********* Bitstream
+- bin_file true; // 下载到flash
+****** Add Sources
+crate mjvt.v
+#+BEGIN_SRC verilog
+`timescale 1ns / 1ps
+module mjvt(
+    input a,
+    input b,
+    input c,
+    output f
+    );
+    // f = ab + bc + ac;
+    assign f = (a&b) | (b&c) | (a&c);
+endmodule
+#+END_SRC
+****** RTL ANALYSIS
+******* Open Elaborated design 打开精细设计
+****** 

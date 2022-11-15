@@ -1,0 +1,1819 @@
+#+STARTUP: indent
+
+* document
+https://actix.rs/docs/
+
+** Introduction
+*** Welcome
+Actix Web允许您快速、自信地开发Web服务.
+*** What is Actix
+很久以前，actix-web是建立在actix之上的，它是一个强大而快速的actor系统。现在，actix-web很大程度上与actor框架无关，它是使用不同的系统构建的。
+** Basics
+*** Getting Started
+**** Installing Rust
+**** Hello, World!
+[[file:../../zsi/test_rust/actix_web/hello-world/src/main.rs][hello-world]]
+*** Application
+***** State
+Application state is shared with all routes and resources within the same scope. 
+State can be accessed with the web::Data<T> extractor where T is the type of the state.
+State is also accessible for middleware.
+*** Server
+*** Handlers
+**** Request Handlers
+A request handler is *an async function* that accepts zero or more parameters that can be extracted from a request (i.e., *impl FromRequest* ) and returns a type that can be converted into an HttpResponse (i.e., *impl Responder* ).
+Request handling happens *in two stages*. First the *handler object is called*, returning any object that implements the Responder trait. Then, *respond_to() is called* on the returned object, converting itself to a HttpResponse or Error.
+By default actix-web provides Responder implementations for some standard types, such as &'static str, String, etc.
+**** Response with standard types, such as &'static str, String
+**** Response with custom type
+#+BEGIN_SRC rust
+async fn index(_req: HttpRequest) -> &'static str {
+    "Hello world!"
+}
+async fn index(_req: HttpRequest) -> String {
+    "Hello world!".to_owned()
+}
+async fn index(_req: HttpRequest) -> impl Responder {
+    web::Bytes::from_static(b"Hello world!")
+}
+/*
+async fn index(req: HttpRequest) -> Box<Future<Item=HttpResponse, Error=Error>> {
+    ...
+}*/
+//  Response with custom type
+use actix_web::{Error, HttpRequest, HttpResponse, Responder};
+futures::future::{ready, Ready};
+serde::Serialize;
+
+#[derive(Serialize)]
+struct MyObj{
+    name: &'static str,
+}
+
+// Responder
+ims Responder for MyObj{
+    type Error = Error;
+    type Future = Ready<Result<HttpResponse, Error>>;
+
+    fn respond_to(self, _req: &HttpRequest) -> Self::Future{
+        let body = serde_json::to_string(&self).unwrap();
+        // Create response and set content type
+        ready(Ok(HttpResponse::Ok()
+                 .content_type("application/json")
+                 .body(body)))
+    }
+}
+
+async fn index() -> impl Responder{
+    MyObj{name: "user"}
+}
+#+END_SRC
+**** Streaming response body
+Response body can be generated asynchronously, in this case, body must implement the stream trait
+*Stream<Item=Bytes, Error=Error>,i.e.:
+#+BEGIN_SRC rust
+use actix_web::{get, web, App, Error, HttpResponse, HttpServer};
+use futures::{future::ok, stream::once};
+
+#[get("/stream")]
+async fn stream()->HttpResponse{
+    let body = once(ok::<_, Error>(web::Bytes::from_static(b"test")));
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .streaming(body);
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(stream))
+        .bind("0.0.0.0:8080")?
+        .run()
+        .await     
+}
+#+END_SRC
+**** Different return types(Either)
+#+BEGIN_SRC rust
+use actix_web::{Either, Error, HttpResponse};
+type RegisterResult = Either<HttpResponse, Result<&'static str, Error>>;
+
+async fn index() -> RegisterResult{
+    if is_a_variant(){
+        Either::A(HttpResponse::BadRequest().body("Bad data"))
+    } else{
+        // variant B
+        Either::B(Ok("Hello!"))
+    }
+}
+#+END_SRC
+*** Extractors
+**** Type-safe information extraction
+*impl FormRequest*
+An extractor can be accessed as an argument to handler function.
+Support up to 12 extractor per handler function.
+Argument position does not matter.
+#+BEGIN_SRC rust
+async fn index(path: web::Path<(String, String)>, json: web::Json<MyInfo>) -> impl Responder{
+    let path = path.into_inner();
+    format!("{} {} {} {}", path.0, path.1, json.id, json.username);
+}
+#+END_SRC
+**** [[https://docs.rs/actix-web/3.3.2/actix_web/dev/struct.Path.html][Path]]
+Path provides information than can be extracted from the Request's path.
+You can deserialize any variable segment from the path.
+#+BEGIN_SRC rust
+use actix_web::{get, web, Result};
+
+/// extract path info form "/users/{user_id}/{friend}" url
+/// {user_id} - deserializes to a u32
+/// {friend} - deserializes to a String
+#[get("/users/{user_id}/{friend}")] // <- define path parameters
+async fn index(web::Path((user_id, friend)): web::Path(u32, String)>) -> Result<String> {
+    Ok(format!("Welcome {}, user_id {}!", friend, user_id))
+}
+
+use serde::Deserialize;
+#[derive(Deserialize)]
+struct Info{
+    user_id: u32,
+    friend: String,
+}
+/// extract path info using serde
+#[get("api1/users/{user_id}/{friend}")] // <- define path parameters
+async fn api1_users(info: web::Path<Info>) -> Result<String>{
+    Ok(fromat!("Welcome {}, user_id {}!", info.friend, info.user_id))
+}
+
+/// get or query the request for path parameters by name:
+#[get("api2/users/{userid}/{friend}")] // <- define path parameters
+async fn api2_users(req: HttpRequest) -> Result<String> {
+    let name: String = req.match_info().get("friend).unwrap().parse().unwrap();
+    let userid: i32 = req.match_info().query("userid").parse().unwrap();
+    Ok(fromat!("Welcome {}, user_id {}!", name, user_id))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()>{
+    user actix_web::{App, HttpServer};
+
+    HttpServer::new(|| App::new().service(index)
+                    .service(api1_users)
+                    .service(api2_users))
+        .bind("0.0.0.0:8080)?.run().await
+}
+#+END_SRC
+**** [[https://docs.rs/actix-web/3.3.2/actix_web/web/struct.Query.html][Query]]
+The Query type provides extraction functionality for the request's query parameters.
+Underneath it uses serde_urlencoded crate.
+#+BEGIN_SRC rust
+use actix_web::{get, web, App, HttpServer};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Info{
+    username: String,
+}
+
+// This handler gets called if the query deserializes into `Info` successfully
+// otherwise a 400 Bad Request error response is returned
+#[get("/")]
+async fn index(info: Web::Query<Info>) -> String{
+    format!("Welcome {}!", info.username);2
+}
+#+END_SRC
+**** [[https://docs.rs/actix-web/3.3.2/actix_web/web/struct.Json.html][Json]]
+Json allows deserialization of a request body into a struct.
+To extract typed information from a request's body, the type *T*
+must implement the *Deserialize* trait from serde.
+#+BEGIN_SRC rust
+use actix_web::{get, web, App, HttpServer, Result, HttpResponse, Responder};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Info{
+    username: String,
+}
+
+/// deserialize `Info` fron request's body
+#[get("/")]
+async fn index(info: Web::Json<Info>) -> Result<String>{
+    Ok(format!("Welcome {}!", info.username))
+}
+
+// The following example limits the size of the payload to 4kb and uses a custom error handler.
+async fn index(info: web::Json<Info>) -> impl Responder{
+    format!("Welcome {}!", info.username)
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(||{
+        let json_config = web::JsonConfig::default()
+            .limit(4096)
+            .error_handler(|err, _req|{
+                // create custom error response
+                error::InternalError::from_response(err, HttpResponse::Conflict().finish()).into()
+            });
+        App::new().service(
+            web::resource("/")
+            // change json extractor configuration
+                .app_data(json_config)
+                .route(web::post().to(index)),
+        )
+    })
+        .bind("0.0.0.0:8864")?
+        .run()
+        .await
+}
+#+END_SRC
+**** Form
+The url-encoded body could be extracted to specifc type.
+This type must implement the Deserialize trait from the serde crate.
+[[https://docs.rs/actix-web/3.3.2/actix_web/web/struct.FormConfig.html][FormConfig]] allows configuring the extracting process
+#+BEGIN_SRC rust
+use actix_web::{post, web, App, HttpServer, Result};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct FormData{
+    username: String,
+}
+
+/// extract form data useing serde
+/// this handler gets called only if the content type is
+/// *x-www-form-urlencoded*
+#[post("/")]
+async fn index(form: web::Form<FormData>) -> Result<Stirng>{
+    Ok(format!("Welcome{}!", form.username))
+}
+#+END_SRC
+**** Other
+Actix-web also provides several other extractors:
+****** [[https://docs.rs/actix-web/3.3.2/actix_web/web/struct.Data.html][Data]] - If you need access to an application state.
+****** HttpRequest - HttpRequest itself is an extractor which returns self, in case you need access to the request
+****** String - You can convert a request's payload to a String. [[https://docs.rs/actix-web/3.3.2/actix_web/trait.FromRequest.html#example-2][Example]] is available in doc strings.
+#+BEGIN_SRC rust
+use actix_web::{web, App, FromRequest};
+
+/// extract text data from request
+async fn index(text: String) -> String {
+    format!("Body {}!", text)
+}
+
+fn main() {
+    let app = App::new().service(
+        web::resource("/index.html")
+            .app_data(String::configure(|cfg| {  // <- limit size of the payload
+                cfg.limit(4096)
+            }))
+            .route(web::get().to(index))  // <- register handler with extractor params
+    );
+}
+#+END_SRC
+****** actix_web::web::Bytes - you can convert a request's payload into bytes. [[https://docs.rs/actix-web/3.3.2/actix_web/trait.FromRequest.html#example-4][Example]]
+#+BEGIN_SRC rust
+use actix_web::{web, App, HttpRequest};
+use serde_derive::Deserialize;
+
+/// extract `Thing` from request
+async fn index(req: HttpRequest) -> String {
+   format!("Got thing: {:?}", req)
+}
+
+fn main() {
+    let app = App::new().service(
+        web::resource("/users/{first}").route(
+            web::get().to(index))
+    );
+}
+#+END_SRC
+****** Payload - you can access a request's payload. [[https://docs.rs/actix-web/3.3.2/actix_web/web/struct.Payload.html][Example]]
+#+BEGIN_SRC rust
+use actix_web::{web, error, App, Error, HttpResponse};
+use std::future::Future;
+use futures_core::stream::Stream;
+use futures_util::StreamExt;
+/// extract binary data from request
+async fn index(mut body: web::Payload) -> Result<HttpResponse, Error>
+{
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&item?);
+    }
+
+    format!("Body {:?}!", bytes);
+    Ok(HttpResponse::Ok().finish())
+}
+
+fn main() {
+    let app = App::new().service(
+        web::resource("/index.html").route(
+            web::get().to(index))
+    );
+}
+#+END_SRC
+**** Application state extractor
+Applicatoin state is accessible from the handler with the *web::Data* extractor;
+*Beware*, actix creates multiple copies of the application state and the handlers. It creates one copy for each thread.
+#+BEGIN_SRC rust
+use actix_web::{web, Responder};
+use std::cell::Cell;
+
+#[derive(Clone)]
+struct AppState{
+    count: Cell<usize>,
+}
+
+async fn show_count(data: web::Data<AppState>) -> impl Responder{
+    format!("count: {}", data.count.get())
+}
+
+async fn add_one(data: web::Data<AppState>) -> impl Responder{
+    let count = data.count.get();
+    data.count.set(count + 1);
+    format!("count: {}", data.count.get())
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()>{
+    use actix_web::{App, HttpServer};
+
+    let data = Appstate{
+        count: Cell::new(0),
+    }
+
+    HttpServer::new(move || {
+        App::new()
+            .data(data.clone())
+            .route("/", web::to(show_count))
+            .route("/add", web::to(add_one))
+    })
+        .bound("0.0.0.0:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+
+Although this handler will work, data.count will only count the number of requests handled by each thread.
+To count the number of total requests across all threads, one should use Arc and atomics.
+#+BEGIN_SRC rust
+use actix_web::{get, web, App, HttpServer, Responder};
+use std::cell::Cell;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+
+#[derive(Clone)]
+struct AppState{
+    local_count: Cell<usize>,
+    global_count: Arc<AtomicUsize>,
+}
+#[get("/")]
+async fn show_count(data: web::Data<AppState>) -> impl Responder{
+    format!(
+        "global_count: {}\nlocal_count: {}",
+        data.global_count.load(Ordering::Relaxed),
+        data.local_count.get()
+    )
+}
+
+#[get("/add")]
+async fn add_one(data: web::Data<AppState>) -> impl Responder{
+    data.global_count.fetch_add(1, Ordering::Relaxed);
+
+    let local_count = data.local_count.get();
+    data.local_count.set(local_count + 1);
+
+    format!(
+        "global_count:{}\nlocal_count: {}",
+        data.global_count.load(Ordering::Relaxed),
+        data.local_count.get()
+    )
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()>{
+    let data = AppState{
+        local_count: Cell::new(0),
+        global_count: Arc::new(AtomicUsize::new(0)),
+    }
+    HttpServer::new(move || {
+        App::new()
+            .data(data.clone())
+            .service(show_count)
+            .service(add_one)
+    })
+        .bind("0.0.0.0:8080")
+        .run()
+        .await
+}
+#+END_SRC
+Note, if you want the entire state to be shared across all threads, 
+use web::Data and app_data as described in [[https://actix.rs/docs/application/#shared-mutable-state][Shared Mutable State]].
+Be careful with synchronization primitives like *Mutex* or *RwLock*.
+The actix-web framework handles requests asynchronously. 
+By blocking thread execution, all concurrent request handling processes would block. 
+If you need to share or update some state from multiple threads, 
+consider using the *tokio synchronization primitives*.
+** Advanced
+*** Errors
+See the [[https://docs.rs/actix-web/3.3.2/actix_web/error/trait.ResponseError.html#foreign-impls][actix-web API documentation]] for a full list of foreign implementations for ResponseError.
+#+BEGIN_SRC rust
+use actix_web::error::{Error, ResponseError};
+
+pub trait ResponseError{
+    fn error_response(&self) -> Response<Body>;
+    fn status_code(&self) -> StatusCode;
+}
+
+impl<T: Responder, E: Into<Error>> Responder for Result<T, E>{}
+
+// Actix-web provides ResponseError implementations for some common non-actix errors.
+// For example, if a handler responds with an io::Error,
+// that error is converted into an HttpInternalServerError:
+use std::io;
+use actix_files::NamedFile;
+
+fn index(_req: HttpRequest) -> io::Result<NamedFile> {
+    Ok(NamedFile::open("static/index.html")?)
+}
+#+END_SRC
+**** An example of a custom error response
+using the [[https://crates.io/crates/derive_more][derive_more]] crate for declarative error enums.
+#+BEGIN_SRC rust
+use actix_web::{error, Result};
+use derive_more::{Display, Error};
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "my error: {}", name)]
+struct MyError{
+    name: &'static str,
+}
+
+// Use default implementation for `error_response()` method
+impl error::ResponseError for MyError{}
+
+async fn index() -> Result<&'static str, MyError>{
+    Err(MyError{name: "test"})
+}
+#+END_SRC
+Override error_response() to produce more useful results:
+#+BEGIN_SRC rust
+use actix_web::{
+    dev::HttpResponseBuilder, error, get, http::header, http::StatusCode, App, HttpResponse,
+};
+
+#[derive(Debug, Display, Error)]
+enum MyError{
+    #[display(fmt = "internall error")]
+    InternalError,
+    #[display(fmt = "bad request")]
+    BadClientData,
+    #[display(fmt = "timeout")]
+    Timeout,
+}
+
+impl error::ResponseError for MyError{
+    fn error_response(&self) -> HttpResponse{
+        HttpResponseBuilder::new(self.static_code())
+            .set_header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .body(self.to_string())
+    }
+
+    fn status_code(&self) -> StatusCode{
+        match *self{
+            MyError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
+            MyError::BadClientData => StatusCode::BAD_REQUEST,
+            MyError::Timeout => StatusCode::GATEWAY_TIMEOUT,
+        }
+    }
+}
+
+#[get("/")]
+async fn index() -> Result<&'static str, MyError>{
+    Err(MyError::BadClientData)
+}
+#+END_SRC
+**** Error helpers
+see [[https://docs.rs/actix-web/3.3.2/actix_web/error/struct.Error.html][error module]] docs for full list of available error helpers.
+#+BEGIN_SRC rust
+use actix_web::{error, get, App, HttpServer, Result};
+
+#[derive(Debug)]
+struct MyError{
+    name: &'static str,
+}
+
+#[get("/")]
+async fn index() -> Result<&'static str>{
+    let result: Result<&'static str, MyError> = Err(MyError{name: "test error"});
+    Ok(result.map_err(|e| error::ErrorBadRequest(e.name))?)
+}
+#+END_SRC
+**** Error logging
+#+BEGIN_SRC sh
+RUST_BACKTRACE=1 RUST_LOG=actix_web=debug cargo run
+#+END_SRC
+**** Recommend practices in error handling
+It might be useful to think about dividing the errors an application produces into two broad groups: 
+those which are intended to be *user-facing*, and *those which are not*.
+An example of the former is that I might use failure to specify a *UserError* enum 
+which encapsulates a *ValidationError* to return whenever a user sends bad input:
+#+BEGIN_SRC rust
+use actix_web::{
+    dev::HttpResponseBuilder, error, get, http::header, http::StatusCode, App, HttpResponse,
+    HttpServer,
+}
+
+use derive_more::{Display, Error};
+
+#[derive(Debug, Display, Error)]
+enum UserError{
+    #[display(fmt = "Validation error on field: {}", field)]
+    ValidationError {field: String},
+    #[display(fmt = "An internal error occurred. Please try again later.")]
+    InternalError,
+}
+
+impl error::ResponseError for UserError{
+    fn error_response(&self) -> HttpResponse{
+        HttpResponseBuilder::new(self.status_code())
+            .set_header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .body(self.to_string())
+    }
+    fn status_code(&self) -> StatusCode{
+        match *self{
+            UserError::ValidationError{..} => StatusCode::BAD_REQUEST,
+            UserError::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+// Here’s an example that maps an internal error to a user-facing InternalError with a custom message:
+#[get("/")]
+async fn index() -> Result<&'static str, UserError>{
+    do_thing_that_failes().map_err(|_e| UserError::InternalError)?;
+    Ok("Success!")
+}
+#+END_SRC
+**** Error logging
+#+BEGIN_SRC yaml
+[dependencies]
+env_logger = "0.8"
+log = "0.4"
+#+END_SRC
+#+BEGIN_SRC rust
+use actix_web::{error, get, middleware::Logger, App, HttpServer, Result};
+use derive_more::{Display, Error}
+use log::info;
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "my error: {}", name)]
+pub struct MyError{
+    name: &'static str,
+}
+
+// Use default implementation for `error_response()` method
+impl error::ResponseError for MyError{}
+
+#[get("/")]
+async fn index() -> Result<&'static str, MyError>{
+    let err = MyError{name: "test error"};
+    info!("{}", err);
+    Err(err)
+}
+
+#[rustfmt::skip]
+#[actix_web::main]
+async fn main() -> std::io::Result<()>{
+    std::env::set_var("RUST_LOG", "info");
+    std::env::set_var("RUST_BACKTRACE", "1");
+    eng_logger::init();
+
+    HttpServer::new(||{
+        let logger = Logger::default();
+        App::new()
+            .wrap(logger)
+            .service(index)
+    })
+        .bind("0.0.0.0:8080")
+        .run()
+        .await
+}
+#+END_SRC
+*** URL Dispatch
+URL dispatch provides a simple way for mapping URLs to handler code using a simple pattern matching language.
+If one of the patterns matches the path information associated with a request, a particular handler object is invoked.
+**** Resource configuration
+Resource configuration is the act of adding a new resources to an application. 
+A resource has a name, which acts as an identifier to be used for URL generation.
+The name also allows developers to add routes to existing resources.
+A resource also has a pattern, meant to match against the PATH portion of a URL
+
+The [[https://docs.rs/actix-web/3.3.2/actix_web/struct.App.html#method.route][App::route()]] method provides simple way of registering routes.
+#+BEGIN_SRC rust
+use actix_web::{web, App, HttpResponse, HttpServer};
+
+async fn index() -> HttpResponse{
+    HttpResponse::Ok().body("Hello")
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()>{
+    HttpServer::new(||{
+        App::new()
+            .route("/", web::get().to(index))
+            .route("/user", web::post().to(index))
+    })
+        .bind("0.0.0.0:8080")
+        .run()
+        .await
+}
+#+END_SRC
+**** App::service() add a single resource to application routing tables
+- Route::guard() registers a new guard. Any number of guards can be registered for each route.
+- Route::method() registers a method guard. Any number of guards can be registered for each route.
+- Route::to() registers an async handler function for this route. Only one handler can be registered. 
+  Usually handler registration is the last config operation.
+#+BEGIN_SRC rust
+use actix_web::{guard, web, App, HttpResponse};
+
+fn index() -> HttpResponse{
+    HttpResponse::Ok().body("Hello")
+}
+
+pub fn main(){
+    App::new()
+        .service(web::resource("/prefix").to(index))
+        .service(web::resource("/usr/{name}")
+                 .name("user_detail")
+                 .guard(guard::Header("content-type", "application/json"))
+                 .route(web::get().to(|| HttpResponse::Ok()))
+                 .route(web::put().to(|| HttpResponse::Ok())),
+                 web::resourdce("/path").route(
+                     web::route()
+                         .guard(guard::Get())
+                         .guard(guard::Header("content-type", "text/plain"))
+                         .to(|| HttpResponse::Ok()),
+                 ),
+                 //If a resource does not contain any route or does not have any matching routes, it returns NOT FOUND HTTP response.
+}
+#+END_SRC
+**** Route matching
+**** Resource pattern syntax
+A variable part (replacement marker) is specified in the form {identifier},
+
+pattern foo/{baz}/{bar}
+- match
+  foo/1/2        -> Params {'baz':'1', 'bar':'2'}
+  foo/abc/def    -> Params {'baz':'abc', 'bar':'def'}
+- not match
+  foo/1/2/        -> No match (trailing slash)
+  bar/abc/def     -> First segment literal mismatch
+**** Scoping Routes
+Scoping helps you organize routes sharing common root paths. You can nest scopes within scopes.
+- /users
+- /users/show
+- /users/show/{id}
+#+BEGIN_SRC rust
+#[get("/show")]
+async fn show_users() -> HttpResponse{
+    HttpResponse().body("Show users")
+}
+
+#[get("/show/{id}")]
+async fn user_detail(path: web::Path<(u32,)>) -> HttpsResponse{
+    HttpResponse::Ok().body(format!("User detail: {}", path.into_inner().0))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(||{
+        App::new().service(
+            web::scope("/users")
+                .service(show_users)
+                .service(user_detail),
+        )
+    })
+        .bind("0.0.0.0:8080")
+        .run()
+        .await
+}
+#+END_SRC
+
+**** Match information
+#+BEGIN_SRC rust
+use actix_web::{get, App, HttpRequest, HttpServer, Result};
+
+#[get("/a/{v1}/{v2}/")]
+async fn index(req: HttpRequest) -> Result<String> {
+    let v1: u8 = req.match_info().get("v1").unwrap().parse().unwrap();
+    let v2: u8 = req.match_info().query("v2").parse().unwrap();
+    let (v3, v4): (u8, u8) = req.match_info().load().unwrap();
+    Ok(format!("Values {} {} {} {}", v1, v2, v3, v4))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+
+**** Path information extractor
+Actix provides functionality for type safe path information extraction.
+#+BEGIN_SRC rust
+use actix_web::{get, web, App, HttpServer, Result};
+
+#[get("/{username}/{id}/index.html")] // <- define path parameters
+async fn index(info: web::Path<(String, u32)>) -> Result<String> {
+    let info = info.into_inner();
+    Ok(format!("Welcome {}! id: {}", info.0, info.1))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+
+It also possible to extract path pattern information to a struct. In this case, this struct must implement *serde’s *Deserialize trait.
+#+BEGIN_SRC rust
+use actix_web::{get, web, App, HttpServer, Result};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Info {
+    username: String,
+}
+
+// extract path info using serde
+#[get("/{username}/index.html")] // <- define path parameters
+async fn index(info: web::Path<Info>) -> Result<String> {
+    Ok(format!("Welcome {}!", info.username))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+
+**** Generating resource URLs
+Use the HttpRequest.url_for() method to generate URLs based on resource patterns.
+#+BEGIN_SRC rust
+use actix_web::{get, guard, http::header, HttpRequest, HttpResponse, Result};
+
+#[get("/test/")]
+async fn index(req: HttpRequest) -> Result<HttpResponse> {
+    let url = req.url_for("foo", &["1", "2", "3"])?; // <- generate url for "foo" resource
+
+    Ok(HttpResponse::Found()
+        .header(header::LOCATION, url.as_str())
+        .finish())
+}
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new()
+            .service(
+                web::resource("/test/{a}/{b}/{c}")
+                    .name("foo") // <- set resource name, then it could be used in `url_for`
+                    .guard(guard::Get())
+                    .to(|| HttpResponse::Ok()),
+            )
+            .service(index)
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+
+**** External resources
+#+BEGIN_SRC rust
+use actix_web::{get, App, HttpRequest, HttpServer, Responder};
+
+#[get("/")]
+async fn index(req: HttpRequest) -> impl Responder {
+    let url = req.url_for("youtube", &["oHg5SJYRHA0"]).unwrap();
+    assert_eq!(url.as_str(), "https://youtube.com/watch/oHg5SJYRHA0");
+
+    url.into_string()
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .service(index)
+            .external_resource("youtube", "https://youtube.com/watch/{video_id}")
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+
+**** Path normalization and redirecting to slash-appended routes
+By normalizing it means:
+- To add a trailing slash to the path.
+- To replace multiple slashes with one.
+#+BEGIN_SRC rust
+use actix_web::{middleware, HttpResponse};
+
+async fn index() -> HttpResponse {
+    HttpResponse::Ok().body("Hello")
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(middleware::NormalizePath::default())
+            .route("/resource/", web::to(index))
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+
+**** Using an Application Prefix to Compose Applications
+#+BEGIN_SRC rust
+#[get("/show")]
+async fn show_users() -> HttpResponse {
+    HttpResponse::Ok().body("Show users")
+}
+
+#[get("/show/{id}")]
+async fn user_detail(path: web::Path<(u32,)>) -> HttpResponse {
+    HttpResponse::Ok().body(format!("User detail: {}", path.into_inner().0))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new().service(
+            web::scope("/users")
+                .service(show_users)
+                .service(user_detail),
+        )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+
+**** Custom route guard
+#+BEGIN_SRC rust
+use actix_web::{dev::RequestHead, guard::Guard, http, HttpResponse};
+
+struct ContentTypeHeader;
+
+impl Guard for ContentTypeHeader {
+    fn check(&self, req: &RequestHead) -> bool {
+        req.headers().contains_key(http::header::CONTENT_TYPE)
+    }
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new().route(
+            "/",
+            web::route()
+                .guard(ContentTypeHeader)
+                .to(|| HttpResponse::Ok()),
+        )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+
+**** Modifying guard values
+- guard::Any(guard::Get()).or(guard::Post())
+- guard::Not(guard::Get())
+- guard::All(guard::Get()).and(guard::Header("content-type", "plain/text"))
+
+#+BEGIN_SRC rust
+use actix_web::{guard, web, App, HttpResponse, HttpServer};
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new().route(
+            "/",
+            web::route()
+                .guard(guard::Not(guard::Get()))
+                .to(|| HttpResponse::MethodNotAllowed()),
+        )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+
+**** Changing the default Not Found response
+#+BEGIN_SRC rust
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .service(web::resource("/").route(web::get().to(index)))
+            .default_service(
+                web::route()
+                    .guard(guard::Not(guard::Get()))
+                    .to(|| HttpResponse::MethodNotAllowed()),
+            )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+*** Request
+**** JSON Request
+[[https://github.com/actix/examples/blob/master/json/json/src/main.rs][examples directory]]
+#+BEGIN_SRC yaml
+[dependencies]
+serde = "~1"
+serde_json = "~1"
+#+END_SRC
+
+If you want to add default value for a field, refer to serde’s [[https://serde.rs/attr-default.html][documentation]].
+#+BEGIN_SRC rust
+use actix_web::{web, App, HttpServer, Result};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Info {
+    username: String,
+}
+
+/// extract `Info` using serde
+async fn index(info: web::Json<Info>) -> Result<String> {
+    Ok(format!("Welcome {}!", info.username))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().route("/", web::post().to(index)))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+
+we will deserialize a MyObj struct. We need to load the request body first and then deserialize the json into an object.
+#+BEGIN_SRC rust
+use actix_web::{error, post, web, App, Error, HttpResponse};
+use futures::StreamExt;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+struct MyObj {
+    name: String,
+    number: i32,
+}
+
+const MAX_SIZE: usize = 262_144; // max payload size is 256k
+
+#[post("/")]
+async fn index_manual(mut payload: web::Payload) -> Result<HttpResponse, Error> {
+    // payload is a stream of Bytes objects
+    let mut body = web::BytesMut::new();
+    while let Some(chunk) = payload.next().await {
+        let chunk = chunk?;
+        // limit max size of in-memory payload
+        if (body.len() + chunk.len()) > MAX_SIZE {
+            return Err(error::ErrorBadRequest("overflow"));
+        }
+        body.extend_from_slice(&chunk);
+    }
+
+    // body is loaded, now we can deserialize serde-json
+    let obj = serde_json::from_slice::<MyObj>(&body)?;
+    Ok(HttpResponse::Ok().json(obj)) // <- send response
+}
+#+END_SRC
+**** Content Encoding
+Actix-web automatically decompresses payloads. The following codecs are supported:
+Brotli, Gzip, Deflate, Zstd
+Content-Encoding: br, gzip
+**** Chunked transfer encoding
+The web::Payload extractor already contains the decoded byte stream.
+**** Multipart body
+Actix-web provides multipart stream support with an external crate, *actix-multipart*.
+[[https://github.com/actix/examples/tree/master/forms/multipart][examples]]
+**** Urlencoded body
+Actix-web provides support for application/x-www-form-urlencoded encoded bodies with the web::Form extractor which resolves to the deserialized instance. The type of the instance must implement the Deserialize trait from serde.
+
+The UrlEncoded future can resolve into an error in several cases:
+
+- content type is not application/x-www-form-urlencoded
+- transfer encoding is chunked.
+- content-length is greater than 256k
+- payload terminates with error.
+**** Streaming request
+#+BEGIN_SRC rust
+use actix_web::{get, web, Error, HttpResponse};
+use futures::StreamExt;
+
+#[get("/")]
+async fn index(mut body: web::Payload) -> Result<HttpResponse, Error>{
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await{
+        let tiem = item?;
+        println!("Chunk: {:?}", &item);
+        bytes.extend_for_slice(&item);
+    }
+
+    Ok(HttpResponse::Ok().finish())
+}
+#+END_SRC
+*** Responses
+**** Response
+A builder-liker pattern is used to contruct an instance of HttpResponse.
+HttpResponse provides several methods that return a HttpResponseBuilder instance.
+[[https://docs.rs/actix-web/3.3.2/actix_web/dev/struct.HttpResponseBuilder.html][document]]
+
+The methods .body, .finish, and .json finalize response creation 
+and return a constructed HttpResponse instance. 
+#+BEGIN_SRC rust
+use actix_web::HttpResponse;
+
+async fn index() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("text/plain")
+        .header("X-Hdr", "sample")
+        .body("data")
+}
+#+END_SRC
+**** JSON Response
+#+BEGIN_SRC rust
+use actix_web::{get, web, Responder, Result};
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct MyObj {
+    name: String,
+}
+
+#[get("/a/{name}")]
+async fn index(name: web::Path<String>) -> Result<impl Responder> {
+    let obj = MyObj {
+        name: name.to_string(),
+    };
+    Ok(web::Json(obj))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{App, HttpServer};
+
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+**** Content encoding
+Actix-web can automatically compress payloads with the Compress middleware. The following codecs are supported:
+Brotli, Gzip, Deflate, Identity
+#+BEGIN_SRC rust
+use actix_web::{get, middleware, App, HttpResponse, HttpServer};
+
+#[get("/")]
+async fn index_br() -> HttpResponse {
+    HttpResponse::Ok().body("data")
+}
+
+#[get("/")]
+async fn index_br() -> HttpResponse {
+    HttpResponse::Ok()
+        .encoding(ContentEncoding::Br) // enable brotli for single handler
+        .body("data")
+}
+
+#[get("/")]
+async fn index() -> HttpResponse {
+    HttpResponse::Ok()
+        // v- disable compression
+        .encoding(ContentEncoding::Identity)
+        .body("data")
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .wrap(middleware::Compress::default())
+            //.wrap(middleware::Compress::new(ContentEncoding::Br))
+            .service(index_br)
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+*** Testing
+Every application should be well tested. Actix-web provides tools to perform unit and integration tests.
+**** Unit Tests
+For unit testing, actix-web provides a request builder type.
+[[https://docs.rs/actix-web/3.3.2/actix_web/test/struct.TestRequest.html][TestRequest]] implements a build-like pattern. You can generate a HttpRequest instance with
+to_http_request() and call your handler with it.
+#+BEGIN_SRC rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{http, test};
+
+    #[actix_rt::test]
+    async fn test_index_ok() {
+        let req = test::TestRequest::with_header("content-type", "text/plain").to_http_request();
+        let resp = index(req).await;
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
+
+    #[actix_rt::test]
+    async fn test_index_not_ok() {
+        let req = test::TestRequest::default().to_http_request();
+        let resp = index(req).await;
+        assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
+    }
+}
+#+END_SRC
+
+**** Integration tests
+There are a few methods for testing your application.
+Actix-web can be used to run the application with specific handlers in a real HTTP server.
+TestRequest::get(), TestRequest::post() and other methods can be used to send requests to the test server.
+To create a Service for testing, use the test::init_service method which accepts a regular App builder.
+#+BEGIN_SRC rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{test, web, App};
+
+    #[actix_rt::test]
+    async fn test_index_get() {
+        let mut app = test::init_service(App::new().route("/", web::get().to(index))).await;
+        let req = test::TestRequest::with_header("content-type", "text/plain").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_rt::test]
+    async fn test_index_post() {
+        let mut app = test::init_service(App::new().route("/", web::get().to(index))).await;
+        let req = test::TestRequest::post().uri("/").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_client_error());
+    }
+}
+#+END_SRC
+
+More complex application configuration, testing should be very similar to creating the normal application.
+#+BEGIN_SRC rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{test, web, App};
+
+    #[actix_rt::test]
+    async fn test_index_get() {
+        let mut app = test::init_service(
+            App::new()
+                .data(AppState { count: 4 })
+                .route("/", web::get().to(index)),
+        )
+        .await;
+        let req = test::TestRequest::get().uri("/").to_request();
+        let resp: AppState = test::read_response_json(&mut app, req).await;
+
+        assert_eq!(resp.count, 4);
+    }
+}
+#+END_SRC
+**** Stream response tests
+If you need to test stream generation, it would be enough to call take_body() and convert a resulting ResponseBody into a future and execute it, for example when testing Server Sent Events.
+#+BEGIN_SRC rust
+use futures::stream::poll_fn;
+use std::task::Poll;
+
+use actix_web::http::{ContentEncoding, StatusCode};
+use actix_web::{http, web, App, Error, HttpRequest, HttpResponse};
+
+async fn sse(_req: HttpRequest) -> HttpResponse {
+    let mut counter: usize = 5;
+
+    // yields `data: N` where N in [5; 1]
+    let server_events = poll_fn(move |_cx| -> Poll<Option<Result<web::Bytes, Error>>> {
+        if counter == 0 {
+            return Poll::Ready(None);
+        }
+        let payload = format!("data: {}\n\n", counter);
+        counter -= 1;
+        Poll::Ready(Some(Ok(web::Bytes::from(payload))))
+    });
+
+    HttpResponse::build(StatusCode::OK)
+        .set_header(http::header::CONTENT_TYPE, "text/event-stream")
+        .set_header(
+            http::header::CONTENT_ENCODING,
+            ContentEncoding::Identity.as_str(),
+        )
+        .streaming(server_events)
+}
+
+pub fn main() {
+    App::new().route("/", web::get().to(sse));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use futures_util::stream::StreamExt;
+    use futures_util::stream::TryStreamExt;
+
+    use actix_web::{test, web, App};
+
+    #[actix_rt::test]
+    async fn test_stream() {
+        let mut app = test::init_service(App::new().route("/", web::get().to(sse))).await;
+        let req = test::TestRequest::get().to_request();
+
+        let mut resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_success());
+
+        // first chunk
+        let (bytes, mut resp) = resp.take_body().into_future().await;
+        assert_eq!(
+            bytes.unwrap().unwrap(),
+            web::Bytes::from_static(b"data: 5\n\n")
+        );
+
+        // second chunk
+        let (bytes, mut resp) = resp.take_body().into_future().await;
+        assert_eq!(
+            bytes.unwrap().unwrap(),
+            web::Bytes::from_static(b"data: 4\n\n")
+        );
+
+        // remaining part
+        let bytes = test::load_stream(resp.take_body().into_stream()).await;
+        assert_eq!(
+            bytes.unwrap(),
+            web::Bytes::from_static(b"data: 3\n\ndata: 2\n\ndata: 1\n\n")
+        );
+    }
+}
+#+END_SRC
+*** Middleware
+Typically, middleware is involved in the following actions:
+
+- Pre-process the Request
+- Post-process a Response
+- Modify application state
+- Access external services (redis, logging, sessions)
+Middleware is registered for each App, scope, or Resource and executed in opposite order as registration.
+In general, a middleware is a type that implements the [[https://docs.rs/actix-web/3.3.2/actix_web/dev/trait.Service.html][Service]] trait and [[https://docs.rs/actix-web/3.3.2/actix_web/dev/trait.Transform.html][Transform]] trait. 
+#+BEGIN_SRC rust
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use actix_service::{Service, Transform};
+use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error};
+use futures::future::{ok, Ready};
+use futures::Future;
+
+// There are two steps in middleware processing.
+// 1. Middleware initialization, middleware factory gets called with
+//    next service in chain as parameter.
+// 2. Middleware's call method gets called with normal request.
+pub struct SayHi;
+
+// Middleware factory is `Transform` trait from actix-service crate
+// `S` - type of the next service
+// `B` - type of response's body
+impl<S, B> Transform<S> for SayHi
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type InitError = ();
+    type Transform = SayHiMiddleware<S>;
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(SayHiMiddleware { service })
+    }
+}
+
+pub struct SayHiMiddleware<S> {
+    service: S,
+}
+
+impl<S, B> Service for SayHiMiddleware<S>
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(cx)
+    }
+
+    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+        println!("Hi from start. You requested: {}", req.path());
+
+        let fut = self.service.call(req);
+
+        Box::pin(async move {
+            let res = fut.await?;
+
+            println!("Hi from response");
+            Ok(res)
+        })
+    }
+}
+#+END_SRC
+
+wrap_fn to create small, ad-hoc middleware:
+#+BEGIN_SRC rust
+use actix_web::dev::Service;
+use actix_web::{web, App};
+use futures::future::FutureExt;
+
+#[actix_web::main]
+async fn main() {
+    let app = App::new()
+        .wrap_fn(|req, srv| {
+            println!("Hi from start. You requested: {}", req.path());
+            srv.call(req).map(|res| {
+                println!("Hi from response");
+                res
+            })
+        })
+        .route(
+            "/index.html",
+            web::get().to(|| async {
+                "Hello, middleware!"
+            }),
+        );
+}
+#+END_SRC
+
+Actix-web provides several useful middleware, such as logging, user sessions, compress, etc.
+**** Logging
+#+BEGIN_SRC rust
+use actix_web::middleware::Logger;
+use env_logger::Env;
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{App, HttpServer};
+
+    env_logger::from_env(Env::default().default_filter_or("info")).init();
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+**** Default headers
+To set default response headers, the DefaultHeaders middleware can be used. 
+The DefaultHeaders middleware does not set the header if response headers already contain a specified header.
+#+BEGIN_SRC rust
+use actix_web::{http, middleware, HttpResponse};
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(middleware::DefaultHeaders::new().header("X-Version", "0.2"))
+            .service(
+                web::resource("/test")
+                    .route(web::get().to(|| HttpResponse::Ok()))
+                    .route(
+                        web::method(http::Method::HEAD)
+                            .to(|| HttpResponse::MethodNotAllowed()),
+                    ),
+            )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+**** User sessions
+#+BEGIN_SRC rust
+use actix_session::{CookieSession, Session};
+use actix_web::{web, App, Error, HttpResponse, HttpServer};
+
+async fn index(session: Session) -> Result<HttpResponse, Error> {
+    // access session data
+    if let Some(count) = session.get::<i32>("counter")? {
+        session.set("counter", count + 1)?;
+    } else {
+        session.set("counter", 1)?;
+    }
+
+    Ok(HttpResponse::Ok().body(format!(
+        "Count is {:?}!",
+        session.get::<i32>("counter")?.unwrap()
+    )))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .wrap(
+                CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
+                    .secure(false),
+            )
+            .service(web::resource("/").to(index))
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+**** Error handlers
+#+BEGIN_SRC rust
+use actix_web::middleware::errhandlers::{ErrorHandlerResponse, ErrorHandlers};
+use actix_web::{dev, http, HttpResponse, Result};
+
+fn render_500<B>(mut res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
+    res.response_mut().headers_mut().insert(
+        http::header::CONTENT_TYPE,
+        http::HeaderValue::from_static("Error"),
+    );
+    Ok(ErrorHandlerResponse::Response(res))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(
+                ErrorHandlers::new()
+                    .handler(http::StatusCode::INTERNAL_SERVER_ERROR, render_500),
+            )
+            .service(
+                web::resource("/test")
+                    .route(web::get().to(|| HttpResponse::Ok()))
+                    .route(web::head().to(|| HttpResponse::MethodNotAllowed())),
+            )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+*** Static Files
+**** Individula file
+#+BEGIN_SRC rust
+use actix_files::NamedFile;
+use actix_web::{HttpRequest, Result};
+use std::path::PathBuf;
+
+async fn index(req: HttpRequest) -> Result<NamedFile> {
+    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
+    Ok(NamedFile::open(path)?)
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| App::new().route("/{filename:.*}", web::get().to(index)))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+**** Directory
+#+BEGIN_SRC rust
+use actix_files as fs;
+use actix_web::{App, HttpServer};
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new().service(fs::Files::new("/static", ".").show_files_listing())
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+**** Configuration
+NamedFiles can specify various options for serving files:
+
+- set_content_disposition - function to be used for mapping file’s mime to corresponding Content-Disposition type
+- use_etag - specifies whether ETag shall be calculated and included in headers.
+- use_last_modified - specifies whether file modified timestamp should be used and added to Last-Modified header.
+#+BEGIN_SRC rust
+use actix_files as fs;
+use actix_web::http::header::{ContentDisposition, DispositionType};
+use actix_web::{get, App, Error, HttpRequest, HttpServer};
+
+#[get("/{filename:.*}")]
+async fn index(req: HttpRequest) -> Result<fs::NamedFile, Error> {
+    let path: std::path::PathBuf = req.match_info().query("filename").parse().unwrap();
+    let file = fs::NamedFile::open(path)?;
+    Ok(file
+        .use_last_modified(true)
+        .set_content_disposition(ContentDisposition {
+            disposition: DispositionType::Attachment,
+            parameters: vec![],
+        }))
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+
+applied to /directory/ service:
+#+BEGIN_SRC rust
+use actix_files as fs;
+use actix_web::{App, HttpServer};
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new().service(
+            fs::Files::new("/static", ".")
+                .show_files_listing()
+                .use_last_modified(true),
+        )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+#+END_SRC
+** Protocols
+*** Websockets
+Actix-web supports WebSockets with the actix-web-actors crate. 
+It is possible to convert a request’s Payload to a stream of ws::Message with a web::Payload 
+and then use stream combinators to handle actual messages, 
+but it is simpler to handle websocket communications with an http actor.
+
+The following is an example of a simple websocket [[https://github.com/actix/examples/tree/master/websockets/websocket][echo server]]: see: [[https://github.com/actix/examples/tree/master/websockets/chat][chat]]
+#+BEGIN_SRC rust
+use actix::{Actor, StreamHandler};
+use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web_actors::ws;
+
+/// Define HTTP actor
+struct MyWs;
+
+impl Actor for MyWs {
+    type Context = ws::WebsocketContext<Self>;
+}
+
+/// Handler for ws::Message message
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
+    fn handle(
+        &mut self,
+        msg: Result<ws::Message, ws::ProtocolError>,
+        ctx: &mut Self::Context,
+    ) {
+        match msg {
+            Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
+            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+            _ => (),
+        }
+    }
+}
+
+async fn index(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
+    let resp = ws::start(MyWs {}, &req, stream);
+    println!("{:?}", resp);
+    resp
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().route("/ws/", web::get().to(index)))
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+#+END_SRC
+*** HTTP/2
+[[https://github.com/actix/examples/tree/master/security/rustls][rustls]]
+[[https://github.com/FiloSottile/mkcert][mkcert]]
+#+BEGIN_SRC yaml
+[dependencies]
+actix-web = { version = "3", features = ["openssl"] }
+openssl = { version = "0.10", features = ["v110"] }
+#+END_SRC
+
+#+BEGIN_SRC rust
+use actix_web::{web, App, HttpRequest, HttpServer, Responder};
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+
+async fn index(_req: HttpRequest) -> impl Responder {
+    "Hello."
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    // load ssl keys
+    // to create a self-signed temporary cert for testing:
+    // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
+    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder
+        .set_private_key_file("key.pem", SslFiletype::PEM)
+        .unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
+
+    HttpServer::new(|| App::new().route("/", web::get().to(index)))
+        .bind_openssl("127.0.0.1:8080", builder)?
+        .run()
+        .await
+}
+#+END_SRC
+** Patterns
+*** Auto-Reloading
+#+BEGIN_SRC sh
+cargo watch -x 'run --bin app'
+#+END_SRC
+*** Databases
+**** Async Options
+We have several example projects showing use of async database adapters:
+
+- SQLx: https://github.com/actix/examples/tree/master/database_interactions/sqlx_todo
+- Postgres: https://github.com/actix/examples/tree/master/database_interactions/pg
+- SQLite: https://github.com/actix/examples/tree/master/database_interactions/basic
+- mysql_async: https://docs.rs/mysql_async/0.25.0/mysql_async/
+
+**** banchmark
+
+***** gin
+wrk -t12 -c200 -d30s --latency 'http://localhost:8044/users'
+Running 30s test @ http://localhost:8044/users
+  12 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    23.27ms   37.23ms 522.07ms   89.88%
+    Req/Sec     1.28k   210.01     2.04k    69.86%
+  Latency Distribution
+     50%    9.35ms
+     75%   23.02ms
+     90%   61.12ms
+     99%  185.32ms
+  460547 requests in 30.03s, 1.34GB read
+  Socket errors: connect 0, read 39, write 0, timeout 0
+Requests/sec:  15336.57
+Transfer/sec:     45.66MB
+
+***** actix-web with web:block
+wrk -t12 -c200 -d30s --latency 'http://localhost:8080/users'
+Running 30s test @ http://localhost:8080/users
+  12 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    17.21ms    9.58ms 143.62ms   83.57%
+    Req/Sec     0.97k   165.38     1.34k    69.94%
+  Latency Distribution
+     50%   14.53ms
+     75%   20.91ms
+     90%   28.48ms
+     99%   51.47ms
+  346792 requests in 30.04s, 1.00GB read
+  Socket errors: connect 0, read 33, write 0, timeout 0
+Requests/sec:  11545.85
+Transfer/sec:     34.18MB
+
+***** async pg
+wrk -t12 -c200 -d30s --latency 'http://localhost:9999/users'
+Running 30s test @ http://localhost:9999/users
+  12 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    11.91ms    1.52ms  37.31ms   81.02%
+    Req/Sec     1.35k   115.16     1.57k    72.22%
+  Latency Distribution
+     50%   11.50ms
+     75%   12.54ms
+     90%   13.76ms
+     99%   17.14ms
+  483408 requests in 30.02s, 1.12GB read
+  Socket errors: connect 0, read 18, write 0, timeout 0
+Requests/sec:  16103.34
+Transfer/sec:     38.33MB
+
+**** Diesel
+The current version of Diesel (v1) does not support asynchronous operations, 
+so it is important to use the web::block function to offload your database operations to the Actix runtime thread-pool.
+You can create action functions that correspond to all the operations your app will perform on the database.
+#+BEGIN_SRC rust
+fn insert_new_user(db: &SqliteConnection, user: CreateUser) -> Result<User, Error> {
+    use self::schema::users::dsl::*;
+
+    // Create insertion model
+    let uuid = format!("{}", uuid::Uuid::new_v4());
+    let new_user = models::NewUser {
+        id: &uuid,
+        name: &user.name,
+    };
+
+    // normal diesel operations
+    diesel::insert_into(users)
+        .values(&new_user)
+        .execute(&self.0)
+        .expect("Error inserting person");
+
+    let mut items = users
+        .filter(id.eq(&uuid))
+        .load::<models::User>(&self.0)
+        .expect("Error loading person");
+
+    Ok(items.pop().unwrap())
+}
+
+type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
+
+#[actix_web::main]
+async fn main() -> io::Result<()> {
+    // Create connection pool
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+
+    // Start HTTP server
+    HttpServer::new(move || {
+        App::new().data(pool.clone())
+            .resource("/{name}", web::get().to(index))
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+
+async fn index(pool: web::Data<DbPool>, name: web::Path<(String)>) -> impl Responder {
+    let name = name.into_inner();
+
+    let conn = pool.get().expect("couldn't get db connection from pool");
+
+    let user = web::block(move || actions::insert_new_user(&conn, &user))
+        .await
+        .map_err(|e| {
+            eprintln!("{}", e);
+            HttpResponse::InternalServerError().finish()
+        })?;
+    
+    Ok(HttpResponse::Ok().json(user))
+}
+#+END_SRC
+** HTTP Server Initialization
+*** Architecture overview
+* crate
+** actix-socks
+** actix-lua
+* misc
+** 

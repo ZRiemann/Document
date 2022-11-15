@@ -1,0 +1,2196 @@
+#+STARTUP: indent
+
+* socket.io
+** doc v4.x
+https://socket.io/docs/v4/
+*** Documentation
+**** Introduction
+Socket.IO is a library communication between the browser and server.
+- real-time
+- bidirectional
+- event-based
+
+It consists of:
+- Node.js server
+  other server implementation(Java, Python)
+- Javascript lient library for the browser
+  other language cients(C++,Rust, ...)
+**** How does that work?
+Client establish a WebSocket connection if possible 
+or /fall back/ on HTTP long polling if not.
+
+As a "slight" wrapper around the WebSocket API.
+#+BEGIN_SRC js
+const socket = new WebSocket("ws://localhost:3000")
+
+socket.onopen = () => {
+  socket.send("Hello!");
+};
+
+socket.onmessage = (data) => {
+  console.log(data);
+};
+#+END_SRC
+
+Client side:
+#+BEGIN_SRC js
+const socket = io("ws://localhost:3000")
+
+socket.on("connect", () => {
+  socket.send("Hello!");
+  socket.emit("salutations", "Hello!", {"mr": "john"},
+              Unit8Array.from([1,2,3,4]))
+});
+
+// handle the event sent with socket.svent()
+socket.on("message", data => {
+  console.log(data);
+});
+
+// handle the event sent with socket.emit()
+socket.on("greentings", (elem1, elem2, elem3) => {
+  console.log(elem1, elem2, elem3);
+});
+#+END_SRC
+
+Server side:
+#+BEGIN_SRC js
+const io = require("socket.io")(3000);
+
+io.on("connection", socket => {
+  socket.send("Hello!");
+
+  socket.emit("greetings", "Hey!", {"ms": "jane"}, Buffer.from([4, 3, 2, 1]));
+
+  // handle the event sent with socket.send()
+  socket.on("message", (data) => {
+    console.log(data);
+  });
+
+  socket.on("salutations", (elem1, elem2, elem3) => {
+    console.log(elem1, elem2, elem3);
+  });
+});
+#+END_SRC
+**** What Socket.IO is NOT
+- Adds additional metadata to each packet.
+- Not be used in mobile applications.(high battery drain)
+  see [[https://firebase.google.com/docs/cloud-messaging][FCM]] for this use case.
+**** Features
+- reliability(fallback to HTTP long-polling)
+- atomatic reconnection
+- packet buffering
+- acknowledgments
+- broadcasting to all clients or to a subset of clients(Room)
+- multiplexing("Namespace")
+**** How it works
+***** Engine.IO
+Responsible for establishing the low-level connection
+- the various transports and the upgrade mechanism
+- the disconnection detection
+***** Transports
+- HTTP long-polling
+- WebSocket
+***** Handshake
+#+BEGIN_SRC json
+{
+  "sid": "FSDjX-WRwSA4zTZMALqx",
+  "upgrades": ["websocket"],
+  "pingInterval": 25000,
+  "pingTimeout": 20000
+}
+#+END_SRC
+***** Upgrade mechanism
+- ensure its outgoing buffer is empty
+- put the current transport in read-only mode
+- try to establish a connection with the other transport
+- if successful, close the first transport
+
+- handshake
+- send data
+- receive data
+- upgrade(WebSocket)
+- receive data(HTTP long-polling closed in 4. if success)
+***** Disconnection detection
+considered as closed when:
+- one HTTP request(GET/POST) fails(like server shutdown)
+- the WebSocket connection is closed
+- socket.disconnect() is called
+- Heartbeat
+  1. Server sends a PING packet in /pingInterval/
+  2. client sent a PONG packet in /pingTimeout/
+  3. connect close condition
+     - server after /pingTimeout/ not receive PONG packet
+     - client after /pingInterval + pintTimeout/ no PING packet
+
+***** Socket.IO
+Provides some additional features over the Engine.IO
+- automatic reconnection
+- packet buffering
+- acknowledgments
+- broadcasting all clients or to subset of clients(Room)
+- mutiplexing(Namespace)
+**** Logging and debugging
+By default, all output is suppressed.
+- enable debug
+  1. supply DEBUG env (Node.JS)
+  2. localStorage.debug property(Browsers)
+***** Available debugging scopes
+#+BEGIN_SRC sh
+# all infomation
+
+DEBUG=* node youfile.js
+
+# in the browser
+# localStorage.debug = '*';
+
+# only client
+DEBUG=socket.io:client* node youfile.js
+
+# engine and socket.io
+DEBUG=engine,socket.io* node yourfile.js
+#+END_SRC
+***** Removing debug from your brower bundle
+#+BEGIN_SRC js
+{
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        loader: 'webpack-remove-debug'
+      }
+    ]
+  }
+}
+#+END_SRC
+***** Error logs in the browser console
+- net::ERR_INTERNET_DISCONNECTED
+- net::ERR_CONNECTION_REFUSED
+- WebSocket is already in CLOSING or CLOSED state
+- Cross-Origin Request Blocked: The Same Origin Policy disallows reading the remote resource at xxx. (Reason: CORS header ‘Access-Control-Allow-Origin’ missing).
+- The connection to xxx was interrupted while the page was loading
+
+**** Testing
+testing libraries
+- mocha
+- jest
+- tape
+***** Example with mocha
+#+BEGIN_SRC sh
+npm i -D mocha chai
+#+END_SRC
+#+BEGIN_SRC js
+// with {"type": "module"} in you package.json
+import {createServer} from "http";
+improt {io as Client} from "socket.io-client";
+import {Server} from "socket.io";
+import {assert} from "chai"
+
+// with { "type": "commonjs" } in your package.json
+// const { createServer } = require("http");
+// const { Server } = require("socket.io");
+// const Client = require("socket.io-client");
+// const assert = require("chai").assert;
+
+describe("my awesome project", () => {
+  let io, serverSocket, clientSocket;
+
+  before((done) => {
+    const httpServer = createServer();
+    io = new Server(httpServer);
+    httpServer.listen(() => {
+      const port = httpServer.address().port;
+      clientSocket = new Client(`http://localhost:${port}`);
+      io.on("connection", (socket) => {
+        serverSocket = socket;
+      });
+      clientSocket.on("connect", done);
+    });
+  });
+
+  after(() => {
+    io.close();
+    clientSocket.close();
+  });
+
+  it("should work", (done) =>{
+    clientSocket.on("hello", (arg) => {
+      assert.equal(arg, "world");
+      done();
+    });
+    serverSocket.emit("hello", "world");
+  });
+
+  it("should work (with ack)", (done) => {
+    serverSocket.on("hi", (cb) => {
+      cb("hola");
+    }); 
+    clientSocket.emit("hi", (arg) => {
+      assert.equal(arg, "hola");
+      done();
+    });
+  });
+});
+#+END_SRC
+***** todo: Example with tape
+**** Troubleshooting
+**** TypeScript
+>= V3,Socket.IO now has first class support for TypeScript
+***** Types for the server
+First, declare some types:
+#+BEGIN_SRC js
+interface ServerToClientEvents{
+  onArg: () => void;
+  basicEmit: (a: number, b: string, c: Buffer) => void;
+  withAck: (d: string, callback: (e: number) => void) => void;
+}
+
+interface CoientToServerEvents{
+  hello: () => void;
+}
+
+interface InterServerEvents {
+  ping: () => void;
+}
+
+interface SocketData {
+  name: string;
+  age: number;
+}
+
+// Add use them when creating you server:
+const io = new Server<ClientToServerEvents, ServerToClientEvents,
+      InterServerEvents, SocketData>();
+
+// ServerToClientEvents interface are used when sending or broadcasting events
+io.on("connection", (socket) => {
+  socket.emit("onArg");
+  socket.emit("basicEmit", 1, "2", Buffer.from([3]));
+  socket.emit("withAck", "4", (e) => {
+    // e is inferred as number
+  });
+
+  // works when broadcast to all
+  io.emit("noArg");
+
+  // works when broadcasting to room
+  io.to("room1").emit("basicEmit", 1, "2", Buffer.from([3]));
+});
+
+// ClientToServerEvent
+io.on("connection", (socket) => {
+  socket.on("hello", () => {
+    // ...
+  });
+});
+
+// InterServerEvents
+io.serverSideEmit("ping");
+
+io.on("ping", () => {
+  // ...
+});
+
+// SocketData
+io.on("connection", (socket) => {
+  socket.data.name = "john";
+  socket.data.age = 42;
+});
+#+END_SRC
+***** Types for the client
+#+BEGIN_SRC js
+import { io, Socket } from "socket.io-client";
+
+// please note that the types are reversed
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
+
+socket.emit("hello");
+socket.on("noArg", () => {
+  // ...
+});
+
+socket.on("basicEmit", (a, b, c) => {
+  // a is inferred as number, b as string and c as buffer
+});
+
+socket.on("withAck", (d, callback) => {
+  // d is inferred as string and callback as a function that takes a number as argument
+});
+#+END_SRC
+*** Server
+**** Installation
+***** Prerequisites
+- Node.js
+***** installation
+#+BEGIN_SRC sh
+npm install socket.io
+npm install --save-optional bufferutil utf-8-validate
+#+END_SRC
+***** Usage with uWebSocket.js
+#+BEGIN_SRC sh
+npm install uWebSockets.js@uNetworking/uWebSockets.js#v20.4.0
+#+END_SRC
+#+BEGIN_SRC js
+const { App } = require("uWebSockets.js");
+const { Server } = require("socket.io");
+
+const app = new App();
+const io = new Server();
+
+io.attachApp(app);
+
+io.on("connection", (socket) => {
+  // ...
+});
+
+app.listen(3000, (token) => {
+  if (!token) {
+    console.warn("port already in use");
+  }
+});
+#+END_SRC
+**** Initialization
+[[https://socket.io/docs/v4/server-options/][server-options]]
+***** Standalone
+#+BEGIN_SRC js
+import {Server} from "socket.io";
+
+const io = new Server({/* options*/});
+
+io.on("connection", (socket) => {
+  // ...
+});
+
+io.listen(3000);
+
+/*
+  const io = new Server(3000, { options });
+ ,*/
+#+END_SRC
+***** With an HTTP server
+#+BEGIN_SRC js
+import {createServer} from "http";
+import {Server} from "socket.io";
+
+const httpServer = createServer();
+const io = new Server(httpServer, { /*options*/ });
+
+io.on("connection", (socket) => {
+  //...
+});
+
+httpServer.listen(3000);
+#+END_SRC
+***** With an HTTPS server
+#+BEGIN_SRC js
+import {readFileSync} from "fs";
+import {createServer} from "https";
+improt {Server} from "socket.io";
+
+const httpServer = createServer({
+  key: readFileSync("/path/to/my/key.pem"),
+  cert: readFileSync("/path/to/my/cert.pem")
+});
+
+const io = new Server(httpServer, {/* options */});
+
+io.on("connection", (socket) => {
+  //...
+});
+
+httpServer.listen(3000);
+#+END_SRC
+***** With an HTTP/2 server
+#+BEGIN_SRC js
+import {readFileSync} from "fs";
+import { createSecureServer } from "http2";
+import { Server } from "socket.io";
+
+const httpServer = createSecureServer({
+  allotHTTP1: true
+  key: readFileSync("path/to/my/key.pem");
+  cert: readFileSync("path/my/my/cert.pem");
+});
+
+const io = new Server(httpServer, {/* options */});
+io.on("connection", (socket) => {
+  //...
+});
+
+httpServer.listen(3000);
+#+END_SRC
+**** The Server instance
+Attributes, namespace.use()/.allSockets()
+***** Server#engine
+A reference to the underlining Engin.IO server.
+
+Fetch the number of current connected clients:
+#+BEGIN_SRC js
+const count = io.engine.clientsCount;
+// may or may not be similar to the count of Socket 
+const count2 = io.of("/").sockets.size;
+
+// Generate a cumtom session ID the sid query parameter
+const uuid = require("uuid");
+
+io.engine.generateId = (req) = > {
+  return uuid.v4();
+}
+#+END_SRC
+
+Serfer emits three special events:
+#+BEGIN_SRC js
+// initial_header
+io.engine.on("initial_headers", (headers, req) => {
+  headers["test"] = 123;
+  headers["set-cookie"] = "mycookie=456";
+});
+
+// headers
+io.engine.on("headers", (headers, req) => {
+  headers["test"] = "789";
+});
+
+// connection_error
+io.engine.on("connection_error", (err) => {
+  console.log(err.req); // the request object
+  console.log(err.code); // the error code
+  console.log(err.message);
+  console.log(err.context);
+});
+/*
+  error.code:
+Code	Message
+0	"Transport unknown"
+1	"Session ID unknown"
+2	"Bad handshake method"
+3	"Bad request"
+4	"Forbidden"
+5	"Unsupported protocol version"
+,*/
+#+END_SRC
+***** Utility methods
+- socketsJoin
+  makes the matching socket instances join the specified rooms
+- socketsLeave
+  makes the matching socket instances leave the specified rooms
+- disconnectSockets
+  makes the matching socket instances disconnect
+- fetchSockets
+  returns the matching socket instances
+
+Those methods share the same semantics as broadcasting, and the same filters apply:
+#+BEGIN_SRC js
+/*
+  Which makes all Socket instances of the "admin" namespace
+
+  - in the "room1" room (in("room1") or to("room1"))
+  - except the ones in "room2" (except("room2"))
+  - and only on the current Socket.IO server (local)
+  dissconnect
+
+  Please note that they are also compatible with the Redis adapter (starting with socket.io-redis@6.1.0),
+  which means that they will work across Socket.IO servers.
+ ,*/
+io.of("/admin").in("room").except("room2").local.disconnectSockets();
+#+END_SRC
+****** socketsJion
+#+BEGIN_SRC js
+// make all Socket instances join the "room" room
+io.socketsJoin("room1");
+
+// make all Socket instance int the room room join the room's and room3 rooms
+io.in("room1").socketsJoin(["room2", "room3"]);
+
+// make all Socket instance in the room1 of admin namespace join the room2
+io.of("/admin").in("room1").socketJoin("room2");
+
+// this also works with a single socket ID
+io.in(theSocketId).socketJoin("room1");
+#+END_SRC
+****** socketLeave
+#+BEGIN_SRC js
+// make all Socket instance leave the "room1" room
+io.socketLeave("room1");
+
+io.in("room1").socketsLeave(["room2", "room3"]);
+
+io.of("/admin").in("room1").socketsLeave("room2");
+
+io.in(theSocketId).socketsLeave("room1");
+#+END_SRC
+****** disconnectSockets
+#+BEGIN_SRC js
+io.disconnectSocets();
+
+// make all Socket instances in the "room1" room disconnect (and discard the low-level connection)
+io.in("room1").disconnectSocets(true);
+
+// make all Socket instances in the "room1" room of the "admin" namespace disconnect
+io.of("/admin").in("room1").disconnectSockets();
+
+// this also works with a single socket ID
+io.of("/admin").in(theSocketId).disconnectSockets();
+#+END_SRC
+****** fetchSockets
+#+BEGIN_SRC js
+// return all Socket instances of the main namespace
+const sockets = await io.fetchSockets();
+
+// return all Socket instances in the "room1" room of the main namespace
+const sockets = await io.in("room1").fetchSockets();
+
+// return all Socket instances in the "room1" room of the "admin" namespace
+const sockets = await io.of("/admin").in("room1").fetchSockets();
+
+// this also works with a single socket ID
+const sockets = await io.in(theSocketId).fetchSockets();
+
+for (const socket of sockets) {
+  console.log(socket.id);
+  console.log(socket.handshake);
+  console.log(socket.rooms);
+  console.log(socket.data);
+  socket.emit(/* ... */);
+  socket.join(/* ... */);
+  socket.leave(/* ... */);
+  socket.disconnect(/* ... */);
+}
+
+//The data attribute is an arbitrary object that can be used to share information between Socket.IO servers:
+// server A
+io.on("connection", (socket) => {
+  socket.data.username = "alice";
+});
+
+// server B
+const sockets = await io.fetchSockets();
+console.log(sockets[0].data.username); // "alice"
+#+END_SRC
+***** ServerSideEmit
+This method allows to emit events to the other Socket.IO Servers
+of the cluster, in a multi-server setup.
+#+BEGIN_SRC js
+// Syntax
+io.severSideEmit("hello", "world");
+
+// And on the receiving side
+io.on("hello", (arg1) => {
+  console.log(arg1); // pronts "world"
+});
+
+// Accnoledgements are supported too:
+// Server A
+io.serverSideEmit("ping", (err, response) => {
+  console.log(response[0]); // prints "pong"
+});
+
+// Server B
+io.on("ping", (cb) => {
+  cb("pong");
+});
+#+END_SRC
+
+Notes:
+- the *connection*, *connect* and *new_namespace* strings are reserved 
+  and cannot be used in your application.
+- you can send any number of arguments, 
+  but binary structures are currently not supported 
+  (the array of arguments will be JSON.stringify-ed)
+  #+BEGIN_SRC js
+  io.serverSideEmit("hello", "world", 1, "2", { 3: "4" });
+  #+END_SRC
+- the acknowledgement callback might be called with an error, 
+  if the other Socket.IO servers do not respond after a given delay
+  #+BEGIN_SRC js
+  io.serverSideEmit("ping", (err, responses) => {
+    if (err) {
+      // at least one Socket.IO server has not responded
+      // the 'responses' array contains all the responses already received though
+    } else {
+      // success! the 'responses' array contains one object per other Socket.IO server in the cluster
+    }
+  });
+  #+END_SRC
+***** Events
+The sever instance emits one single event.
+(well, technically two, but connect is an alias for connection);
+****** connection
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  //...
+});
+#+END_SRC
+****** Complete API
+https://socket.io/docs/v4/server-api/#server
+**** The Socket instance
+***** Socket#id
+Random 20-characters identifier
+#+BEGIN_SRC js
+// server-side
+io.on("connection"), (socket) => {
+  console.log(sockdet.id); // ojIckSD2jqNzOqIrAGzL
+  socket.on("private message", (anotherSocketId, msg) => {
+    socket.to(anotherSocketId).emit("private message", socket.id, msg);
+  });
+});
+
+// client-side
+socket.on("connect", () => {
+  console.log(socket.id); // ojIckSD2jqNzOqIrAGzL
+});
+#+END_SRC
+***** Socket#handshake
+#+BEGIN_SRC js
+{
+  "headers": {
+    "user-agent": "xxxx",
+    "accept": "*/*",
+    "host": "example.com",
+    "connection": "close"
+  },
+  "query": {
+    "EIO": "4",
+    "transport": "polling",
+    "t": "NNjNltH"
+  },
+  "auth": {
+    "token": "123"
+  },
+  "time": "Sun Nov 22 2020 01:33:46 GMT+0100 (Central European Standard Time)",
+  "issued": 1606005226969,
+  "url": "/socket.io/?EIO=4&transport=polling&t=NNjNltH",
+  "address": "::ffff:1.2.3.4",
+  "xdomain": false,
+  "secure": true
+}
+
+#+END_SRC
+***** Socket#rooms
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  console.log(socket.rooms); // Set { <socket.id> }
+  socket.join("room1");
+  console.log(socket.rooms); // Set { <socket.id>, "room" }
+});
+#+END_SRC
+***** Socket#data
+#+BEGIN_SRC js
+// server A
+io.on("connection", (socket) => {
+  socket.data.username = "alice";
+});
+
+// server B
+const sockets = await io.fetchSockets();
+console.log(socket[0].data.username); // "alice"
+#+END_SRC
+***** Socket#conn
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  console.log("initial transport", socket.conn.transport.name); // "polling"
+  // telemetry state: online
+  socket.conn.once("upgrade",() => {
+    //called when the transport is upgraded
+    console.log("upgrade transport", socket.conn.transport.name); // "websocket"
+  });
+
+  socket.conn.on("packet", ({type, data}) => {
+    // called for each packet received
+    // telemetry data: receives
+  });
+
+  socket.conn.on("packetCreate", ({type, data}) => {
+    // called for each packet sent
+    // telemetry data: packets
+  });
+
+  socket.conn.on("drain", () => {
+    // called when the write buffer is drained
+    // telemetry data: sends
+  });
+
+  socket.conn.on("close", (reason) => {
+    // called when the underling connction is closed
+    // telemetry state: offline
+  });
+});
+
+#+END_SRC
+***** Additional attributes
+#+BEGIN_SRC js
+// in a middleware
+io.use(async (socket, next) => {
+  try{
+    const user = await fetchUser(socket);
+    socket.user = user;
+  }catch(e){
+    next(new Exxor("unknown user"));
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log(socket.user);
+
+  // in a listener
+  socket.on("set username", (username) => {
+    socket.username = username;
+  });
+});
+#+END_SRC
+***** Socket middlewares
+Called for each incoming packet:
+#+BEGIN_SRC js
+socket.use(([event, ...args], next) => {
+  // do something with the packet
+  // do not forget to call next at the end
+  next();
+});
+#+END_SRC
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  socket.use(([event, ...args], next) => {
+    if(isUnauthorized(event)){
+      return next( new Error("unauthorized event"));
+    }
+    next();
+  });
+
+  socket.on("error", (err) => {
+    if(err && err.message === "unauthorized event"){
+      socket.disconnect();
+    }
+  });
+});
+#+END_SRC
+***** Events
+****** disconnect
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  socket.on("disconnect", (reason) => {
+    /*
+      Reason	Description
+server namespace disconnect	The socket was forcefully disconnected with socket.disconnect
+client namespace disconnect	The client has manually disconnected the socket using socket.disconnect()
+server shutting down	The server is, well, shutting down
+ping timeout	The client did not send a PONG packet in the pingTimeout delay
+transport close	The connection was closed (example: the user has lost connection, or the network was changed from WiFi to 4G)
+transport error	The connection has encountered an error'
+     ,*/
+  });
+});
+#+END_SRC
+****** disconnecting
+This event is similar to disconnect but is fired a bit earlier, 
+when the Socket#rooms set is not empty yet
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  socket.on("disconnecting", (reason) => {
+    if(const room of socket.rooms){
+      if(room !== socket.id){
+        socket.to(room).emit("user has left", socket.id);
+      }
+    }
+  });
+});
+#+END_SRC
+
+Note: those events, along with connect, connect_error, newListener and removeListener, 
+are special events that shouldn't be used in your application:
+#+BEGIN_SRC js
+// BAD, will throw an error
+socket.emit("disconnect");
+#+END_SRC
+****** Complete API
+https://socket.io/docs/v4/server-api/#socket
+
+**** Middlewares
+Is a function that gets executed for every incomming connection.
+Can be useful for:
+- logging
+- authentication/ authorization
+- rate limiting
+
+Note: this function will be executed only once per connection
+(event if the connection consists in mutiple HTTP requests)
+
+***** Registing a middleware
+A middleware function has access to the Socket instance and to 
+the next registed middle function.
+#+BEGIN_SRC js
+io.use((socket, next) => {
+  if(isValid(socket.request)){
+    next();
+  }else{
+    next(new Error("invalid"));
+  }
+});
+
+io.use((socket, next) => {
+  next();
+});
+
+io.use((socket, next) => {
+  next(new Error("thow hall not pass"));
+});
+
+io.use((socket, next) => {
+  // not executed, since the previous middleware has returned an error
+  next();
+});
+#+END_SRC
+
+Important note: the Socket instance is not actually connected when the middleware gets executed, which means that no disconnect event will be emitted if the connection eventually fails.
+
+If the client mannually close the connetion:
+#+BEGIN_SRC js
+// server side
+io.use((socket, next) => {
+  setTimeout(() => {
+    // next is called after the client disconnect
+    next();
+  }, 1000);
+
+  socket.on("disconnect", () => {
+    // not triggered
+  });
+});
+
+io.on("connection", (socket) => {
+  // not triggered
+});
+
+// client-side
+const socket = io();
+setTimeout(() => {
+  socket.disconnect();
+}, 500);
+#+END_SRC
+
+***** Sending credentials
+The client can send credentials with the auth option:
+#+BEGIN_SRC js
+// client side
+// plain object
+const socket = io({auth:{token: "abc"}});
+
+// or with a function
+const socket = io({
+  auth: (cb) => {
+    cb({
+      token: "abc"
+    });
+  }
+});
+
+// accessed in handshake object
+// server side
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  // ...
+});
+#+END_SRC
+
+***** Handling middleware error
+If the next method is calld with an Error object,
+the connection will be refused and client will received an
+connect_error event.
+#+BEGIN_SRC js
+// client-side
+socket.on("connect_error", (err) => {
+  console.log(err.message);
+  // print the mesage associated with the error
+});
+
+// server-side
+is.use((socket, next) => {
+  const err = new Error("not authorized");
+  err.data = {content: "Please retry later"};
+  next(err);
+});
+
+// client-side
+socket.on("connect_error", (err) => {
+  console.log(err instanceof Error);
+  console.log(error.message); // not authorized
+  console.log(error.data); // {content: "Please retry later"}
+});
+#+END_SRC
+
+***** Compatibility with Express middleware
+#+BEGIN_SRC js
+const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+#+END_SRC
+
+#+BEGIN_SRC js
+const session = require("express-session");
+
+io.use(wrap(session({ secret: "cats" })));
+
+io.on("connection", (socket) => {
+  const session = socket.request.session;
+});
+#+END_SRC
+
+https://github.com/socketio/socket.io/blob/master/examples/passport-example/index.js
+
+**** Behind a reverse proxy
+***** NginX
+#+BEGIN_SRC conf
+http {
+  server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $host;
+
+      proxy_pass http://localhost:3000;
+
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    }
+  }
+}
+#+END_SRC
+***** Apache HTTPD
+#+BEGIN_SRC conf
+Listen 80
+
+ServerName example.com
+
+LoadModule mpm_event_module             modules/mod_mpm_event.so
+
+LoadModule authn_file_module            modules/mod_authn_file.so
+LoadModule authn_core_module            modules/mod_authn_core.so
+LoadModule authz_host_module            modules/mod_authz_host.so
+LoadModule authz_groupfile_module       modules/mod_authz_groupfile.so
+LoadModule authz_user_module            modules/mod_authz_user.so
+LoadModule authz_core_module            modules/mod_authz_core.so
+
+LoadModule headers_module               modules/mod_headers.so
+LoadModule lbmethod_byrequests_module   modules/mod_lbmethod_byrequests.so
+LoadModule proxy_module                 modules/mod_proxy.so
+LoadModule proxy_balancer_module        modules/mod_proxy_balancer.so
+LoadModule proxy_http_module            modules/mod_proxy_http.so
+LoadModule proxy_wstunnel_module        modules/mod_proxy_wstunnel.so
+LoadModule rewrite_module               modules/mod_rewrite.so
+LoadModule slotmem_shm_module           modules/mod_slotmem_shm.so
+LoadModule unixd_module                 modules/mod_unixd.so
+
+User daemon
+Group daemon
+
+ProxyPass / http://localhost:3000/
+RewriteEngine on
+RewriteCond %{HTTP:Upgrade} websocket [NC]
+RewriteCond %{HTTP:Connection} upgrade [NC]
+RewriteRule ^/?(.*) "ws://localhost:3000/$1" [P,L]
+
+ProxyTimeout 3
+#+END_SRC
+***** Node.js http-proxy
+#+BEGIN_SRC js
+const httpProxy = require("http-proxy");
+
+httpProxy
+  .createProxyServer({
+    target: "http://localhost:3000",
+    ws: true,
+  })
+  .listen(80);
+#+END_SRC
+**** Using multiple nodes
+***** Take care of
+- enabling sticky session, if HTTP long-polling is enabled (which is the default): see below
+- using a compatible adapter, see here
+***** Stick load balancing
+#+BEGIN_SRC js
+const socket = io("https://io.youhost.com", {
+  // WARNING: in that case, there is not fallback to long-polling
+  transport: ["websocket" ] // or [ "websocket", "polling" ] (the order matters)
+});
+#+END_SRC
+***** Enabling stick-session
+todo:...
+***** Passing events between nodes
+The interface in charge of routing messages is what we call the *Adapter*.
+**** Handling CORS
+Since Socket.IO v3, you need to explicitly enambel
+Cross-Origin Resource Sharing(CORS).
+#+BEGIN_SRC js
+const io = require("socket.io")(httpServer, {
+  cors:{
+    origin: "https://example.com",
+    // origin: "*",
+    methods: ["GET", "POST"]
+    // methods: [ "GET","HEAD","PUT","PATCH","POST","DELETE"]
+  }
+});
+#+END_SRC
+
+Example with cookies(withCredentials) and additional headers:
+#+BEGIN_SRC js
+// server-side
+const io = require("socket.io")(httpServer, {
+  cors: {
+    origin: "https://expample.com",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["my-custom-custom-header"],
+    credentials: true
+  }
+});
+
+// client-side
+const io = require("socket.io-client");
+const socket = io("https://api.example.com", {
+  withCredentials: true,
+  extraHeaders:{
+    "my-custom-header": "abce"
+  }
+});
+// this also applies to localhost if your web application and your server are not served from the same port
+// You can disallow all cross-origin requests with the allowRequest option:
+cosnt io = require("socket.io")(httpServer, {
+  allowRequest: (req, callback) =>{
+    const noOriginHeader = req.headers.origin === undefined;
+    callback(null, noOriginHeader);
+  }
+});
+#+END_SRC
+
+#+BEGIN_SRC sh
+curl "https://api.example.com/socket.io/?EIO=4&transport=polling"
+# return something like
+0{"sid":"Lbo5JLzTotvW3g2LAAAA","upgrades":["websocket"],"pingInterval":25000,"pingTimeout":20000}
+
+#+END_SRC
+**** Application structure
+***** Registering event handlers
+***** Each file registers its own event handlers
+#+BEGIN_SRC js
+const httpServer = require("http").createServer();
+const io = require("socket.io")(httpServer);
+
+const registerOrderHandlers = require("./orderHandler");
+const registerUserHanders = require("./userHandler");
+
+const onConnection = (socket) => {
+  registerOrderHandlers(io, socket);
+  registerUserHanders(io, socket);
+}
+
+io.on("connection", onConnection)
+#+END_SRC
+
+#+BEGIN_SRC js
+// orderHandler.js
+module.exports = (io, socket) =>{
+  const createOrder = (payload) => {
+    //...
+  }
+
+  const readOrder = (orderId, callback) => {
+    //...
+  }
+
+  socket.on("order.create", createOrder);
+  socket.on("order.read", readOrder);
+}
+#+END_SRC
+***** All event handlers are registered in the index.js file
+index.js 
+#+BEGIN_SRC js
+const httpServer = require("http").createServer();
+const io = require("socket.io")(httpServer);
+
+const {createOrder, readOrder} = require("./orderHandler")(io);
+const {updatePassword} = require("./userHandler")(io);
+
+const onConnection = (socket) => {
+  socket.on("order.create", createOrder);
+  socket.on("order.read", readOrder);
+
+  socket.on("user.update-password", updatePassword);
+}
+
+io.on("connection", onConnection);
+
+// orderHandler.js
+module.exports = (io) => {
+  const createOrder = function (payload) {
+    const socket = this; // hence the 'function' above, as an arrow function will not work
+    // ...
+  };
+
+  const readOrder = function (orderId, callback) {
+    // ...
+  };
+
+  return {
+    createOrder,
+    readOrder
+  }
+}module.exports = (io) => {
+  const createOrder = function (payload) {
+    const socket = this; // hence the 'function' above, as an arrow function will not work
+    // ...
+  };
+
+  const readOrder = function (orderId, callback) {
+    // ...
+  };
+
+  return {
+    createOrder,
+    readOrder
+  }
+}
+#+END_SRC
+**** Useag with bundlers
+*** Client
+**** Installation
+***** Standalone build
+#+BEGIN_SRC html
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+</script>
+#+END_SRC
+
+server side disable the funcationality:
+#+BEGIN_SRC js
+const { Server } = require("socket.io");
+
+const io = new Server({
+  serveClient: false
+});
+#+END_SRC
+***** From CDN
+#+BEGIN_SRC html
+<script src="https://cdn.socket.io/4.4.0/socket.io.min.js" integrity="sha384-1fOn6VtTq3PWwfsOrk45LnYcGosJwzMHv+Xh/Jx5303FVOXzEnw0EpLv30mtjmlj" crossorigin="anonymous"></script>
+#+END_SRC
+***** From NPM
+#+BEGIN_SRC sh
+npm install socket.io-client
+#+END_SRC
+**** Client Initialization
+[[https://socket.io/docs/v4/client-options/][opptions]]
+#+BEGIN_SRC html
+<script src="/socket.io/socket.io.js"></script>
+
+<script type="module">
+  import { io } from "https://cdn.socket.io/4.3.2/socket.io.esm.min.js";
+</script>
+#+END_SRC
+***** NPM
+#+BEGIN_SRC js
+import {io} from "socket.io-client";
+
+// From the same domain
+const socket = io();
+
+// From a different domain
+cosnt socket = io("https://server-domain.com");
+
+// https/wss
+const socket = io("https://server-domain.com");
+const socket = io("wss://server-domain.com");
+// only in the browser when the page is served over https (will not work in Node.js)
+const socket = io("server-domain.com");
+#+END_SRC
+***** Custom namespace
+Default connect to main namespace.
+#+BEGIN_SRC js
+// same origin version
+const socket = io("/admin");
+// cross origin version
+const socket = io("https://server-domain.com/admin");
+#+END_SRC
+**** The Socket instance
+***** Attributes
+a few attributes that may be of use in your application:
+****** Socket#id
+#+BEGIN_SRC js
+// server-side
+io.on("connection", (socket) => {
+  console.log(socket.id)
+})
+
+// client-side
+socket.on("connect", () => {
+  console.log(socket.id)
+})
+
+socket.on("disconnect", () => {
+  console.log(socket.id)
+})
+#+END_SRC
+****** Socket#connected
+#+BEGIN_SRC js
+socket.on("connect", () => {
+  console.log(socket.connected) // true
+})
+
+socket.on("disconnect", () => {
+  console.log(socket.connected) // false
+})
+#+END_SRC
+****** Socket#io
+A reference to the underlying Manager
+#+BEGIN_SRC js
+socket.on("connect", () => {
+  const engine = socket.io.engine;
+  // in most cases prints "polling"
+  console.log(engine.trnsport.name);
+
+  engine.once("upgrade", () =>{
+    // called when trasnport is upgraded
+    console.log(engine.transport.name)
+  })
+
+  engine.on("packet", ({type, data}) =>{
+    // called for each packet received
+  })
+
+  engine.on("packetCreate", ({type, data}) =>{
+    // called for each packet sent
+  })
+
+  engine.on("drain", () =>{
+    // called when the write buffer is drained
+  })
+
+  engine.on("close", (reason) => {
+    // called when underlying connections is closed
+  })
+})
+
+socket.on("connect_error", () =>{
+  //  must mannually reconnect
+})
+
+
+socket.on("disconnect", () =>{
+  // The manager will try to reconnect
+})
+#+END_SRC
+***** Events
+****** Not emit any event related to reconnection logic anymore
+You can listen to the events on the Manager instance directly
+#+BEGIN_SRC js
+socket.io.on("reconnect_attemp", () =>{
+  // ...
+})
+
+socket.io.on("reconnect", () => {
+  // ...
+})
+#+END_SRC
+****** connect
+The event is fired by Socket instance upon connection and reconnection
+#+BEGIN_SRC js
+socket.on("connect", ()=>{})
+
+// BAD
+socket.on("connect", () =>{
+  socket.on("data", () =>{})
+})
+
+// GOOD
+socket.on("connect", () =>{})
+socket.on("data", () => {})
+#+END_SRC
+****** connect_error
+This event is fired when:
+- the low-level connection cannot be established
+  Socket will automatically try to reconnect, after a given delay.
+- the connection is denied by the server in a middleware function
+  you need to manually reconnect. You might need to update the credentials:
+#+BEGIN_SRC js
+// either by directly modifying the `auth` atrribute
+socket.on("connect_error", () => {
+  socket.auth.token = "abcd";
+  socket.connect();
+})
+
+// or if the `auth` attribute is a function
+const socket = io ({
+  auth: () => {
+    cb(localStorage.getItem("token"))
+  }
+})
+
+socket.on("connect_error", () => {
+  setTimeout(() => {
+    socket.connect()
+  }, 1000)
+})
+#+END_SRC
+****** disconnect
+#+BEGIN_SRC js
+socket.on("disconnect", (reason) => {
+  if (reason === "io server disconnect") {
+    // the disconnection was initiated by the server, you need to reconnect manually
+    socket.connect();
+  } else if (reason === "io client disconnect"){
+    // client manually disconnect
+    // you need to reconnect manually
+  }
+  // else the socket will automatically try to reconnect
+})
+#+END_SRC
+Here is the list of possible reasons:
+
+Reason	Description
+io server disconnect	The server has forcefully disconnected the socket with socket.disconnect()
+io client disconnect	The socket was manually disconnected using socket.disconnect()
+ping timeout	The server did not send a PING within the pingInterval + pingTimeout range
+transport close	The connection was closed (example: the user has lost connection, or the network was changed from WiFi to 4G)
+transport error	The connection has encountered an error (example: the server was killed during a HTTP long-polling cycle)
+
+In the first two cases (explicit disconnection), the client will not try to reconnect and you need to manually call
+***** Offline behavior
+****** Buffered events
+By default, any event emitted while the Socket is nottingham
+connected will be buffered untile reconnection.
+****** Use Attribute of Socket instance
+#+BEGIN_SRC js
+if(socket.connected){
+  socket.emit(/*...*/)
+}else{
+  //...
+}
+#+END_SRC
+****** use volatile events
+#+BEGIN_SRC js
+socket.volatile.emit(/**/)
+#+END_SRC
+***** Usage with bundlers
+*** Events
+**** Emitting events
+Between the server and the client
+***** Basic emit
+The Socket.IO API is inspired from the Node.js EventEmitter,
+#+BEGIN_SRC js
+// server-side
+io.on("connection", (socket) => {
+  socket.emit("hello", "world")
+
+  socket.on("hello", (arg) => {
+    console.log(arg)
+  })
+})
+
+// client-side
+socket.on("hello", (arg) => {
+  console.log(arg);
+})
+
+socket.emit("hello", "world")
+
+
+// any number of arguments
+// server-side
+io.on("connection", (socket) => {
+  socket.emit("hello", 1, "2", { 3: '4', 5: Buffer.from([6]) });
+})
+
+// client-side
+socket.on("hello", (arg1, arg2, arg3) => {
+  console.log(arg1); // 1
+  console.log(arg2); // "2"
+  console.log(arg3); // { 3: '4', 5: ArrayBuffer (1) [ 6 ] }
+})
+
+
+// BAD
+socket.emit("hello", JSON.stringify({ name: "John" }))
+
+// GOOD
+socket.emit("hello", { name: "John" })
+
+// Note: Map and Set are not serializable and must be manually serialized:
+const serializedMap = [...myMap.entries()]
+const serializedSet = [...mySet.keys()]
+#+END_SRC
+***** Acknowledgement
+Like request-response API.
+Add callback as the last argument of the emit()
+and this callback will be called once the other side ack the event
+#+BEGIN_SRC js
+// server-side
+io.on("connection", (socket) => {
+  socket.on("update time", (arg1, arg2, callback) => {
+    console.log(arg1); //1
+    console.log(arg2); // {name: "updated"}
+    callback({
+      status: "ok"
+    })
+  })
+})
+
+// client-side
+socket.emit("update time", "1", {name: "updated"}, (response) => {
+  console.log(response.status) // ok
+}))
+#+END_SRC
+***** With timeout
+Starting V4.4.0 you can assign a timeout to each emit:
+#+BEGIN_SRC js
+socket.timeout(5000).emit("my-event", (err) => {
+  if(err){
+    // the other side did not acknoledge the event in the given delay
+  }
+}))
+#+END_SRC
+***** Volatile events
+Not be sent if the underlying connection is not ready.
+Useful in latest state
+#+BEGIN_SRC js
+socket.volatile.emit("hello", "might or might not be received")
+#+END_SRC
+**** Listening to events
+***** EventEmitter methords
+****** socket.on(eventName, listener)
+#+BEGIN_SRC js
+socket.on("details", (...args) =>{})
+#+END_SRC
+****** socket.once(eventName, listener)
+#+BEGIN_SRC js
+socket.once("details", (...args) => {})
+#+END_SRC
+****** socket.off(eventName, listener)
+#+BEGIN_SRC js
+const listener = (...args) => {
+  console.log(args)
+}
+
+socket.on("details", listener);
+
+socket.off("details", listener);
+#+END_SRC
+****** socket.removeAllListeners([eventName])
+#+BEGIN_SRC js
+// for a specific event
+socket.removeAllListeners("details")
+// for all events
+socket.removeAllListeners()
+#+END_SRC
+***** Catch-all listeners
+****** socket.onAny(listener)
+Adds a listener that will be fired when any event is emitted.
+#+BEGIN_SRC js
+socket.onAny((eventName, ...args) => {
+  //...
+})
+#+END_SRC
+****** socket.prependAny(listener)
+Adds a listener that will be fired when any event is emitted. The listener is added to the beginning of the listeners array.
+#+BEGIN_SRC js
+socket.prependAny((eventName, ...args) => {
+  // ...
+})
+#+END_SRC
+****** socket.offAny([listener])
+#+BEGIN_SRC js
+const listener = (eventName, ...args) => {
+  console.log(eventName, args);
+}
+
+socket.onAny(listener);
+
+// and then later...
+socket.offAny(listener);
+
+// or all listeners
+socket.offAny();
+#+END_SRC
+***** Validation
+- joi
+- ajv
+- validatorjs
+#+BEGIN_SRC js
+const Joi = require("joi");
+
+const userSchema = Joi.object({
+  username: Joi.string().max(30).required(),
+  email: Joi.string().email().required()
+});
+
+io.on("connection", (socket) => {
+  socket.on("create user", (payload, callback) => {
+    if (typeof callback !== "function") {
+      // not an acknowledgement
+      return socket.disconnect();
+    }
+    const { error, value } = userSchema.validate(payload);
+    if (error) {
+      return callback({
+        status: "KO",
+        error
+      });
+    }
+    // do something with the value, and then
+    callback({
+      status: "OK"
+    });
+  });
+
+});
+#+END_SRC
+***** Error handling
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  socket.on("list items", async (callback) => {
+    try{
+      const items = await findItems();
+      callback({
+        status: "OK",
+        items
+      })
+    }catch(e){
+      callback(){{
+        status: "NOK"
+      }}
+    }
+  })
+})
+
+// server side
+require("events").captureRejections = true;
+
+io.on("connection", (socket) => {
+  socket.on("list products", async () => {
+    const products = await findProducts();
+    socket.emit("products", products);
+  });
+
+  socket[Symbol.for('nodejs.rejection')] = (err) => {
+    socket.emit("error", err);
+  };
+});
+#+END_SRC
+**** Broadcasting events
+Server only
+***** To all connected clients include the sender
+#+BEGIN_SRC js
+io.emit("hello", "world")
+#+END_SRC
+***** To all connected clients except the sender
+#+BEGIN_SRC js
+io.on("connetion", (socket) => {
+  socket.broadcast.emit("hello", "world");
+})
+#+END_SRC
+***** With multiple Socket.IO servers
+Redis Adapter or another compatible adapter.
+
+With /local/ flag, only broad cast to clients
+#+BEGIN_SRC js
+io.local.emit("hello", "world")
+#+END_SRC
+**** Rooms
+A room is an arbitrary channel that sockets can join and leave.
+Server only
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+  socket.join("some room")
+})
+
+io.to("some room").emit("some event")
+
+io.to("room1").to("room2").to("room3").emit("some event")
+
+// In that case, a union is performed:
+// every socket that is at least in one of the rooms will get the event once
+// (even if the socket is in two or more rooms).
+
+//  every socket in the room excluding the sender will get the event.
+io.on("connection", (socket) => {
+  socket.to("some room").emit("some event");
+});
+#+END_SRC
+***** Disconnection
+#+BEGIN_SRC js
+io.on("connection", socket => {
+  socket.on("disconnecting", () => {
+    console.log(socket.rooms); // the Set contains at least the socket ID
+  });
+
+  socket.on("disconnect", () => {
+    // socket.rooms.size === 0
+  });
+});
+#+END_SRC
+***** With multiple Socket.IO servers
+***** Implementation details
+#+BEGIN_SRC js
+// main namespace
+const rooms = io.of("/").adapter.rooms;
+const sids = io.of("/").adapter.sids;
+
+// custom namespace
+const rooms = io.of("/my-namespace").adapter.rooms;
+const sids = io.of("/my-namespace").adapter.sids;
+#+END_SRC
+***** Room events
+- create-room(room)
+- delete-room(room)
+- join-room(room, id)
+- leave-room(room, id)
+#+BEGIN_SRC js
+io.of("/").adapter.on("create-room", (room) => {
+  console.log(`room ${room} was created`);
+});
+
+io.of("/").adapter.on("join-room", (room, id) => {
+  console.log(`socket ${id} has joined room ${room}`);
+});
+#+END_SRC
+**** Emit cheat sheet
+***** Server-side
+#+BEGIN_SRC js
+io.on("connection", (socket) => {
+
+  // basic emit
+  socket.emit(/* ... */);
+
+  // to all clients in the current namespace except the sender
+  socket.broadcast.emit(/* ... */);
+
+  // to all clients in room1 except the sender
+  socket.to("room1").emit(/* ... */);
+
+  // to all clients in room1 and/or room2 except the sender
+  socket.to(["room1", "room2"]).emit(/* ... */);
+
+  // to all clients in room1
+  io.in("room1").emit(/* ... */);
+
+  // to all clients in room1 and/or room2 except those in room3
+  io.to(["room1", "room2"]).except("room3").emit(/* ... */);
+
+  // to all clients in namespace "myNamespace"
+  io.of("myNamespace").emit(/* ... */);
+
+  // to all clients in room1 in namespace "myNamespace"
+  io.of("myNamespace").to("room1").emit(/* ... */);
+
+  // to individual socketid (private message)
+  io.to(socketId).emit(/* ... */);
+
+  // to all clients on this node (when using multiple nodes)
+  io.local.emit(/* ... */);
+
+  // to all connected clients
+  io.emit(/* ... */);
+
+  // WARNING: `socket.to(socket.id).emit()` will NOT work, as it will send to everyone in the room
+  // named `socket.id` but the sender. Please use the classic `socket.emit()` instead.
+
+  // with acknowledgement
+  socket.emit("question", (answer) => {
+    // ...
+  });
+
+  // without compression
+  socket.compress(false).emit(/* ... */);
+
+  // a message that might be dropped if the low-level transport is not writable
+  socket.volatile.emit(/* ... */);
+
+  // with timeout
+  socket.timeout(5000).emit("my-event", (err) => {
+    if (err) {
+      // the other side did not acknowledge the event in the given delay
+    }
+  });
+});
+#+END_SRC
+***** Coient side
+#+BEGIN_SRC js
+// basic emit
+socket.emit(/* ... */);
+
+// with acknowledgement
+socket.emit("question", (answer) => {
+  // ...
+});
+
+// without compression
+socket.compress(false).emit(/* ... */);
+
+// a message that might be dropped if the low-level transport is not writable
+socket.volatile.emit(/* ... */);
+
+// with timeout
+socket.timeout(5000).emit("my-event", (err) => {
+  if (err) {
+    // the other side did not acknowledge the event in the given delay
+  }
+});
+#+END_SRC
+***** Reserved events
+connect
+connect_error
+disconnect
+disconnecting
+newListener
+removeListener
+*** Adapters
+**** Introduction
+An Adapter is a server-side component which is responsible for
+broadcsting events to all or a subset of clients.
+- in-memory adapter
+- Redis adapter
+- MongoDB adapter
+- Portgres adapter
+- Cluster adapter
+*** Advanced
+**** Namespaces
+A Namespace is a communication channel that allows you to split 
+the logic of your application over a single shared connection (also called "multiplexing").
+
+Each namespace has its own: event handlers, rooms, middlewares
+#+BEGIN_SRC js
+// event handlers
+io.of("/orders").on("connection", (socket) => {
+  socket.on("order:list", () => {});
+  socket.on("order:create", () => {});
+});
+
+io.of("/users").on("connection", (socket) => {
+  socket.on("user:list", () => {});
+});
+
+// rooms
+const orderNamespace = io.of("/orders");
+
+orderNamespace.on("connection", (socket) => {
+  socket.join("room1");
+  orderNamespace.to("room1").emit("hello");
+});
+
+const userNamespace = io.of("/users");
+
+userNamespace.on("connection", (socket) => {
+  socket.join("room1"); // distinct from the room in the "orders" namespace
+  userNamespace.to("room1").emit("holà");
+});
+
+// middlewares
+const orderNamespace = io.of("/orders");
+
+orderNamespace.use((socket, next) => {
+  // ensure the socket has access to the "orders" namespace, and then
+  next();
+});
+
+const userNamespace = io.of("/users");
+
+userNamespace.use((socket, next) => {
+  // ensure the socket has access to the "users" namespace, and then
+  next();
+});
+#+END_SRC
+***** Use cases
+- Create special namespace that only authorized users have access to
+  #+BEGIN_SRC js
+  const adminNamespace = io.of("/admin");
+
+  adminNamespace.use((socket, next) => {
+    // ensure the user has sufficient rights
+    next();
+  });
+
+  adminNamespace.on("connection", socket => {
+    socket.on("delete user", () => {
+      // ...
+    });
+  });
+  #+END_SRC
+- your application has multiple tenants so you want to dynamically create one namespace per tenant
+  #+BEGIN_SRC js
+  const workspaces = io.of(/^\/\w+$/);
+
+  workspaces.on("connection", socket => {
+    const workspace = socket.nsp;
+
+    workspace.emit("hello");
+  });
+  #+END_SRC
+***** Main namespace
+#+BEGIN_SRC js
+io.on("connection", (socket) => {});
+io.use((socket, next) => { next() });
+io.emit("hello");
+// are actually equivalent to
+io.of("/").on("connection", (socket) => {});
+io.of("/").use((socket, next) => { next() });
+io.of("/").emit("hello");
+#+END_SRC
+***** Custom namespace
+#+BEGIN_SRC js
+const nsp = io.of("/my-namespace");
+
+nsp.on("connection", socket => {
+  console.log("someone connected");
+});
+
+nsp.emit("hi", "everyone!");
+#+END_SRC
+***** Client initialization
+#+BEGIN_SRC js
+// Same-origin version
+const socket = io(); // or io("/"), the main namespace
+const orderSocket = io("/orders"); // the "orders" namespace
+const userSocket = io("/users"); // the "users" namespace
+
+// Cross-origin/Node.js
+const socket = io("https://example.com"); // or io("https://example.com/"), the main namespace
+const orderSocket = io("https://example.com/orders"); // the "orders" namespace
+const userSocket = io("https://example.com/users"); // the "users" namespace
+#+END_SRC
+
+In the example above, only *one WebSocket connection* will be established, 
+and the packets will automatically be routed to the right namespace.
+#+BEGIN_SRC js
+// usage of the forceNew option
+const socket1 = io();
+// no multiplexing, two distinct WebSocket connections
+const socket2 = io("/admin", { forceNew: true });
+#+END_SRC
+***** Dynamic namespace
+#+BEGIN_SRC js
+// with a regular expression
+io.of(/^\/dynamic-\d+$/);
+
+io.of(/^\/dynamic-\d+$/).on("connection", (socket) => {
+  const namespace = socket.nsp;
+});
+
+// with a function
+io.of((name, auth, next) => {
+  next(null, true); // or false, when the creation is denied
+});
+
+#+END_SRC
+**** Custom parser
+#+BEGIN_SRC js
+// Server
+const httpServer = require("http").createServer();
+const io = require("socket.io")(httpServer, {
+  parser: myParser
+});
+
+// Client
+const socket = io({
+  parser: myParser
+});
+#+END_SRC
+***** The default parser
+**** Admin UI
+https://github.com/socketio/socket.io-admin-ui/
+***** Current features
+- overview of the servers and the clients that are currently connected
+- details of each socket instance (active transport, handshake, rooms, ...)
+- details of each room
+- administrative operations (join, leave, disconnect)
+***** Intallation
+****** Server-side
+#+BEGIN_SRC npm
+npm i @socket.io/admin-ui
+#+END_SRC
+And then invoke the instrument method on your Socket.IO server:
+#+BEGIN_SRC js
+const { createServer } = require("http");
+const { Server } = require("socket.io");
+const { instrument } = require("@socket.io/admin-ui");
+
+const httpServer = createServer();
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: ["https://admin.socket.io"],
+    credentials: true
+  }
+});
+
+instrument(io, {
+  auth: false
+});
+
+httpServer.listen(3000);
+#+END_SRC
+****** Client-side
+***** Available options
+****** auth
+#+BEGIN_SRC js
+instrument(io, {
+  auth: false
+});
+instrument(io, {
+  auth: {
+    type: "basic",
+    username: "admin",
+    password: "$2b$10$heqvAkYMez.Va6Et2uXInOnkCT6/uQj1brkrbyG3LpopDklcq7ZOS" // "changeit" encrypted with bcrypt
+  },
+});
+#+END_SRC
+
+You can check the validity of the hash with:
+#+BEGIN_SRC sh
+$ node
+> require("bcrypt").compareSync("<the password>", "<the hash>")
+true
+
+$ node
+> require("bcrypt").hashSync("changeit", 10)
+'$2b$10$LQUE...'
+#+END_SRC
+
+**** Usage with PM2
+https://pm2.keymetrics.io/docs/usage/pm2-doc-single-page/
+To scale a Socket.IO server with PM2, there are three solutions:
+
+- disable HTTP long-polling on the client-side
+  #+BEGIN_SRC js
+  const socket = io({
+    transports: ["websocket"]
+  });
+  #+END_SRC
+- use a distinct port for each worker, and a load-balancer like nginx in front of them
+- use @socket.io/pm2
+***** Installation
+#+BEGIN_SRC sh
+npm remove -g pm2
+npm install -g @socket.io/pm2
+#+END_SRC
+***** Usage
+worker.js
+#+BEGIN_SRC js
+const { createServer } = require("http");
+const { Server } = require("socket.io");
+const { createAdapter } = require("@socket.io/cluster-adapter");
+const { setupWorker } = require("@socket.io/sticky");
+
+const httpServer = createServer();
+const io = new Server(httpServer);
+
+io.adapter(createAdapter());
+
+setupWorker(io);
+
+io.on("connection", (socket) => {
+  console.log(`connect ${socket.id}`);
+});
+#+END_SRC
+
+ecosystem.config.js
+#+BEGIN_SRC js
+module.exports = {
+  apps : [{
+    script    : "worker.js",
+    instances : "max",
+    exec_mode : "cluster"
+  }]
+}
+#+END_SRC
+
+#+BEGIN_SRC sh
+pm2 start ecosystem.config.js 
+pm2 start worker.js -i 0
+#+END_SRC
+**** Load testing
+***** Artillery
+#+BEGIN_SRC sh
+npm install artillery artillery-engine-socketio-v3
+npx artillery run my-scenario.yml
+#+END_SRC
+
+Sample scenario:
+#+BEGIN_SRC yaml
+# my-scenario.yml
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 10
+  engines:
+   socketio-v3: {}
+
+scenarios:
+  - name: My sample scenario
+    engine: socketio-v3
+    flow:
+      # wait for the WebSocket upgrade (optional)
+      - think: 1
+
+      # basic emit
+      - emit:
+          channel: "hello"
+          data: "world"
+
+      # emit an object
+      - emit:
+          channel: "hello"
+          data:
+            id: 42
+            status: "in progress"
+            tags:
+              - "tag1"
+              - "tag2"
+
+      # emit in a custom namespace
+      - namespace: "/my-namespace"
+        emit:
+          channel: "hello"
+          data: "world"
+
+      # emit with acknowledgement
+      - emit:
+          channel: "ping"
+        acknowledge:
+          match:
+            value: "pong"
+
+      # do nothing for 30 seconds then disconnect
+      - think: 30
+#+END_SRC
+***** Manual client creation
+#+BEGIN_SRC js
+const { io } = require("socket.io-client");
+
+const URL = process.env.URL || "http://localhost:3000";
+const MAX_CLIENTS = 1000;
+const POLLING_PERCENTAGE = 0.05;
+const CLIENT_CREATION_INTERVAL_IN_MS = 10;
+const EMIT_INTERVAL_IN_MS = 1000;
+
+let clientCount = 0;
+let lastReport = new Date().getTime();
+let packetsSinceLastReport = 0;
+
+const createClient = () => {
+  // for demonstration purposes, some clients stay stuck in HTTP long-polling
+  const transports =
+    Math.random() < POLLING_PERCENTAGE ? ["polling"] : ["polling", "websocket"];
+
+  const socket = io(URL, {
+    transports,
+  });
+
+  setInterval(() => {
+    socket.emit("client to server event");
+  }, EMIT_INTERVAL_IN_MS);
+
+  socket.on("server to client event", () => {
+    packetsSinceLastReport++;
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log(`disconnect due to ${reason}`);
+  });
+
+  if (++clientCount < MAX_CLIENTS) {
+    setTimeout(createClient, CLIENT_CREATION_INTERVAL_IN_MS);
+  }
+};
+
+createClient();
+
+const printReport = () => {
+  const now = new Date().getTime();
+  const durationSinceLastReport = (now - lastReport) / 1000;
+  const packetsPerSeconds = (
+    packetsSinceLastReport / durationSinceLastReport
+  ).toFixed(2);
+
+  console.log(
+    `client count: ${clientCount} ; average packets received per second: ${packetsPerSeconds}`
+  );
+
+  packetsSinceLastReport = 0;
+  lastReport = now;
+};
+
+setInterval(printReport, 5000);
+#+END_SRC
+**** Performance tuning
+***** At the Socket.IO level
+
+***** At the OS level
+
+****** maximum number of open files
+#+BEGIN_SRC sh
+$ ulimit -n
+1024
+#+END_SRC
+
+#+BEGIN_SRC conf
+# /etc/security/limits.d/custom.conf
+,* soft nofile 1048576
+,* hard nofile 1048576
+#+END_SRC
+
+****** maximum number of available local ports
+#+BEGIN_SRC sh
+$ cat /proc/sys/net/ipv4/ip_local_port_range
+32768   60999
+#+END_SRC
+#+BEGIN_SRC conf
+# /etc/sysctl.d/net.ipv4.ip_local_port_range.conf
+net.ipv4.ip_local_port_range = 10000 65535
+#+END_SRC
+*** Migrations
+*** Miscellaneous
+**** FAQ
+***** wildcards in events?
+https://github.com/hden/socketio-wildcard
+***** Prevent flooding from single connection?
+Limit number of events by IP, uniqueUserId or/and socket.id with rate-limiter-flexible package.
+https://github.com/animir/node-rate-limiter-flexible/wiki/Overall-example#websocket-single-connection-prevent-flooding
+***** Socket.IO with Apache Cordova?
+https://socket.io/socket-io-with-apache-cordova/
+***** Usage with express-session
+#+BEGIN_SRC js
+const express = require('express');
+const session = require('express-session');
+const app = express();
+
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+
+const sessionMiddleware = session({ secret: 'keyboard cat', cookie: { maxAge: 60000 }});
+// register middleware in Express
+app.use(sessionMiddleware);
+// register middleware in Socket.IO
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+  // sessionMiddleware(socket.request, socket.request.res, next); will not work with websocket-only
+  // connections, as 'socket.request.res' will be undefined in that case
+});
+
+io.on('connection', (socket) => {
+  const session = socket.request.session;
+  session.connections++;
+  session.save();
+});
+
+const port = process.env.PORT || 3000;
+server.listen(port, () => console.log('server listening on port ' + port));
+#+END_SRC
+**** Glossary
+* practice and proof
+
+* opensource
+https://www.zhihu.com/question/30511494
+** nestjs
+** egg-socket.io
+https://eggjs.org/zh-cn/intro/
+** vue-socket.io
+https://github.com/MetinSeylan/Vue-Socket.io
+
