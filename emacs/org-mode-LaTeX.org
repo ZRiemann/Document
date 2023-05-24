@@ -1,9 +1,16 @@
 #+STARTUP: indent
+
 #+STARTUP: latexpreview
 
 #+TITLE: Org to \LaTex
 
 * Introduction
+** Install
+#+BEGIN_SRC sh
+apt install texlive-latex-base
+apt install texlive-latex-extra
+apt install dvipng dvisvgm
+#+END_SRC
 ** preview
 C-c C-x C-l (org-latex-preview)
 \#+STARTUP: latexpreview
@@ -46,7 +53,102 @@ $$ \alpha \beta \gamma \delta \epsilon \varepsilon \zeta \eta \vartheta \iota
 \phi \varphi \chi \psi \omega$$
 $$ A B E Z H I K M N O P T X \Gamma \Lambda \Delta \Theta \Xi \Pi \Sigma \Upsilon \Phi \Psi \Omega$$
 * Math
+** Letters
 $\varnothing$ $\emptyset$
+** Matrix
+1. \begin{array}{1} , \end{arrar}
+   \begin{matrix} , \end{matrix}
+2. \\ 表示换行
+3. &  表示列分隔
+*** \begin{array}{lrc}
+{lrc}表示第一列左对齐，第二列右对齐，第三列中对齐, 必须有几列就设置几列；
+$$\begin{array}{lcl}
+\nabla \cdot \mathbf{E} &= &\cfrac{\rho}{\varepsilon _0} \\
+\nabla \cdot \mathbf{B} &= &0 \\
+\nabla \times \mathbf{E} &= &- \cfrac {\partial \mathbf{B}} {\partial t}} \\
+\nabla \times \mathbf{B} &= &\mu _0\mathbf{J} + \mu _0\varepsilon_0\cfrac{\partial\mathbf{E}}{\partial t}\\
+\end{array}$$
+
+$$\left(\begin{array}{ll}
+a & b\\
+c & d\\
+\end{array}\right)$$
+
+$$\left[\begin{array}{c|c|c}
+a & b & c\\ \hline
+c & d & e\\ \hline
+f & g & h
+\end{array}\right]$$
+
+*** \begin{matrix/[p|b|B|v|V]matrix}
+$$\begin{matrix}
+a & b \\
+c & d
+\end{matrix}$$
+
+$$\begin{pmatrix}
+a & b & c\\ \hline
+c & d & d \\
+\hdashline
+e & f & g
+\end{pmatrix}$$
+
+$$\begin{bmatrix}
+a & b \\
+c & d
+\end{bmatrix}$$
+
+$$\begin{Bmatrix}
+a & b \\
+c & d
+\end{Bmatrix}$$
+
+$$\begin{vmatrix}
+a & b \\
+c & d
+\end{vmatrix}$$
+
+$$\begin{Vmatrix}
+a & b \\
+c & d
+\end{Vmatrix}$$
+
+$$\begin{pmatrix}
+a_{00} & \cdots & a_{0n} \\
+\vdots & \ddots & \vdots \\
+a_{n0} & \cdots & a_{nn}
+\end{pmatrix}$$
+
+$$\begin{pmatrix}
+a_{00} & \cdots & a_{0n} \\
+ & \ddots & \vdots \\
+&  & a_{nn}
+\end{pmatrix}$$
+* Run cpp code
+#+BEGIN_SRC cpp
+  #include <iostream>
+  #include <Eigen/Eigen>
+  int main(){
+    std::cout << "Eigen example" << std::endl;
+    Eigen::MatrixXf matrix1(3, 4);
+    matrix1 = Eigen::MatrixXf::Zero(3, 4);
+    std::cout<< matrix1 << std::endl;
+  }
+
+  // Ctrl+c Ctrl+c
+  // run the cpp code
+#+END_SRC
+
+#+RESULTS:
+| Eigen | example |   |   |
+|     0 |       0 | 0 | 0 |
+|     0 |       0 | 0 | 0 |
+|     0 |       0 | 0 | 0 |
+
 * www
 https://blog.csdn.net/ShadyPi/article/details/83049219?utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control&dist_request_id=&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control
 https://blog.csdn.net/anscor/article/details/80878285?utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control&dist_request_id=&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromMachineLearnPai2%7Edefault-1.control
+* test
+| test | 纵纹  | 中文字   | hah   |
+| jk   | kjfel | kjfel    | kfjel |
+|      |       | 对齐中文 |       |

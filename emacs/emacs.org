@@ -1,4 +1,5 @@
 #+STARTUP: indent
+
 * 基础
 $1. emacs
 https://github.com/redguardtoo/emacs.d.git
@@ -50,6 +51,11 @@ UI定制
 - *Macro form*:
   (defmacro ())
 ** Function:
+- 自解释文档
+  Ctrl-h v ; 查看变量定义
+  Ctrl-h f ; 查看函数定义，说明
+  Ctrl-h k ; 查看快捷键定义
+  
 - *(setq [SYM VAL] ...)* 配置值
   (setq global-mark-ring-max 50000)
 - *(load FILE &optional NOERROR NOMESSAGE NOSUFFIX MUST-SUFFIX)*
@@ -192,6 +198,62 @@ cd ~/proj2 && gtags
   Helm is a incremental completion and selection narrowing framework for Emacs.
   
 * misc
+#+BEGIN_SRC lisp
+  ;;; 设置代码自动补全
+  (setq tab-always-indent 'complete)
+  (icomplete-mode t)
+
+  (setq name "name-var")
+  (message name)
+
+  ;;; 定义一个函数
+  ;;; (interactive) 可以被Meta-x 调用, 设置快捷建调用
+  (defun func()
+    (interactive)
+    (message "hello, %s" name))
+  ;; 调用func函数
+  (func) 
+  ;; 将func函数绑定到f1建
+  (global-set-key (kbd "<f1>") 'func)
+
+  ;; lispy
+  ;; 自动括号补全
+  (electric-pair-mode t)
+  ;; 自动最大化
+  ;;(toggle-frame-maximized)
+  (toggle-frame-fullscreen)
+
+  ;; C-h m ;; 模式显示
+  ;; 1 打开工具栏， -1 关闭工具栏目
+  (tool-bar-mode -1)
+  (scroll-bar-mode -1)
+  (setq cursor-type 'bar) ;; 设置光标形状
+
+  ;;================================================================================
+  ;; Happy Hacking
+  ;; F2快速打开init.el文件
+  (defun open-init-file()
+    (interactive)
+    (find-file "~/.emacs.d/init.el"))
+  ;; 绑定函数到快捷键盘
+  (global-set-key (kbd "<f2>") 'open-init-file)
+
+  ;; M-x evil-buffer 执行当前文档
+  ;;================================================================================
+  ;; lisp 自动补全
+  ;; M-x package-list-packages
+  ;; > install company
+  (global-company-mode 1)
+  ;; 重新绑定快捷键到函数定义
+  (global-set-key (kbd "C-h C-f") 'find-function)
+  (setq company-minimum-prefix-length 1)
+  (setq company-idle-delay 0)
+  ;;(define-key company-active-map (kbk "C-n") 'company-select-next)
+
+  ;;================================================================================
+  ;; vertico consult embark maginalia
+
+#+END_SRC
 ** 设置缩进
 ** C缩进
 ~/.emacs.d/init.el
@@ -204,3 +266,6 @@ cd ~/proj2 && gtags
 ** 代码则叠
    M-x hs-minor-mode
    M-x hs-<cmds>
+
+* SpaceEmacs
+

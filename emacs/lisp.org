@@ -1638,4 +1638,22 @@ REPL(读-求职-打印 循环 read-eval-print loop)
 |          |                 | (map (lambda (x) (* x 10)) (list 1 3 5)) | (10 30 50) |
 |          |                 |                                          |            |
       
-      
+
+* ELisp
+#+BEGIN_SRC emacs-lisp
+  ;; define variable
+  (setq var-a "value a")
+  (message var-a)
+
+  ;; define and call the function
+  (defun print-msg ()
+    (interactive)
+    (message "show value: %s" var-a)
+    )
+  (print-msg)
+  (global-set-key (kbd "<f1>") 'print-msg)
+
+  ;; (electric-pair-mode)
+  ;; C-h m
+  (icomplete-mode 1)
+#+END_SRC
